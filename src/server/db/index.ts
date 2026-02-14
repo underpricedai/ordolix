@@ -6,13 +6,19 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function createPrismaClient() {
-  if (process.env.NODE_ENV === "production" && process.env.DATABASE_URL) {
-    const adapter = new PrismaNeon({ connectionString: process.env.DATABASE_URL });
+  const connectionString = process.env.DATABASE_URL;
+
+  if (!connectionString) {
+    // During build or when DATABASE_URL is not set, create a dummy client
+    // that will fail at query time rather than at import time.
+    // This allows `next build` to succeed without a database connection.
+    const adapter = new PrismaNeon({ connectionString: "postgresql://build:build@localhost/build" });
     return new PrismaClient({ adapter });
   }
 
-  // In dev, use direct connection for simpler debugging
+  const adapter = new PrismaNeon({ connectionString });
   return new PrismaClient({
+    adapter,
     log:
       process.env.NODE_ENV === "development"
         ? ["query", "error", "warn"]
