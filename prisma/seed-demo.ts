@@ -1,12 +1,13 @@
+import { PrismaNeon } from "@prisma/adapter-neon";
 import { PrismaClient } from "@prisma/client";
 import { createDemoDataset } from "../tests/fixtures/scenarios";
 
-const prisma = new PrismaClient();
+const adapter = new PrismaNeon({ connectionString: process.env.DATABASE_URL! });
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
   console.log("Creating demo dataset...");
 
-  // Create or get demo organization
   const org = await prisma.organization.upsert({
     where: { slug: "ordolix-demo" },
     update: {},
