@@ -117,7 +117,10 @@ model Organization {
   assetTypes           AssetType[]
   scripts              Script[]
   formTemplates        FormTemplate[]
+  formSubmissions      FormSubmission[]
   savedReports         SavedReport[]
+  notificationPrefs    NotificationPreference[]
+  notificationRecords  NotificationRecord[]
   billingSubscription  BillingSubscription?
   usageMetrics         UsageMetric[]
   teamsChannelMappings TeamsChannelMapping[]
@@ -652,6 +655,8 @@ model AutomationRule {
   actions        Json
   priority       Int      @default(0)
   enabled        Boolean  @default(true)
+  executionCount Int      @default(0)
+  lastExecutedAt DateTime?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -1002,8 +1007,26 @@ model FormTemplate {
   updatedAt      DateTime @updatedAt
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  submissions  FormSubmission[]
 
   @@unique([organizationId, name])
+}
+
+model FormSubmission {
+  id             String   @id @default(cuid())
+  templateId     String
+  organizationId String
+  issueId        String?
+  submittedBy    String
+  data           Json
+  status         String   @default("pending")
+  createdAt      DateTime @default(now())
+
+  template     FormTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([templateId])
+  @@index([organizationId])
 }
 
 model Retrospective {
@@ -1075,10 +1098,14 @@ model SavedReport {
   organizationId String
   name           String
   description    String?
+  reportType     String   @default("custom")
+  query          Json     @default("{}")
   dimensions     Json     @default("[]")
   measures       Json     @default("[]")
   chartType      String   @default("bar")
   filters        Json     @default("{}")
+  visualization  Json?
+  isShared       Boolean  @default(false)
   schedule       Json?
   recipients     Json     @default("[]")
   createdBy      String
@@ -1257,34 +1284,42 @@ model IssueTemplate {
 }
 
 model NotificationPreference {
-  id             String  @id @default(cuid())
-  userId         String
-  projectId      String?
-  event          String
-  channels       Json    @default("[\"in_app\", \"email\"]")
-  digestFrequency String @default("instant")
+  id              String  @id @default(cuid())
+  organizationId  String
+  userId          String
+  projectId       String?
+  event           String
+  channels        Json    @default("[\"in_app\", \"email\"]")
+  digestFrequency String  @default("instant")
 
-  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  project Project? @relation(fields: [projectId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project      Project?     @relation(fields: [projectId], references: [id])
 
   @@unique([userId, projectId, event])
+  @@index([organizationId])
 }
 
 model NotificationRecord {
-  id        String    @id @default(cuid())
-  userId    String
-  event     String
-  issueId   String?
-  channel   String
-  title     String
-  body      String    @db.Text
-  sentAt    DateTime  @default(now())
-  readAt    DateTime?
+  id             String    @id @default(cuid())
+  organizationId String
+  userId         String
+  event          String
+  issueId        String?
+  channel        String    @default("in_app")
+  title          String
+  body           String    @db.Text
+  metadata       Json?
+  isRead         Boolean   @default(false)
+  sentAt         DateTime  @default(now())
+  readAt         DateTime?
 
-  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  issue Issue? @relation(fields: [issueId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  issue        Issue?       @relation(fields: [issueId], references: [id])
 
   @@index([userId, readAt])
+  @@index([organizationId, userId])
 }
 
 model Vote {

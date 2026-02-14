@@ -1,0 +1,198 @@
+/**
+ * Project overview page.
+ *
+ * @description Shows a single project's summary stats, recent issues,
+ * and team members. Provides navigation to project-specific boards,
+ * backlogs, and settings.
+ *
+ * @module project-detail-page
+ */
+"use client";
+
+import { use } from "react";
+import { useTranslations } from "next-intl";
+import Link from "next/link";
+import {
+  Columns3,
+  ListTodo,
+  Settings,
+  Users,
+  ArrowLeft,
+  CheckCircle2,
+  CircleDot,
+} from "lucide-react";
+import { AppHeader } from "@/shared/components/app-header";
+import { Button } from "@/shared/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/shared/components/ui/card";
+import { Badge } from "@/shared/components/ui/badge";
+import { Skeleton } from "@/shared/components/ui/skeleton";
+import { Separator } from "@/shared/components/ui/separator";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ProjectDetail = any;
+
+export default function ProjectDetailPage({
+  params,
+}: {
+  params: Promise<{ key: string }>;
+}) {
+  const { key } = use(params);
+  const t = useTranslations("projectPages");
+  const tn = useTranslations("nav");
+
+  // TODO: Replace with tRPC project.getByKey query once project router is implemented
+  const project: ProjectDetail = null;
+  const isLoading = false;
+
+  const breadcrumbs = [
+    { label: tn("projects"), href: "/projects" },
+    { label: key.toUpperCase() },
+  ];
+
+  if (isLoading) {
+    return (
+      <>
+        <AppHeader breadcrumbs={breadcrumbs} />
+        <div className="space-y-6 p-6">
+          <Skeleton className="h-8 w-48" />
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Skeleton className="h-24 rounded-lg" />
+            <Skeleton className="h-24 rounded-lg" />
+            <Skeleton className="h-24 rounded-lg" />
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <AppHeader breadcrumbs={breadcrumbs} />
+      <div className="flex-1 space-y-6 p-6">
+        {/* Project header */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" asChild>
+              <Link href="/projects" aria-label={t("title")}>
+                <ArrowLeft className="size-4" aria-hidden="true" />
+              </Link>
+            </Button>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                {(project as ProjectDetail)?.name ?? key.toUpperCase()}
+              </h1>
+              <div className="mt-1 flex items-center gap-2">
+                <Badge variant="outline">{key.toUpperCase()}</Badge>
+                <span className="text-sm text-muted-foreground">
+                  {(project as ProjectDetail)?.projectType ?? "Software"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick navigation */}
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/boards`}>
+                <Columns3 className="mr-2 size-4" aria-hidden="true" />
+                {t("projectBoard")}
+              </Link>
+            </Button>
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/issues`}>
+                <ListTodo className="mr-2 size-4" aria-hidden="true" />
+                {t("projectBacklog")}
+              </Link>
+            </Button>
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/settings`}>
+                <Settings className="mr-2 size-4" aria-hidden="true" />
+                {t("projectSettings")}
+              </Link>
+            </Button>
+          </div>
+        </div>
+
+        {/* Summary stats */}
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                {t("openIssues")}
+              </CardTitle>
+              <CircleDot
+                className="size-5 text-blue-600 dark:text-blue-400"
+                aria-hidden="true"
+              />
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold">0</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                {t("closedIssues")}
+              </CardTitle>
+              <CheckCircle2
+                className="size-5 text-green-600 dark:text-green-400"
+                aria-hidden="true"
+              />
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold">0</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                {t("teamMembers")}
+              </CardTitle>
+              <Users
+                className="size-5 text-purple-600 dark:text-purple-400"
+                aria-hidden="true"
+              />
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold">0</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Separator />
+
+        {/* Recent issues and team members */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("recentIssues")}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                {t("noProjects")}
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("teamMembers")}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                {t("noProjects")}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </>
+  );
+}
