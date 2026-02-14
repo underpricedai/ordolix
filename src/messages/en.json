@@ -1,0 +1,26 @@
+{
+  "common": {
+    "appName": "Ordolix",
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "search": "Search",
+    "noResults": "No results found",
+    "error": "Something went wrong",
+    "retry": "Retry",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "close": "Close"
+  },
+  "auth": {
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "signInWith": "Sign in with {provider}",
+    "unauthorized": "You must be signed in to access this page",
+    "forbidden": "You do not have permission to access this page"
+  }
+}
