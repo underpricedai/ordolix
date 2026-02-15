@@ -77,7 +77,7 @@ export default function AdminLayout({
 
   const { data: profile, isLoading } = trpc.user.getProfile.useQuery();
 
-  // Check admin access: user must have an "admin" or "owner" role in at
+  // Check admin access: user must have an "administrator" or "owner" role in at
   // least one of their organization memberships.
   const isAdmin =
     !isLoading &&
@@ -87,7 +87,7 @@ export default function AdminLayout({
         organizationMembers?: { role?: string }[];
       }
     ).organizationMembers?.some(
-      (m) => m.role === "admin" || m.role === "owner",
+      (m) => m.role === "administrator" || m.role === "admin" || m.role === "owner",
     );
   const currentSection = getCurrentSection(pathname, t);
 

@@ -1,10 +1,11 @@
+import { cookies } from "next/headers";
 import { db } from "@/server/db";
 import type { Session } from "next-auth";
 
 /**
- * Returns a mock session for development by querying the first user and their
- * organization membership from the database. Only used when NODE_ENV !== "production"
- * and no real auth session exists.
+ * Returns a mock session for development by checking the dev-user-id cookie
+ * first, then falling back to the first user in the database. Only used when
+ * NODE_ENV !== "production" and no real auth session exists.
  *
  * If the database has no organization members (fresh DB after migration but
  * before seeding), automatically creates a minimal dev org + user + member
@@ -12,10 +13,31 @@ import type { Session } from "next-auth";
  */
 export async function createDevSession(): Promise<Session | null> {
   try {
-    let member = await db.organizationMember.findFirst({
-      include: { user: true },
-      orderBy: { joinedAt: "asc" },
-    });
+    // Check for dev-user-id cookie to support user picker
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let member: any = null;
+
+    try {
+      const cookieStore = await cookies();
+      const devUserId = cookieStore.get("dev-user-id")?.value;
+      if (devUserId) {
+        member = await db.organizationMember.findFirst({
+          where: { userId: devUserId },
+          include: { user: true },
+          orderBy: { joinedAt: "asc" },
+        });
+      }
+    } catch {
+      // cookies() may fail in non-request contexts (e.g., during build)
+    }
+
+    // Fallback: use first user
+    if (!member) {
+      member = await db.organizationMember.findFirst({
+        include: { user: true },
+        orderBy: { joinedAt: "asc" },
+      });
+    }
 
     if (!member) {
       console.warn(

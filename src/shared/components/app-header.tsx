@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { Bell, Search, Moon, Sun, LogOut, User, Settings } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useState } from "react";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
@@ -60,6 +61,18 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
     }
     return "light";
   });
+
+  // Fetch user profile for avatar
+  const { data: profile } = trpc.user.getProfile.useQuery();
+  const userInitials = profile?.name
+    ? profile.name
+        .split(" ")
+        .map((p: string) => p[0])
+        .filter(Boolean)
+        .slice(0, 2)
+        .join("")
+        .toUpperCase()
+    : "U";
 
   // Fetch unread notification count
   const { data: unreadCount } = trpc.notification.unreadCount.useQuery(
@@ -167,24 +180,33 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
               aria-label={t("userMenu")}
             >
               <Avatar className="size-8">
-                <AvatarImage src="" alt="" />
-                <AvatarFallback className="text-xs">U</AvatarFallback>
+                <AvatarImage src={profile?.image ?? ""} alt={profile?.name ?? ""} />
+                <AvatarFallback className="text-xs">{userInitials}</AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>{t("myAccount")}</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <User className="mr-2 size-4" aria-hidden="true" />
-              {t("profile")}
+            <DropdownMenuItem asChild>
+              <Link href="/settings">
+                <User className="mr-2 size-4" aria-hidden="true" />
+                {t("profile")}
+              </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Settings className="mr-2 size-4" aria-hidden="true" />
-              {t("settings")}
+            <DropdownMenuItem asChild>
+              <Link href="/settings">
+                <Settings className="mr-2 size-4" aria-hidden="true" />
+                {t("settings")}
+              </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => {
+                document.cookie = "dev-user-id=; path=/; max-age=0";
+                window.location.href = "/auth/signin";
+              }}
+            >
               <LogOut className="mr-2 size-4" aria-hidden="true" />
               {t("signOut")}
             </DropdownMenuItem>
