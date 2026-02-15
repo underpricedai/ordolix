@@ -341,6 +341,22 @@ async function main() {
 
   console.log("  Created security scheme with 2 levels");
 
+  // ── Lookup reference data (needed for board columns + issues) ─────────────
+  const statuses = await prisma.status.findMany({
+    where: { organizationId: org.id, name: { in: ["To Do", "In Progress", "Done"] } },
+  });
+  const statusMap = new Map(statuses.map((s) => [s.name, s.id]));
+
+  const priorities = await prisma.priority.findMany({
+    where: { organizationId: org.id },
+  });
+  const priorityMap = new Map(priorities.map((p) => [p.name, p.id]));
+
+  const issueTypes = await prisma.issueType.findMany({
+    where: { organizationId: org.id, name: { in: ["Task", "Bug", "Story", "Epic"] } },
+  });
+  const issueTypeMap = new Map(issueTypes.map((t) => [t.name, t.id]));
+
   // ── Demo Projects ──────────────────────────────────────────────────────────
   const defaultWorkflow = await prisma.workflow.findFirst({
     where: { organizationId: org.id, isDefault: true },
@@ -376,22 +392,30 @@ async function main() {
     });
     projects.push(project);
 
-    // Create a Kanban board for each project (skip if one already exists)
+    // Board columns with real status IDs
+    const boardColumns = [
+      { id: `col-todo-${def.key}`, name: "To Do", statusIds: [statusMap.get("To Do")!].filter(Boolean) },
+      { id: `col-inprogress-${def.key}`, name: "In Progress", statusIds: [statusMap.get("In Progress")!].filter(Boolean) },
+      { id: `col-done-${def.key}`, name: "Done", statusIds: [statusMap.get("Done")!].filter(Boolean) },
+    ];
+
+    // Create or update board for each project
     const existingBoard = await prisma.board.findFirst({
       where: { organizationId: org.id, projectId: project.id },
     });
-    if (!existingBoard) {
+    if (existingBoard) {
+      await prisma.board.update({
+        where: { id: existingBoard.id },
+        data: { columns: boardColumns },
+      });
+    } else {
       await prisma.board.create({
         data: {
           organizationId: org.id,
           projectId: project.id,
           name: `${def.name} Board`,
           boardType: def.template === "scrum" ? "scrum" : "kanban",
-          columns: [
-            { name: "To Do", statuses: ["To Do"], wipLimit: null },
-            { name: "In Progress", statuses: ["In Progress"], wipLimit: null },
-            { name: "Done", statuses: ["Done"], wipLimit: null },
-          ],
+          columns: boardColumns,
           cardFields: ["key", "summary", "priority", "assignee", "storyPoints"],
           cardColor: "priority",
           quickFilters: [
@@ -441,22 +465,6 @@ async function main() {
   }
 
   console.log("  Assigned project members with roles");
-
-  // ── Lookup reference data ─────────────────────────────────────────────────
-  const statuses = await prisma.status.findMany({
-    where: { organizationId: org.id, name: { in: ["To Do", "In Progress", "Done"] } },
-  });
-  const statusMap = new Map(statuses.map((s) => [s.name, s.id]));
-
-  const priorities = await prisma.priority.findMany({
-    where: { organizationId: org.id },
-  });
-  const priorityMap = new Map(priorities.map((p) => [p.name, p.id]));
-
-  const issueTypes = await prisma.issueType.findMany({
-    where: { organizationId: org.id, name: { in: ["Task", "Bug", "Story", "Epic"] } },
-  });
-  const issueTypeMap = new Map(issueTypes.map((t) => [t.name, t.id]));
 
   const typeNames = ["Task", "Bug", "Story", "Task", "Task"];
   const statusNames = ["To Do", "In Progress", "Done", "To Do", "In Progress"];
