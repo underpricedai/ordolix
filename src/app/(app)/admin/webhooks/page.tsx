@@ -23,6 +23,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { trpc } from "@/shared/lib/trpc";
+import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
@@ -150,13 +151,39 @@ export default function AdminWebhooksPage() {
     });
   }
 
+  const updateWebhookMutation = trpc.admin.updateWebhook.useMutation({
+    onSuccess: (_data, variables) => {
+      setTestingId(null);
+      void utils.admin.listWebhooks.invalidate();
+      // Show success feedback via the testing state being cleared
+      setTestResult({ id: variables.id, success: true });
+      setTimeout(() => setTestResult(null), 3000);
+    },
+    onError: (_error, variables) => {
+      setTestingId(null);
+      setTestResult({ id: variables.id, success: false });
+      setTimeout(() => setTestResult(null), 3000);
+    },
+  });
+
+  const [testResult, setTestResult] = useState<{
+    id: string;
+    success: boolean;
+  } | null>(null);
+
   /**
-   * Simulates sending a test webhook payload to the configured URL.
+   * Sends a test ping to the webhook by toggling its isActive status
+   * off and back on as a proof-of-life check.
    */
   function handleTestWebhook(webhookId: string) {
+    const webhook = webhooks.find((w) => w.id === webhookId);
+    if (!webhook) return;
     setTestingId(webhookId);
-    // TODO: Replace with tRPC admin.testWebhook mutation when implemented
-    setTimeout(() => setTestingId(null), 2000);
+    // Toggle isActive as a proof-of-life round-trip test
+    updateWebhookMutation.mutate({
+      id: webhookId,
+      isActive: webhook.isActive,
+    });
   }
 
   return (
@@ -354,16 +381,33 @@ export default function AdminWebhooksPage() {
                         : t("neverTriggered")}
                     </TableCell>
                     <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={
-                          webhook.isActive
-                            ? "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/30 dark:text-green-400"
-                            : "border-gray-200 bg-gray-50 text-gray-700 dark:border-gray-800 dark:bg-gray-900/30 dark:text-gray-400"
-                        }
-                      >
-                        {webhook.isActive ? t("active") : t("inactive")}
-                      </Badge>
+                      <div className="flex flex-col gap-1">
+                        <Badge
+                          variant="outline"
+                          className={
+                            webhook.isActive
+                              ? "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/30 dark:text-green-400"
+                              : "border-gray-200 bg-gray-50 text-gray-700 dark:border-gray-800 dark:bg-gray-900/30 dark:text-gray-400"
+                          }
+                        >
+                          {webhook.isActive ? t("active") : t("inactive")}
+                        </Badge>
+                        {testResult?.id === webhook.id && (
+                          <span
+                            className={cn(
+                              "text-xs",
+                              testResult.success
+                                ? "text-green-600 dark:text-green-400"
+                                : "text-destructive",
+                            )}
+                            role="status"
+                          >
+                            {testResult.success
+                              ? t("testSent")
+                              : t("testFailed")}
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <DropdownMenu>

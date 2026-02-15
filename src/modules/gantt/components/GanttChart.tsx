@@ -314,19 +314,28 @@ export function GanttChart({ projectId }: GanttChartProps) {
     }
   }, [zoomLevel]);
 
+  const utils = trpc.useUtils();
+
+  const updateIssueMutation = trpc.issue.update.useMutation({
+    onSuccess: () => {
+      // Invalidate gantt data so the timeline re-fetches with new dates
+      void utils.gantt.getData.invalidate({ projectId });
+    },
+  });
+
   /**
    * Handles date changes from bar resize or move interactions.
-   * In a full implementation, this would call a tRPC mutation to persist the change.
+   * Persists the updated start/end dates via the issue.update mutation.
    */
   const handleBarDateChange = useCallback(
     (id: string, newStartDate: string, newEndDate: string) => {
-      // TODO: Call tRPC mutation to persist the date change (e.g., gantt.updateDates)
-      // For now, log the change for development visibility
-      if (process.env.NODE_ENV !== "production") {
-        console.log(`[Gantt] Date change for ${id}: ${newStartDate} - ${newEndDate}`);
-      }
+      updateIssueMutation.mutate({
+        id,
+        startDate: new Date(newStartDate),
+        dueDate: new Date(newEndDate),
+      });
     },
-    [],
+    [updateIssueMutation],
   );
 
   const handleGoToToday = useCallback(() => {

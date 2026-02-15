@@ -301,7 +301,11 @@
     "addCondition": "Add condition",
     "removeCondition": "Remove condition",
     "fieldName": "Field name",
-    "enabled": "Enabled"
+    "enabled": "Enabled",
+    "pageDescription": "Design and manage issue workflows for your projects.",
+    "selectProject": "Select a project",
+    "noProjects": "No projects found",
+    "noProjectsDescription": "Create a project first to configure workflows."
   },
   "gantt": {
     "title": "Gantt Chart",
@@ -340,7 +344,9 @@
     "resizeStart": "Resize start date",
     "resizeEnd": "Resize end date",
     "emptyTitle": "No timeline data",
-    "emptyDescription": "Add start and end dates to issues to see them on the Gantt chart."
+    "emptyDescription": "Add start and end dates to issues to see them on the Gantt chart.",
+    "dateUpdated": "Issue dates updated.",
+    "dateUpdateFailed": "Failed to update issue dates."
   },
   "timeTracking": {
     "title": "Time Tracking",
@@ -988,6 +994,22 @@
         "config_change": "Config Change"
       }
     },
+    "automation": {
+      "title": "Automation",
+      "description": "Create and manage automation rules that run across your organization.",
+      "createRule": "Create Rule",
+      "noRules": "No automation rules",
+      "noRulesDescription": "Create an automation rule to automate repetitive tasks.",
+      "trigger": "Trigger",
+      "actions": "Actions",
+      "ruleCount": "{count, plural, =0 {No actions} =1 {1 action} other {# actions}}",
+      "triggerTypes": {
+        "issue_created": "Issue Created",
+        "status_changed": "Status Changed",
+        "field_updated": "Field Updated",
+        "scheduled": "Scheduled"
+      }
+    },
     "webhooks": {
       "title": "Webhooks",
       "description": "Configure HTTP callbacks for real-time event notifications.",
@@ -1005,6 +1027,8 @@
       "neverTriggered": "Never",
       "testWebhook": "Test Webhook",
       "testing": "Sending...",
+      "testSent": "Test webhook ping sent successfully.",
+      "testFailed": "Failed to send test webhook.",
       "deleteWebhook": "Delete Webhook",
       "confirmDelete": "Are you sure you want to delete this webhook? This action cannot be undone.",
       "noWebhooks": "No webhooks configured",

@@ -412,6 +412,241 @@ function buildOpenApiSpec() {
             deleted: { type: "boolean", example: true },
           },
         },
+        Sprint: {
+          type: "object",
+          properties: {
+            id: { type: "string", format: "cuid" },
+            projectId: { type: "string" },
+            name: { type: "string" },
+            goal: { type: ["string", "null"] },
+            startDate: { type: ["string", "null"], format: "date-time" },
+            endDate: { type: ["string", "null"], format: "date-time" },
+            status: {
+              type: "string",
+              enum: ["future", "active", "closed"],
+            },
+            createdAt: { type: "string", format: "date-time" },
+            updatedAt: { type: "string", format: "date-time" },
+          },
+        },
+        CreateSprintInput: {
+          type: "object",
+          required: ["projectId", "name"],
+          properties: {
+            projectId: { type: "string" },
+            name: { type: "string", minLength: 1, maxLength: 255 },
+            goal: { type: "string", maxLength: 2000 },
+            startDate: { type: "string", format: "date-time" },
+            endDate: { type: "string", format: "date-time" },
+            status: {
+              type: "string",
+              enum: ["future", "active", "closed"],
+              default: "future",
+            },
+          },
+        },
+        UpdateSprintInput: {
+          type: "object",
+          properties: {
+            name: { type: "string", minLength: 1, maxLength: 255 },
+            goal: { type: ["string", "null"], maxLength: 2000 },
+            startDate: { type: ["string", "null"], format: "date-time" },
+            endDate: { type: ["string", "null"], format: "date-time" },
+            status: {
+              type: "string",
+              enum: ["future", "active", "closed"],
+            },
+          },
+        },
+        CustomField: {
+          type: "object",
+          properties: {
+            id: { type: "string", format: "cuid" },
+            name: { type: "string" },
+            fieldType: {
+              type: "string",
+              enum: [
+                "text",
+                "number",
+                "date",
+                "datetime",
+                "select",
+                "multiselect",
+                "checkbox",
+                "url",
+                "user",
+                "labels",
+              ],
+            },
+            description: { type: ["string", "null"] },
+            options: {
+              type: ["object", "null"],
+              description: "Configuration for select/multiselect fields",
+            },
+            defaultValue: {
+              type: ["object", "null"],
+              description: "Default value for the field",
+            },
+            context: {
+              type: "object",
+              description:
+                "Scoping context: which projects/issue types this field applies to",
+              additionalProperties: true,
+            },
+            isRequired: { type: "boolean" },
+            aggregation: {
+              type: ["string", "null"],
+              enum: ["sum", "min", "max", "avg", null],
+              description: "Aggregation method for rollup calculations",
+            },
+            createdAt: { type: "string", format: "date-time" },
+            updatedAt: { type: "string", format: "date-time" },
+          },
+        },
+        CreateCustomFieldInput: {
+          type: "object",
+          required: ["name", "fieldType"],
+          properties: {
+            name: { type: "string", minLength: 1, maxLength: 255 },
+            fieldType: {
+              type: "string",
+              enum: [
+                "text",
+                "number",
+                "date",
+                "datetime",
+                "select",
+                "multiselect",
+                "checkbox",
+                "url",
+                "user",
+                "labels",
+              ],
+            },
+            description: { type: "string", maxLength: 1000 },
+            options: { type: "object" },
+            defaultValue: { type: "object" },
+            context: {
+              type: "object",
+              additionalProperties: true,
+              default: {},
+            },
+            isRequired: { type: "boolean", default: false },
+            aggregation: {
+              type: "string",
+              enum: ["sum", "min", "max", "avg"],
+            },
+          },
+        },
+        UpdateCustomFieldInput: {
+          type: "object",
+          properties: {
+            name: { type: "string", minLength: 1, maxLength: 255 },
+            description: { type: "string", maxLength: 1000 },
+            options: { type: "object" },
+            defaultValue: { type: "object" },
+            context: { type: "object", additionalProperties: true },
+            isRequired: { type: "boolean" },
+            aggregation: {
+              type: ["string", "null"],
+              enum: ["sum", "min", "max", "avg", null],
+            },
+          },
+        },
+        Queue: {
+          type: "object",
+          properties: {
+            id: { type: "string", format: "cuid" },
+            projectId: { type: "string" },
+            name: { type: "string" },
+            filterQuery: { type: ["string", "null"] },
+            sortBy: { type: "string" },
+            assignmentRule: {
+              type: "object",
+              description: "Auto-assignment rules for incoming issues",
+              additionalProperties: true,
+            },
+            createdAt: { type: "string", format: "date-time" },
+            updatedAt: { type: "string", format: "date-time" },
+          },
+        },
+        CreateQueueInput: {
+          type: "object",
+          required: ["projectId", "name"],
+          properties: {
+            projectId: { type: "string" },
+            name: { type: "string", minLength: 1, maxLength: 255 },
+            filterQuery: { type: "string", maxLength: 2000 },
+            sortBy: { type: "string", default: "priority" },
+            assignmentRule: {
+              type: "object",
+              additionalProperties: true,
+              default: {},
+            },
+          },
+        },
+        UpdateQueueInput: {
+          type: "object",
+          properties: {
+            name: { type: "string", minLength: 1, maxLength: 255 },
+            filterQuery: { type: ["string", "null"], maxLength: 2000 },
+            sortBy: { type: "string" },
+            assignmentRule: {
+              type: "object",
+              additionalProperties: true,
+            },
+          },
+        },
+        Checklist: {
+          type: "object",
+          properties: {
+            id: { type: "string", format: "cuid" },
+            issueId: { type: "string" },
+            title: { type: "string" },
+            position: { type: "integer" },
+            createdAt: { type: "string", format: "date-time" },
+            items: {
+              type: "array",
+              items: { $ref: "#/components/schemas/ChecklistItem" },
+            },
+          },
+        },
+        ChecklistItem: {
+          type: "object",
+          properties: {
+            id: { type: "string", format: "cuid" },
+            text: { type: "string" },
+            isChecked: { type: "boolean" },
+            assigneeId: { type: ["string", "null"] },
+            dueDate: { type: ["string", "null"], format: "date-time" },
+            position: { type: "integer" },
+            createdAt: { type: "string", format: "date-time" },
+            updatedAt: { type: "string", format: "date-time" },
+          },
+        },
+        CreateChecklistInput: {
+          type: "object",
+          required: ["issueId"],
+          properties: {
+            issueId: { type: "string" },
+            title: { type: "string", minLength: 1, maxLength: 255, default: "Checklist" },
+            items: {
+              type: "array",
+              items: {
+                type: "object",
+                required: ["text"],
+                properties: {
+                  text: { type: "string", minLength: 1, maxLength: 500 },
+                  isChecked: { type: "boolean", default: false },
+                  assigneeId: { type: "string" },
+                  dueDate: { type: "string", format: "date-time" },
+                  position: { type: "integer", minimum: 0 },
+                },
+              },
+              default: [],
+            },
+          },
+        },
       },
       parameters: {
         LimitParam: {
@@ -1680,6 +1915,742 @@ function buildOpenApiSpec() {
           },
         },
       },
+      "/sprints": {
+        get: {
+          operationId: "listSprints",
+          summary: "List sprints",
+          description:
+            "Lists sprints for the authenticated organization, scoped by projectId. " +
+            "Supports filtering by status. Pagination is cursor-based.",
+          tags: ["Sprints"],
+          parameters: [
+            {
+              name: "projectId",
+              in: "query",
+              required: true,
+              description: "Filter sprints by project ID",
+              schema: { type: "string" },
+            },
+            {
+              name: "status",
+              in: "query",
+              required: false,
+              description: "Filter by sprint status",
+              schema: {
+                type: "string",
+                enum: ["future", "active", "closed"],
+              },
+            },
+            ...paginationParams,
+          ],
+          responses: {
+            "200": {
+              description: "Paginated list of sprints",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      data: {
+                        type: "array",
+                        items: { $ref: "#/components/schemas/Sprint" },
+                      },
+                      meta: { $ref: "#/components/schemas/PaginationMeta" },
+                    },
+                  },
+                },
+              },
+            },
+            "400": { $ref: "#/components/responses/BadRequest" },
+            "401": { $ref: "#/components/responses/Unauthorized" },
+            "429": { $ref: "#/components/responses/RateLimited" },
+          },
+        },
+        post: {
+          operationId: "createSprint",
+          summary: "Create a sprint",
+          description:
+            "Creates a new sprint for the authenticated organization. " +
+            "Requires: projectId and name.",
+          tags: ["Sprints"],
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/CreateSprintInput" },
+              },
+            },
+          },
+          responses: {
+            "201": {
+              description: "Sprint created successfully",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      data: { $ref: "#/components/schemas/Sprint" },
+                    },
+                  },
+                },
+              },
+            },
+            "400": { $ref: "#/components/responses/BadRequest" },
+            "401": { $ref: "#/components/responses/Unauthorized" },
+            "429": { $ref: "#/components/responses/RateLimited" },
+          },
+        },
+      },
+      "/sprints/{id}": {
+        get: {
+          operationId: "getSprint",
+          summary: "Get a sprint",
+          description:
+            "Retrieves a single sprint by ID, including issue count.",
+          tags: ["Sprints"],
+          parameters: [
+            {
+              name: "id",
+              in: "path",
+              required: true,
+              description: "Sprint ID",
+              schema: { type: "string" },
+            },
+          ],
+          responses: {
+            "200": {
+              description: "Sprint details",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      data: { $ref: "#/components/schemas/Sprint" },
+                      meta: {
+                        type: "object",
+                        properties: {
+                          requestId: { type: "string" },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            "401": { $ref: "#/components/responses/Unauthorized" },
+            "404": { $ref: "#/components/responses/NotFound" },
+            "429": { $ref: "#/components/responses/RateLimited" },
+          },
+        },
+        put: {
+          operationId: "updateSprint",
+          summary: "Update a sprint",
+          description:
+            "Updates an existing sprint. Accepts partial updates for name, " +
+            "goal, startDate, endDate, and status.",
+          tags: ["Sprints"],
+          parameters: [
+            {
+              name: "id",
+              in: "path",
+              required: true,
+              description: "Sprint ID",
+              schema: { type: "string" },
+            },
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/UpdateSprintInput" },
+              },
+            },
+          },
+          responses: {
+            "200": {
+              description: "Sprint updated successfully",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      data: { $ref: "#/components/schemas/Sprint" },
+                      meta: {
+                        type: "object",
+                        properties: {
+                          requestId: { type: "string" },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            "400": { $ref: "#/components/responses/BadRequest" },
+            "401": { $ref: "#/components/responses/Unauthorized" },
+            "404": { $ref: "#/components/responses/NotFound" },
+            "429": { $ref: "#/components/responses/RateLimited" },
+          },
+        },
+        delete: {
+          operationId: "deleteSprint",
+          summary: "Delete a sprint",
+          description:
+            "Permanently deletes a sprint. Issues in the sprint are unlinked, not deleted.",
+          tags: ["Sprints"],
+          parameters: [
+            {
+              name: "id",
+              in: "path",
+              required: true,
+              description: "Sprint ID",
+              schema: { type: "string" },
+            },
+          ],
+          responses: {
+            "200": {
+              description: "Sprint deleted successfully",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      data: { $ref: "#/components/schemas/DeletedResponse" },
+                      meta: {
+                        type: "object",
+                        properties: {
+                          requestId: { type: "string" },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            "401": { $ref: "#/components/responses/Unauthorized" },
+            "404": { $ref: "#/components/responses/NotFound" },
+            "429": { $ref: "#/components/responses/RateLimited" },
+          },
+        },
+      },
+      "/custom-fields": {
+        get: {
+          operationId: "listCustomFields",
+          summary: "List custom fields",
+          description:
+            "Lists custom fields for the authenticated organization. " +
+            "Supports filtering by field type and search text.",
+          tags: ["Custom Fields"],
+          parameters: [
+            {
+              name: "fieldType",
+              in: "query",
+              required: false,
+              description: "Filter by field type",
+              schema: {
+                type: "string",
+                enum: [
+                  "text",
+                  "number",
+                  "date",
+                  "datetime",
+                  "select",
+                  "multiselect",
+                  "checkbox",
+                  "url",
+                  "user",
+                  "labels",
+                ],
+              },
+            },
+            {
+              name: "search",
+              in: "query",
+              required: false,
+              description: "Search by field name",
+              schema: { type: "string" },
+            },
+            ...paginationParams,
+          ],
+          responses: {
+            "200": {
+              description: "Paginated list of custom fields",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      data: {
+                        type: "array",
+                        items: { $ref: "#/components/schemas/CustomField" },
+                      },
+                      meta: { $ref: "#/components/schemas/PaginationMeta" },
+                    },
+                  },
+                },
+              },
+            },
+            "401": { $ref: "#/components/responses/Unauthorized" },
+            "429": { $ref: "#/components/responses/RateLimited" },
+          },
+        },
+        post: {
+          operationId: "createCustomField",
+          summary: "Create a custom field",
+          description:
+            "Creates a new custom field for the authenticated organization. " +
+            "Requires: name and fieldType. The fieldType cannot be changed after creation.",
+          tags: ["Custom Fields"],
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/CreateCustomFieldInput",
+                },
+              },
+            },
+          },
+          responses: {
+            "201": {
+              description: "Custom field created successfully",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      data: { $ref: "#/components/schemas/CustomField" },
+                    },
+                  },
+                },
+              },
+            },
+            "400": { $ref: "#/components/responses/BadRequest" },
+            "401": { $ref: "#/components/responses/Unauthorized" },
+            "429": { $ref: "#/components/responses/RateLimited" },
+          },
+        },
+      },
+      "/custom-fields/{id}": {
+        get: {
+          operationId: "getCustomField",
+          summary: "Get a custom field",
+          description: "Retrieves a single custom field by ID.",
+          tags: ["Custom Fields"],
+          parameters: [
+            {
+              name: "id",
+              in: "path",
+              required: true,
+              description: "Custom field ID",
+              schema: { type: "string" },
+            },
+          ],
+          responses: {
+            "200": {
+              description: "Custom field details",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      data: { $ref: "#/components/schemas/CustomField" },
+                      meta: {
+                        type: "object",
+                        properties: {
+                          requestId: { type: "string" },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            "401": { $ref: "#/components/responses/Unauthorized" },
+            "404": { $ref: "#/components/responses/NotFound" },
+            "429": { $ref: "#/components/responses/RateLimited" },
+          },
+        },
+        put: {
+          operationId: "updateCustomField",
+          summary: "Update a custom field",
+          description:
+            "Updates an existing custom field. Accepts partial updates. " +
+            "The fieldType cannot be changed after creation.",
+          tags: ["Custom Fields"],
+          parameters: [
+            {
+              name: "id",
+              in: "path",
+              required: true,
+              description: "Custom field ID",
+              schema: { type: "string" },
+            },
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/UpdateCustomFieldInput",
+                },
+              },
+            },
+          },
+          responses: {
+            "200": {
+              description: "Custom field updated successfully",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      data: { $ref: "#/components/schemas/CustomField" },
+                      meta: {
+                        type: "object",
+                        properties: {
+                          requestId: { type: "string" },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            "400": { $ref: "#/components/responses/BadRequest" },
+            "401": { $ref: "#/components/responses/Unauthorized" },
+            "404": { $ref: "#/components/responses/NotFound" },
+            "429": { $ref: "#/components/responses/RateLimited" },
+          },
+        },
+        delete: {
+          operationId: "deleteCustomField",
+          summary: "Delete a custom field",
+          description:
+            "Permanently deletes a custom field and all its associated values.",
+          tags: ["Custom Fields"],
+          parameters: [
+            {
+              name: "id",
+              in: "path",
+              required: true,
+              description: "Custom field ID",
+              schema: { type: "string" },
+            },
+          ],
+          responses: {
+            "200": {
+              description: "Custom field deleted successfully",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      data: { $ref: "#/components/schemas/DeletedResponse" },
+                      meta: {
+                        type: "object",
+                        properties: {
+                          requestId: { type: "string" },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            "401": { $ref: "#/components/responses/Unauthorized" },
+            "404": { $ref: "#/components/responses/NotFound" },
+            "429": { $ref: "#/components/responses/RateLimited" },
+          },
+        },
+      },
+      "/queues": {
+        get: {
+          operationId: "listQueues",
+          summary: "List queues",
+          description:
+            "Lists service desk queues for the authenticated organization. " +
+            "Optionally filtered by projectId.",
+          tags: ["Queues"],
+          parameters: [
+            {
+              name: "projectId",
+              in: "query",
+              required: false,
+              description: "Filter queues by project ID",
+              schema: { type: "string" },
+            },
+            ...paginationParams,
+          ],
+          responses: {
+            "200": {
+              description: "Paginated list of queues",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      data: {
+                        type: "array",
+                        items: { $ref: "#/components/schemas/Queue" },
+                      },
+                      meta: { $ref: "#/components/schemas/PaginationMeta" },
+                    },
+                  },
+                },
+              },
+            },
+            "401": { $ref: "#/components/responses/Unauthorized" },
+            "429": { $ref: "#/components/responses/RateLimited" },
+          },
+        },
+        post: {
+          operationId: "createQueue",
+          summary: "Create a queue",
+          description:
+            "Creates a new service desk queue for the authenticated organization. " +
+            "Requires: projectId and name.",
+          tags: ["Queues"],
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/CreateQueueInput" },
+              },
+            },
+          },
+          responses: {
+            "201": {
+              description: "Queue created successfully",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      data: { $ref: "#/components/schemas/Queue" },
+                    },
+                  },
+                },
+              },
+            },
+            "400": { $ref: "#/components/responses/BadRequest" },
+            "401": { $ref: "#/components/responses/Unauthorized" },
+            "429": { $ref: "#/components/responses/RateLimited" },
+          },
+        },
+      },
+      "/queues/{id}": {
+        get: {
+          operationId: "getQueue",
+          summary: "Get a queue",
+          description:
+            "Retrieves a single queue by ID, including its project reference.",
+          tags: ["Queues"],
+          parameters: [
+            {
+              name: "id",
+              in: "path",
+              required: true,
+              description: "Queue ID",
+              schema: { type: "string" },
+            },
+          ],
+          responses: {
+            "200": {
+              description: "Queue details",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      data: { $ref: "#/components/schemas/Queue" },
+                      meta: {
+                        type: "object",
+                        properties: {
+                          requestId: { type: "string" },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            "401": { $ref: "#/components/responses/Unauthorized" },
+            "404": { $ref: "#/components/responses/NotFound" },
+            "429": { $ref: "#/components/responses/RateLimited" },
+          },
+        },
+        put: {
+          operationId: "updateQueue",
+          summary: "Update a queue",
+          description:
+            "Updates an existing queue. Accepts partial updates for name, " +
+            "filterQuery, sortBy, and assignmentRule.",
+          tags: ["Queues"],
+          parameters: [
+            {
+              name: "id",
+              in: "path",
+              required: true,
+              description: "Queue ID",
+              schema: { type: "string" },
+            },
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/UpdateQueueInput" },
+              },
+            },
+          },
+          responses: {
+            "200": {
+              description: "Queue updated successfully",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      data: { $ref: "#/components/schemas/Queue" },
+                      meta: {
+                        type: "object",
+                        properties: {
+                          requestId: { type: "string" },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            "400": { $ref: "#/components/responses/BadRequest" },
+            "401": { $ref: "#/components/responses/Unauthorized" },
+            "404": { $ref: "#/components/responses/NotFound" },
+            "429": { $ref: "#/components/responses/RateLimited" },
+          },
+        },
+        delete: {
+          operationId: "deleteQueue",
+          summary: "Delete a queue",
+          description: "Permanently deletes a queue.",
+          tags: ["Queues"],
+          parameters: [
+            {
+              name: "id",
+              in: "path",
+              required: true,
+              description: "Queue ID",
+              schema: { type: "string" },
+            },
+          ],
+          responses: {
+            "200": {
+              description: "Queue deleted successfully",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      data: { $ref: "#/components/schemas/DeletedResponse" },
+                      meta: {
+                        type: "object",
+                        properties: {
+                          requestId: { type: "string" },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            "401": { $ref: "#/components/responses/Unauthorized" },
+            "404": { $ref: "#/components/responses/NotFound" },
+            "429": { $ref: "#/components/responses/RateLimited" },
+          },
+        },
+      },
+      "/checklists": {
+        get: {
+          operationId: "listChecklists",
+          summary: "List checklists for an issue",
+          description:
+            "Returns checklists for the specified issue, including their items. " +
+            "Ordered by position.",
+          tags: ["Checklists"],
+          parameters: [
+            {
+              name: "issueId",
+              in: "query",
+              required: true,
+              description: "Filter checklists by issue ID",
+              schema: { type: "string" },
+            },
+          ],
+          responses: {
+            "200": {
+              description: "List of checklists with items",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      data: {
+                        type: "array",
+                        items: { $ref: "#/components/schemas/Checklist" },
+                      },
+                      meta: {
+                        type: "object",
+                        properties: {
+                          total: { type: "integer" },
+                          requestId: { type: "string" },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            "400": { $ref: "#/components/responses/BadRequest" },
+            "401": { $ref: "#/components/responses/Unauthorized" },
+            "429": { $ref: "#/components/responses/RateLimited" },
+          },
+        },
+        post: {
+          operationId: "createChecklist",
+          summary: "Create a checklist",
+          description:
+            "Creates a new checklist on an issue, optionally with initial items.",
+          tags: ["Checklists"],
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/CreateChecklistInput" },
+              },
+            },
+          },
+          responses: {
+            "201": {
+              description: "Checklist created successfully",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      data: { $ref: "#/components/schemas/Checklist" },
+                    },
+                  },
+                },
+              },
+            },
+            "400": { $ref: "#/components/responses/BadRequest" },
+            "401": { $ref: "#/components/responses/Unauthorized" },
+            "404": { $ref: "#/components/responses/NotFound" },
+            "429": { $ref: "#/components/responses/RateLimited" },
+          },
+        },
+      },
     },
     tags: [
       {
@@ -1709,6 +2680,22 @@ function buildOpenApiSpec() {
       {
         name: "Webhooks",
         description: "Receive incoming webhook events from external services",
+      },
+      {
+        name: "Sprints",
+        description: "Manage sprints for Scrum projects",
+      },
+      {
+        name: "Custom Fields",
+        description: "Manage custom field definitions",
+      },
+      {
+        name: "Queues",
+        description: "Manage service desk queues",
+      },
+      {
+        name: "Checklists",
+        description: "Manage checklists and checklist items on issues",
       },
     ],
   };

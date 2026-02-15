@@ -25,6 +25,8 @@ import {
   Webhook,
 } from "lucide-react";
 import { AppHeader } from "@/shared/components/app-header";
+import { Skeleton } from "@/shared/components/ui/skeleton";
+import { trpc } from "@/shared/lib/trpc";
 import { cn } from "@/shared/lib/utils";
 
 /**
@@ -67,9 +69,20 @@ export default function AdminLayout({
   const ta = useTranslations("admin");
   const tn = useTranslations("nav");
 
-  // TODO: Replace with tRPC user.me query once admin router is implemented
-  const isLoading = false;
-  const isAdmin = true;
+  const { data: profile, isLoading } = trpc.user.getProfile.useQuery();
+
+  // Check admin access: user must have an "admin" or "owner" role in at
+  // least one of their organization memberships.
+  const isAdmin =
+    !isLoading &&
+    !!profile &&
+    (
+      profile as {
+        organizationMembers?: { role?: string }[];
+      }
+    ).organizationMembers?.some(
+      (m) => m.role === "admin" || m.role === "owner",
+    );
   const currentSection = getCurrentSection(pathname, t);
 
   const breadcrumbs = [
@@ -77,8 +90,31 @@ export default function AdminLayout({
     ...(currentSection ? [currentSection] : []),
   ];
 
+  // Show loading skeleton while checking permissions
+  if (isLoading) {
+    return (
+      <>
+        <AppHeader breadcrumbs={[{ label: tn("admin") }]} />
+        <div className="flex flex-1">
+          <div className="hidden w-56 shrink-0 border-r bg-muted/30 p-4 md:block">
+            <Skeleton className="mb-4 h-4 w-20" />
+            <div className="space-y-2">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-8 w-full rounded-md" />
+              ))}
+            </div>
+          </div>
+          <div className="flex-1 p-6">
+            <Skeleton className="mb-2 h-8 w-48" />
+            <Skeleton className="h-4 w-72" />
+          </div>
+        </div>
+      </>
+    );
+  }
+
   // Show unauthorized message if user lacks admin access
-  if (!isLoading && !isAdmin) {
+  if (!isAdmin) {
     return (
       <>
         <AppHeader breadcrumbs={[{ label: tn("admin") }]} />

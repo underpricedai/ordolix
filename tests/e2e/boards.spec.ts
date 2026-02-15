@@ -1,43 +1,63 @@
 import { test, expect } from "./helpers/fixtures";
 
 test.describe("Boards", () => {
-  test.skip("should display board page with columns", async ({ page }) => {
+  test("should display board page with heading", async ({ page }) => {
     await page.goto("/boards");
 
     // Page heading should be visible
     await expect(
       page.getByRole("heading", { name: /boards/i }),
     ).toBeVisible();
+  });
 
-    // Board view container should render
+  test("should show create board button", async ({ page }) => {
+    await page.goto("/boards");
+
+    // The create board button should be present
+    const createButton = page.getByRole("button", { name: /create board/i });
+    await expect(createButton).toBeVisible();
+  });
+
+  test("should show empty state or board selector when no board is selected", async ({ page }) => {
+    await page.goto("/boards");
+
+    // Without a selected board, the page should show either an empty state
+    // or the board selector prompt. The heading must still be visible.
+    await expect(
+      page.getByRole("heading", { name: /boards/i }),
+    ).toBeVisible();
+
+    // The page should render without errors (check for main content area)
+    await expect(page.locator("main").or(page.locator("[class*='flex-1']")).first()).toBeVisible();
+  });
+
+  test.fixme("should display board columns with issue cards", async ({ page }) => {
+    // Requires a real database with seeded boards, columns, and issues.
+    await page.goto("/boards");
+
     await expect(page.getByTestId("board-view")).toBeVisible();
 
-    // At least one column should be displayed with status headers
     const columns = page.getByTestId("board-column");
     await expect(columns.first()).toBeVisible();
     expect(await columns.count()).toBeGreaterThanOrEqual(1);
 
-    // Default columns should include standard statuses
     await expect(page.getByText(/to do/i).first()).toBeVisible();
     await expect(page.getByText(/in progress/i).first()).toBeVisible();
     await expect(page.getByText(/done/i).first()).toBeVisible();
   });
 
-  test.skip("should drag an issue between columns", async ({ page }) => {
+  test.fixme("should drag an issue between columns", async ({ page }) => {
+    // Requires a real database with seeded board data and issue cards to drag.
     await page.goto("/boards");
 
-    // Wait for the board to load
     await expect(page.getByTestId("board-view")).toBeVisible();
 
-    // Find an issue card in the first column
     const sourceCard = page.getByTestId("issue-card").first();
     await expect(sourceCard).toBeVisible();
 
-    // Get the target column (e.g., "In Progress")
     const targetColumn = page.getByTestId("board-column").nth(1);
     await expect(targetColumn).toBeVisible();
 
-    // Perform drag and drop
     const sourceBox = await sourceCard.boundingBox();
     const targetBox = await targetColumn.boundingBox();
 
@@ -55,29 +75,25 @@ test.describe("Boards", () => {
       await page.mouse.up();
     }
 
-    // Verify the card moved to the target column
     const targetCards = targetColumn.getByTestId("issue-card");
     expect(await targetCards.count()).toBeGreaterThanOrEqual(1);
   });
 
-  test.skip("should create an issue from board view", async ({ page }) => {
+  test.fixme("should create an issue from board view", async ({ page }) => {
+    // Requires a real database to persist the created issue on the board.
     await page.goto("/boards");
 
-    // Click the create issue button or inline add button on a column
     const createButton = page.getByRole("button", { name: /create issue|add issue/i });
     await expect(createButton.first()).toBeVisible();
     await createButton.first().click();
 
-    // A dialog or inline form should appear
     const dialog = page.getByRole("dialog");
     if (await dialog.isVisible()) {
-      // Fill in the summary field
       await dialog.getByLabel(/summary/i).fill("Board issue from E2E");
       await dialog.getByRole("button", { name: /create/i }).click();
       await expect(dialog).not.toBeVisible();
     }
 
-    // The new issue card should appear on the board
     await expect(page.getByText("Board issue from E2E")).toBeVisible();
   });
 });
