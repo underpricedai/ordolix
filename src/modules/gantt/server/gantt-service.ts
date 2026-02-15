@@ -71,17 +71,42 @@ export async function getGanttData(
   organizationId: string,
   input: GetGanttDataInput,
 ) {
-  const issues = await db.issue.findMany({
+  const rawIssues = await db.issue.findMany({
     where: {
       organizationId,
       projectId: input.projectId,
       deletedAt: null,
     },
     include: {
+      status: true,
       ganttDepsSource: true,
       ganttDepsTarget: true,
     },
   });
 
-  return { issues };
+  // Transform raw Issue objects into the shape expected by GanttChart component
+  const issues = rawIssues.map((issue) => ({
+    id: issue.id,
+    issueKey: issue.key,
+    summary: issue.summary,
+    startDate: issue.startDate?.toISOString() ?? null,
+    endDate: issue.dueDate?.toISOString() ?? null,
+    progress: 0,
+    statusName: issue.status?.name ?? "Unknown",
+    statusCategory: issue.status?.category ?? "TO_DO",
+    depth: 0,
+    children: [],
+  }));
+
+  // Transform dependencies into the shape expected by GanttChart
+  const dependencies = rawIssues.flatMap((issue) =>
+    (issue.ganttDepsSource ?? []).map((dep) => ({
+      id: dep.id,
+      sourceId: dep.sourceIssueId,
+      targetId: dep.targetIssueId,
+      type: dep.dependencyType as "FS" | "FF" | "SS" | "SF",
+    })),
+  );
+
+  return { issues, dependencies };
 }

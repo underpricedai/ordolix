@@ -107,7 +107,7 @@ export function WorkflowEditor({
     return statuses.map((ws: { statusId: string; status: { name: string; category: string; color?: string | null; description?: string | null } }, idx: number) => ({
       id: ws.statusId,
       name: ws.status.name,
-      category: (ws.status.category ?? "TODO") as WorkflowStatusCategory,
+      category: (ws.status.category ?? "TO_DO") as WorkflowStatusCategory,
       color: ws.status.color ?? undefined,
       description: ws.status.description ?? undefined,
       position: statusPositions[ws.statusId] ?? defaultPositions[idx] ?? { x: 40, y: 40 },

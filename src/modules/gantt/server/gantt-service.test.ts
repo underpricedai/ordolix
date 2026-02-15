@@ -31,6 +31,7 @@ const mockSourceIssue = {
   startDate: new Date("2026-01-01"),
   dueDate: new Date("2026-01-15"),
   deletedAt: null,
+  status: { id: "status-1", name: "To Do", category: "TO_DO" },
 };
 
 const mockTargetIssue = {
@@ -42,6 +43,7 @@ const mockTargetIssue = {
   startDate: new Date("2026-01-16"),
   dueDate: new Date("2026-01-31"),
   deletedAt: null,
+  status: { id: "status-2", name: "In Progress", category: "IN_PROGRESS" },
 };
 
 const mockDependency = {
@@ -231,12 +233,16 @@ describe("getGanttData", () => {
     db.issue.findMany.mockResolvedValue(mockIssuesWithDeps);
   });
 
-  it("returns issues with dependencies", async () => {
+  it("returns transformed issues with dependencies", async () => {
     const result = await getGanttData(db, ORG_ID, { projectId: "proj-1" });
 
     expect(result.issues).toHaveLength(2);
-    expect(result.issues[0]!.ganttDepsSource).toHaveLength(1);
-    expect(result.issues[1]!.ganttDepsTarget).toHaveLength(1);
+    expect(result.issues[0]!.issueKey).toBe("ORD-1");
+    expect(result.issues[0]!.statusName).toBe("To Do");
+    expect(result.issues[0]!.endDate).toBe(new Date("2026-01-15").toISOString());
+    expect(result.dependencies).toHaveLength(1);
+    expect(result.dependencies[0]!.sourceId).toBe("issue-1");
+    expect(result.dependencies[0]!.targetId).toBe("issue-2");
   });
 
   it("returns empty for no issues", async () => {
@@ -245,6 +251,7 @@ describe("getGanttData", () => {
     const result = await getGanttData(db, ORG_ID, { projectId: "proj-1" });
 
     expect(result.issues).toHaveLength(0);
+    expect(result.dependencies).toHaveLength(0);
   });
 
   it("scopes query to organization and project", async () => {
@@ -257,6 +264,7 @@ describe("getGanttData", () => {
         deletedAt: null,
       },
       include: {
+        status: true,
         ganttDepsSource: true,
         ganttDepsTarget: true,
       },

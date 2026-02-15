@@ -200,13 +200,13 @@ export default function ProjectBacklogPage({
                     </TableCell>
                     <TableCell>{issue.summary}</TableCell>
                     <TableCell>
-                      <Badge variant="secondary">{issue.status ?? "-"}</Badge>
+                      <Badge variant="secondary">{issue.status?.name ?? "-"}</Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline">{issue.priority ?? "-"}</Badge>
+                      <Badge variant="outline">{issue.priority?.name ?? "-"}</Badge>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {issue.assignee ?? "-"}
+                      {issue.assignee?.name ?? "-"}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {issue.storyPoints ?? "-"}
