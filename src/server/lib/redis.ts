@@ -6,11 +6,8 @@ function createRedisClient(): Redis | null {
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
 
   if (!url || !token) {
-    if (process.env.NODE_ENV === "development") {
-      console.warn("Upstash Redis not configured — caching and rate limiting disabled");
-      return null;
-    }
-    throw new Error("UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN are required");
+    console.warn("Upstash Redis not configured — caching and rate limiting will use in-memory fallbacks");
+    return null;
   }
 
   return new Redis({ url, token });

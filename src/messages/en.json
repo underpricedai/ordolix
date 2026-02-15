@@ -243,6 +243,8 @@
     "recentlyUpdated": "Recently Updated",
     "swimlanes": "Swimlanes",
     "backlog": "Backlog",
+    "noBoards": "No boards found",
+    "selectBoard": "Select a board",
     "noBoardsDescription": "No boards available. Create a board to get started.",
     "emptyTitle": "No issues on the board",
     "emptyDescription": "Move issues to the board or create new ones to get started.",
