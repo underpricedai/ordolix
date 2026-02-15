@@ -101,3 +101,52 @@ export const getFieldValuesInput = z.object({
 });
 
 export type GetFieldValuesInput = z.infer<typeof getFieldValuesInput>;
+
+// ── Field Configuration Scheme Schemas ─────────────────────────────────────
+
+export const createFieldConfigSchemeInput = z.object({
+  name: z.string().min(1).max(255),
+  description: z.string().max(1000).optional(),
+});
+
+export type CreateFieldConfigSchemeInput = z.infer<typeof createFieldConfigSchemeInput>;
+
+export const updateFieldConfigSchemeInput = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1).max(255).optional(),
+  description: z.string().max(1000).nullable().optional(),
+});
+
+export type UpdateFieldConfigSchemeInput = z.infer<typeof updateFieldConfigSchemeInput>;
+
+export const addFieldConfigEntryInput = z.object({
+  fieldConfigurationSchemeId: z.string().min(1),
+  customFieldId: z.string().min(1),
+  isVisible: z.boolean().default(true),
+  isRequired: z.boolean().default(false),
+  position: z.number().int().min(0).optional(),
+});
+
+export type AddFieldConfigEntryInput = z.infer<typeof addFieldConfigEntryInput>;
+
+export const updateFieldConfigEntryInput = z.object({
+  id: z.string().min(1),
+  isVisible: z.boolean().optional(),
+  isRequired: z.boolean().optional(),
+  position: z.number().int().min(0).optional(),
+});
+
+export type UpdateFieldConfigEntryInput = z.infer<typeof updateFieldConfigEntryInput>;
+
+export const removeFieldConfigEntryInput = z.object({
+  id: z.string().min(1),
+});
+
+export type RemoveFieldConfigEntryInput = z.infer<typeof removeFieldConfigEntryInput>;
+
+export const assignFieldConfigSchemeInput = z.object({
+  schemeId: z.string().min(1),
+  projectId: z.string().min(1),
+});
+
+export type AssignFieldConfigSchemeInput = z.infer<typeof assignFieldConfigSchemeInput>;

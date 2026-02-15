@@ -135,9 +135,13 @@ model Organization {
   webhookEndpoints     WebhookEndpoint[]
   projectRoles         ProjectRole[]
   groups               Group[]
-  permissionSchemes    PermissionScheme[]
-  globalPermissions    GlobalPermission[]
-  issueSecuritySchemes IssueSecurityScheme[]
+  permissionSchemes          PermissionScheme[]
+  globalPermissions          GlobalPermission[]
+  issueSecuritySchemes       IssueSecurityScheme[]
+  issueTypeSchemes           IssueTypeScheme[]
+  fieldConfigurationSchemes  FieldConfigurationScheme[]
+  notificationSchemes        NotificationScheme[]
+  componentSchemes           ComponentScheme[]
 }
 
 model OrganizationMember {
@@ -169,12 +173,20 @@ model Project {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  permissionSchemeId    String?
-  issueSecuritySchemeId String?
+  permissionSchemeId         String?
+  issueSecuritySchemeId      String?
+  issueTypeSchemeId          String?
+  fieldConfigurationSchemeId String?
+  notificationSchemeId       String?
+  componentSchemeId          String?
 
-  organization          Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  permissionScheme      PermissionScheme?    @relation(fields: [permissionSchemeId], references: [id])
-  issueSecurityScheme   IssueSecurityScheme? @relation(fields: [issueSecuritySchemeId], references: [id])
+  organization               Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  permissionScheme           PermissionScheme?            @relation(fields: [permissionSchemeId], references: [id])
+  issueSecurityScheme        IssueSecurityScheme?         @relation(fields: [issueSecuritySchemeId], references: [id])
+  issueTypeScheme            IssueTypeScheme?             @relation(fields: [issueTypeSchemeId], references: [id])
+  fieldConfigurationScheme   FieldConfigurationScheme?    @relation(fields: [fieldConfigurationSchemeId], references: [id])
+  notificationScheme         NotificationScheme?          @relation(fields: [notificationSchemeId], references: [id])
+  componentScheme            ComponentScheme?             @relation(fields: [componentSchemeId], references: [id])
 
   members              ProjectMember[]
   issues               Issue[]
@@ -222,7 +234,8 @@ model Component {
   lead           String?
   createdAt      DateTime @default(now())
 
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project      Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  schemeEntries ComponentSchemeEntry[]
 
   @@unique([projectId, name])
   @@index([organizationId])
@@ -271,6 +284,7 @@ model IssueType {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   issues       Issue[]
   issueTemplates IssueTemplate[]
+  schemeEntries  IssueTypeSchemeEntry[]
 
   @@unique([organizationId, name])
 }
@@ -311,10 +325,13 @@ model Workflow {
   description    String?
   isDefault      Boolean @default(false)
   isActive       Boolean @default(true)
+  parentId       String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   organization     Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  parent           Workflow?        @relation("WorkflowFork", fields: [parentId], references: [id], onDelete: SetNull)
+  children         Workflow[]       @relation("WorkflowFork")
   workflowStatuses WorkflowStatus[]
   transitions      Transition[]
   projects         Project[]        @relation("ProjectWorkflows")
@@ -560,6 +577,7 @@ model CustomField {
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   values       CustomFieldValue[]
+  fieldConfigEntries FieldConfigurationEntry[]
 
   @@unique([organizationId, name])
 }
@@ -1820,10 +1838,14 @@ model IssueSecurityScheme {
   organizationId String
   name           String
   description    String?
+  isDefault      Boolean  @default(false)
+  parentId       String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  parent       IssueSecurityScheme?     @relation("SecuritySchemeInheritance", fields: [parentId], references: [id], onDelete: SetNull)
+  children     IssueSecurityScheme[]    @relation("SecuritySchemeInheritance")
   levels       IssueSecurityLevel[]
   projects     Project[]
 
@@ -1854,6 +1876,143 @@ model IssueSecurityLevelMember {
 
   level IssueSecurityLevel @relation(fields: [issueSecurityLevelId], references: [id], onDelete: Cascade)
   group Group?             @relation(fields: [groupId], references: [id])
+}
+
+// ============================================================================
+// Section 5b: Scheme Sharing (Issue Type, Field Config, Notification)
+// ============================================================================
+
+model IssueTypeScheme {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  isDefault      Boolean  @default(false)
+  parentId       String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  parent       IssueTypeScheme?       @relation("IssueTypeSchemeInheritance", fields: [parentId], references: [id], onDelete: SetNull)
+  children     IssueTypeScheme[]      @relation("IssueTypeSchemeInheritance")
+  entries      IssueTypeSchemeEntry[]
+  projects     Project[]
+
+  @@unique([organizationId, name])
+}
+
+model IssueTypeSchemeEntry {
+  id                  String @id @default(cuid())
+  issueTypeSchemeId   String
+  issueTypeId         String
+  isDefault           Boolean @default(false)
+  position            Int     @default(0)
+
+  scheme    IssueTypeScheme @relation(fields: [issueTypeSchemeId], references: [id], onDelete: Cascade)
+  issueType IssueType       @relation(fields: [issueTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([issueTypeSchemeId, issueTypeId])
+  @@index([issueTypeSchemeId])
+}
+
+model FieldConfigurationScheme {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  isDefault      Boolean  @default(false)
+  parentId       String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  parent       FieldConfigurationScheme?    @relation("FieldConfigSchemeInheritance", fields: [parentId], references: [id], onDelete: SetNull)
+  children     FieldConfigurationScheme[]   @relation("FieldConfigSchemeInheritance")
+  entries      FieldConfigurationEntry[]
+  projects     Project[]
+
+  @@unique([organizationId, name])
+}
+
+model FieldConfigurationEntry {
+  id                         String  @id @default(cuid())
+  fieldConfigurationSchemeId String
+  customFieldId              String
+  isVisible                  Boolean @default(true)
+  isRequired                 Boolean @default(false)
+  position                   Int     @default(0)
+
+  scheme      FieldConfigurationScheme @relation(fields: [fieldConfigurationSchemeId], references: [id], onDelete: Cascade)
+  customField CustomField              @relation(fields: [customFieldId], references: [id], onDelete: Cascade)
+
+  @@unique([fieldConfigurationSchemeId, customFieldId])
+  @@index([fieldConfigurationSchemeId])
+}
+
+model NotificationScheme {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  isDefault      Boolean  @default(false)
+  parentId       String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  parent       NotificationScheme?      @relation("NotificationSchemeInheritance", fields: [parentId], references: [id], onDelete: SetNull)
+  children     NotificationScheme[]     @relation("NotificationSchemeInheritance")
+  entries      NotificationSchemeEntry[]
+  projects     Project[]
+
+  @@unique([organizationId, name])
+}
+
+model NotificationSchemeEntry {
+  id                   String  @id @default(cuid())
+  notificationSchemeId String
+  event                String
+  recipientType        String
+  recipientId          String?
+  channels             Json    @default("[\"in_app\", \"email\"]")
+
+  scheme NotificationScheme @relation(fields: [notificationSchemeId], references: [id], onDelete: Cascade)
+
+  @@unique([notificationSchemeId, event, recipientType, recipientId])
+  @@index([notificationSchemeId])
+}
+
+model ComponentScheme {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  isDefault      Boolean  @default(false)
+  parentId       String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  parent       ComponentScheme?       @relation("ComponentSchemeInheritance", fields: [parentId], references: [id], onDelete: SetNull)
+  children     ComponentScheme[]      @relation("ComponentSchemeInheritance")
+  entries      ComponentSchemeEntry[]
+  projects     Project[]
+
+  @@unique([organizationId, name])
+}
+
+model ComponentSchemeEntry {
+  id                String  @id @default(cuid())
+  componentSchemeId String
+  componentId       String
+  isDefault         Boolean @default(false)
+  position          Int     @default(0)
+
+  scheme    ComponentScheme @relation(fields: [componentSchemeId], references: [id], onDelete: Cascade)
+  component Component       @relation(fields: [componentId], references: [id], onDelete: Cascade)
+
+  @@unique([componentSchemeId, componentId])
+  @@index([componentSchemeId])
 }
 
 // ============================================================================

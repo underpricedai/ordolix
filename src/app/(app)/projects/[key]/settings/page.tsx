@@ -18,6 +18,7 @@ import {
   Bell,
   AlertTriangle,
   Trash2,
+  Layers,
 } from "lucide-react";
 import { AppHeader } from "@/shared/components/app-header";
 import { Button } from "@/shared/components/ui/button";
@@ -267,6 +268,39 @@ export default function ProjectSettingsPage({
                 checked={notifyOnComment}
                 onCheckedChange={setNotifyOnComment}
               />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Scheme assignments */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Layers className="size-5 text-muted-foreground" aria-hidden="true" />
+              <CardTitle>{t("schemes")}</CardTitle>
+            </div>
+            <CardDescription>{t("schemesDescription")}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="divide-y">
+              {[
+                { label: t("permissionScheme"), hasScheme: !!project?.permissionSchemeId },
+                { label: t("issueTypeScheme"), hasScheme: !!(project as Record<string, unknown> | undefined)?.issueTypeSchemeId },
+                { label: t("fieldConfigScheme"), hasScheme: !!(project as Record<string, unknown> | undefined)?.fieldConfigurationSchemeId },
+                { label: t("notificationScheme"), hasScheme: !!(project as Record<string, unknown> | undefined)?.notificationSchemeId },
+                { label: t("issueSecurityScheme"), hasScheme: !!project?.issueSecuritySchemeId },
+                { label: t("componentScheme"), hasScheme: !!(project as Record<string, unknown> | undefined)?.componentSchemeId },
+              ].map((scheme) => (
+                <div key={scheme.label} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+                  <div>
+                    <p className="text-sm font-medium">{scheme.label}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {scheme.hasScheme ? tc("edit") : t("noSchemeAssigned")}
+                    </p>
+                  </div>
+                  <Button variant="outline" size="sm">{t("changeScheme")}</Button>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>

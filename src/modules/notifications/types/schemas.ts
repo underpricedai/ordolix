@@ -54,3 +54,43 @@ export type UpdatePreferenceInput = z.infer<typeof updatePreferenceInput>;
 export const listPreferencesInput = z.object({});
 
 export type ListPreferencesInput = z.infer<typeof listPreferencesInput>;
+
+// ── Notification Scheme Schemas ────────────────────────────────────────────
+
+export const createNotificationSchemeInput = z.object({
+  name: z.string().min(1).max(255),
+  description: z.string().max(1000).optional(),
+});
+
+export type CreateNotificationSchemeInput = z.infer<typeof createNotificationSchemeInput>;
+
+export const updateNotificationSchemeInput = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1).max(255).optional(),
+  description: z.string().max(1000).nullable().optional(),
+});
+
+export type UpdateNotificationSchemeInput = z.infer<typeof updateNotificationSchemeInput>;
+
+export const addNotificationSchemeEntryInput = z.object({
+  notificationSchemeId: z.string().min(1),
+  event: z.string().min(1),
+  recipientType: z.string().min(1),
+  recipientId: z.string().nullable().optional(),
+  channels: z.array(z.string().min(1)).default(["in_app", "email"]),
+});
+
+export type AddNotificationSchemeEntryInput = z.infer<typeof addNotificationSchemeEntryInput>;
+
+export const removeNotificationSchemeEntryInput = z.object({
+  id: z.string().min(1),
+});
+
+export type RemoveNotificationSchemeEntryInput = z.infer<typeof removeNotificationSchemeEntryInput>;
+
+export const assignNotificationSchemeInput = z.object({
+  schemeId: z.string().min(1),
+  projectId: z.string().min(1),
+});
+
+export type AssignNotificationSchemeInput = z.infer<typeof assignNotificationSchemeInput>;

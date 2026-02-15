@@ -9,6 +9,7 @@
 "use client";
 
 import { useState, Suspense, useEffect } from "react";
+import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
@@ -194,11 +195,14 @@ function SignInForm() {
   return (
     <Card className="w-full max-w-md">
       <CardHeader className="text-center">
-        <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
-          <span className="text-2xl font-bold" aria-hidden="true">
-            O
-          </span>
-        </div>
+        <Image
+          src="/logo-full.png"
+          alt="Ordolix"
+          width={280}
+          height={80}
+          className="mx-auto mb-2"
+          priority
+        />
         <CardTitle className="text-2xl">{t("title")}</CardTitle>
         <CardDescription>{t("subtitle")}</CardDescription>
       </CardHeader>

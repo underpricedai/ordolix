@@ -141,3 +141,42 @@ export type UpdateIssueTypeInput = z.infer<typeof updateIssueTypeInput>;
 export const deleteIssueTypeInput = z.object({ id: z.string().min(1) });
 
 export type DeleteIssueTypeInput = z.infer<typeof deleteIssueTypeInput>;
+
+// ── Issue Type Scheme Schemas ──────────────────────────────────────────────
+
+export const createIssueTypeSchemeInput = z.object({
+  name: z.string().min(1).max(255),
+  description: z.string().max(1000).optional(),
+});
+
+export type CreateIssueTypeSchemeInput = z.infer<typeof createIssueTypeSchemeInput>;
+
+export const updateIssueTypeSchemeInput = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1).max(255).optional(),
+  description: z.string().max(1000).nullable().optional(),
+});
+
+export type UpdateIssueTypeSchemeInput = z.infer<typeof updateIssueTypeSchemeInput>;
+
+export const addIssueTypeSchemeEntryInput = z.object({
+  issueTypeSchemeId: z.string().min(1),
+  issueTypeId: z.string().min(1),
+  isDefault: z.boolean().optional(),
+  position: z.number().int().min(0).optional(),
+});
+
+export type AddIssueTypeSchemeEntryInput = z.infer<typeof addIssueTypeSchemeEntryInput>;
+
+export const removeIssueTypeSchemeEntryInput = z.object({
+  id: z.string().min(1),
+});
+
+export type RemoveIssueTypeSchemeEntryInput = z.infer<typeof removeIssueTypeSchemeEntryInput>;
+
+export const assignIssueTypeSchemeInput = z.object({
+  schemeId: z.string().min(1),
+  projectId: z.string().min(1),
+});
+
+export type AssignIssueTypeSchemeInput = z.infer<typeof assignIssueTypeSchemeInput>;

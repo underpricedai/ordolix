@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
+import Image from "next/image";
 import {
   LayoutDashboard,
   FolderKanban,
@@ -90,9 +91,14 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link href="/" aria-label="Ordolix Home">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                  <span className="text-sm font-bold" aria-hidden="true">O</span>
-                </div>
+                <Image
+                  src="/logo-icon.png"
+                  alt=""
+                  width={32}
+                  height={32}
+                  className="size-8 shrink-0"
+                  aria-hidden="true"
+                />
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">Ordolix</span>
                   <span className="truncate text-xs text-muted-foreground">

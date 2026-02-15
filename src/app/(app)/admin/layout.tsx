@@ -26,6 +26,10 @@ import {
   UsersRound,
   UserCog,
   Lock,
+  FileType,
+  SlidersHorizontal,
+  Bell,
+  Boxes,
 } from "lucide-react";
 import { AppHeader } from "@/shared/components/app-header";
 import { Skeleton } from "@/shared/components/ui/skeleton";
@@ -43,6 +47,10 @@ const adminNavItems = [
   { key: "customFields", href: "/admin/fields", icon: Columns3 },
   { key: "permissions", href: "/admin/permissions", icon: Shield },
   { key: "issueSecurity", href: "/admin/issue-security", icon: Lock },
+  { key: "issueTypeSchemes", href: "/admin/issue-type-schemes", icon: FileType },
+  { key: "fieldConfiguration", href: "/admin/field-configuration", icon: SlidersHorizontal },
+  { key: "notificationSchemes", href: "/admin/notification-schemes", icon: Bell },
+  { key: "componentSchemes", href: "/admin/component-schemes", icon: Boxes },
   { key: "automation", href: "/admin/automation", icon: Zap },
   { key: "integrations", href: "/admin/integrations", icon: Plug },
   { key: "system", href: "/admin/system", icon: Settings },

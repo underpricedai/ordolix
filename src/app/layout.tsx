@@ -18,8 +18,12 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Ordolix",
-  description: "Enterprise project and issue tracking platform",
+  description: "Enterprise project and issue tracking platform — Order from Chaos",
   manifest: "/manifest.json",
+  icons: {
+    icon: "/logo-icon.png",
+    apple: "/logo-icon.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -34,7 +38,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#171717",
+  themeColor: "#1A6B7E",
 };
 
 export default async function RootLayout({

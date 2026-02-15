@@ -598,6 +598,113 @@ export function createTestSurveyResponse(overrides: Record<string, unknown> = {}
   };
 }
 
+// ── Issue Type Scheme ────────────────────────────────────────────────────────
+
+export function createIssueTypeScheme(overrides: Record<string, unknown> = {}) {
+  const id = nextId();
+  return {
+    id,
+    name: `Issue Type Scheme ${id}`,
+    description: null,
+    isDefault: false,
+    parentId: null,
+    ...overrides,
+  };
+}
+
+// ── Issue Type Scheme Entry ─────────────────────────────────────────────────
+
+export function createIssueTypeSchemeEntry(overrides: Record<string, unknown> = {}) {
+  const id = nextId();
+  return {
+    id,
+    isDefault: false,
+    position: 0,
+    ...overrides,
+  };
+}
+
+// ── Field Configuration Scheme ──────────────────────────────────────────────
+
+export function createFieldConfigurationScheme(overrides: Record<string, unknown> = {}) {
+  const id = nextId();
+  return {
+    id,
+    name: `Field Config Scheme ${id}`,
+    description: null,
+    isDefault: false,
+    parentId: null,
+    ...overrides,
+  };
+}
+
+// ── Field Configuration Entry ───────────────────────────────────────────────
+
+export function createFieldConfigurationEntry(overrides: Record<string, unknown> = {}) {
+  const id = nextId();
+  return {
+    id,
+    isVisible: true,
+    isRequired: false,
+    position: 0,
+    ...overrides,
+  };
+}
+
+// ── Notification Scheme ─────────────────────────────────────────────────────
+
+export function createNotificationScheme(overrides: Record<string, unknown> = {}) {
+  const id = nextId();
+  return {
+    id,
+    name: `Notification Scheme ${id}`,
+    description: null,
+    isDefault: false,
+    parentId: null,
+    ...overrides,
+  };
+}
+
+// ── Notification Scheme Entry ───────────────────────────────────────────────
+
+export function createNotificationSchemeEntry(overrides: Record<string, unknown> = {}) {
+  const id = nextId();
+  return {
+    id,
+    event: "issue_created",
+    recipientType: "reporter",
+    recipientId: null,
+    channels: ["in_app", "email"],
+    ...overrides,
+  };
+}
+
+// ── Component Scheme ─────────────────────────────────────────────────────────
+
+export function createComponentScheme(overrides: Record<string, unknown> = {}) {
+  const id = nextId();
+  return {
+    id,
+    name: `Component Scheme ${id}`,
+    description: null,
+    isDefault: false,
+    parentId: null,
+    ...overrides,
+  };
+}
+
+// ── Component Scheme Entry ──────────────────────────────────────────────────
+
+export function createComponentSchemeEntry(overrides: Record<string, unknown> = {}) {
+  const id = nextId();
+  return {
+    id,
+    isDefault: false,
+    position: 0,
+    ...overrides,
+  };
+}
+
 // ── SailPoint Mapping ────────────────────────────────────────────────────────
 
 export function createTestSailPointMapping(overrides: Record<string, unknown> = {}) {

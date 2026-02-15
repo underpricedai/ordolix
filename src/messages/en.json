@@ -1210,7 +1210,11 @@
       "system": "System",
       "auditLog": "Audit Log",
       "webhooks": "Webhooks",
-      "assetTypes": "Asset Types"
+      "assetTypes": "Asset Types",
+      "issueTypeSchemes": "Issue Type Schemes",
+      "fieldConfiguration": "Field Configuration",
+      "notificationSchemes": "Notification Schemes",
+      "componentSchemes": "Component Schemes"
     },
     "dashboard": {
       "title": "Admin Overview",
@@ -1457,6 +1461,72 @@
       "noLevels": "No security levels defined.",
       "levelCount": "{count, plural, =0 {No levels} =1 {1 level} other {# levels}}",
       "projectCount": "{count, plural, =0 {No projects} =1 {1 project} other {# projects}}"
+    },
+    "issueTypeSchemes": {
+      "title": "Issue Type Schemes",
+      "description": "Define which issue types are available per project.",
+      "createScheme": "Create Scheme",
+      "createSchemeDescription": "Create a new issue type scheme.",
+      "selectScheme": "Select Scheme",
+      "noSchemes": "No issue type schemes yet.",
+      "addEntry": "Add Issue Type",
+      "removeEntry": "Remove",
+      "default": "Default",
+      "position": "Position",
+      "entryCount": "{count, plural, =0 {No issue types} =1 {1 issue type} other {# issue types}}",
+      "projectCount": "{count, plural, =0 {No projects} =1 {1 project} other {# projects}}"
+    },
+    "fieldConfiguration": {
+      "title": "Field Configuration Schemes",
+      "description": "Control which custom fields are visible and required per project.",
+      "createScheme": "Create Scheme",
+      "createSchemeDescription": "Create a new field configuration scheme.",
+      "selectScheme": "Select Scheme",
+      "noSchemes": "No field configuration schemes yet.",
+      "addField": "Add Field",
+      "removeField": "Remove",
+      "visible": "Visible",
+      "required": "Required",
+      "entryCount": "{count, plural, =0 {No fields} =1 {1 field} other {# fields}}",
+      "projectCount": "{count, plural, =0 {No projects} =1 {1 project} other {# projects}}"
+    },
+    "notificationSchemes": {
+      "title": "Notification Schemes",
+      "description": "Configure which events trigger notifications and through which channels.",
+      "createScheme": "Create Scheme",
+      "createSchemeDescription": "Create a new notification scheme.",
+      "selectScheme": "Select Scheme",
+      "noSchemes": "No notification schemes yet.",
+      "addEntry": "Add Entry",
+      "removeEntry": "Remove",
+      "event": "Event",
+      "recipientType": "Recipient",
+      "channels": "Channels",
+      "entryCount": "{count, plural, =0 {No entries} =1 {1 entry} other {# entries}}",
+      "projectCount": "{count, plural, =0 {No projects} =1 {1 project} other {# projects}}"
+    },
+    "componentSchemes": {
+      "title": "Component Schemes",
+      "description": "Define which components are available per project.",
+      "createScheme": "Create Scheme",
+      "createSchemeDescription": "Create a new component scheme.",
+      "selectScheme": "Select Scheme",
+      "noSchemes": "No component schemes yet.",
+      "addEntry": "Add Component",
+      "removeEntry": "Remove",
+      "default": "Default",
+      "position": "Position",
+      "entryCount": "{count, plural, =0 {No components} =1 {1 component} other {# components}}",
+      "projectCount": "{count, plural, =0 {No projects} =1 {1 project} other {# projects}}"
+    },
+    "schemeSharing": {
+      "title": "Shared Configuration",
+      "sharedBy": "This {schemeType} is shared by {count, plural, =1 {1 project} other {# projects}}.",
+      "applyToAll": "Apply to all projects",
+      "applyToAllDescription": "Your changes will affect all projects using this configuration.",
+      "customizeForProject": "Customize for {projectName} only",
+      "customizeDescription": "A copy will be created for this project. Other projects will not be affected.",
+      "notShared": "This configuration is only used by this project."
     }
   },
   "projectPages": {
@@ -1581,7 +1651,21 @@
       "dangerZone": "Danger Zone",
       "deleteProject": "Delete Project",
       "deleteProjectConfirm": "This will permanently delete the project and all its data. This action cannot be undone.",
-      "saved": "Project settings saved."
+      "saved": "Project settings saved.",
+      "schemes": "Schemes",
+      "schemesDescription": "Manage which configuration schemes this project uses.",
+      "schemeType": "Scheme Type",
+      "currentScheme": "Current Scheme",
+      "changeScheme": "Change",
+      "editScheme": "Edit",
+      "noSchemeAssigned": "None assigned (using defaults)",
+      "permissionScheme": "Permission Scheme",
+      "issueTypeScheme": "Issue Type Scheme",
+      "fieldConfigScheme": "Field Configuration",
+      "notificationScheme": "Notification Scheme",
+      "workflowScheme": "Workflow",
+      "issueSecurityScheme": "Issue Security",
+      "componentScheme": "Components"
     }
   },
   "sprints": {

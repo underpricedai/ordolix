@@ -7,6 +7,7 @@
  *
  * @module admin-router
  */
+import { z } from "zod";
 import { createRouter, adminProcedure } from "@/server/trpc/init";
 import {
   getDashboardStatsInput,
@@ -23,10 +24,16 @@ import {
   createIssueTypeInput,
   updateIssueTypeInput,
   deleteIssueTypeInput,
+  createIssueTypeSchemeInput,
+  updateIssueTypeSchemeInput,
+  addIssueTypeSchemeEntryInput,
+  removeIssueTypeSchemeEntryInput,
+  assignIssueTypeSchemeInput,
 } from "../types/schemas";
 import * as adminService from "./admin-service";
 import * as priorityService from "./priority-service";
 import * as issueTypeService from "./issue-type-service";
+import * as issueTypeSchemeService from "./issue-type-scheme-service";
 
 export const adminRouter = createRouter({
   getDashboardStats: adminProcedure
@@ -136,5 +143,54 @@ export const adminRouter = createRouter({
     .input(deleteIssueTypeInput)
     .mutation(async ({ ctx, input }) => {
       return issueTypeService.deleteIssueType(ctx.db, ctx.organizationId, input.id);
+    }),
+
+  // ── Issue Type Scheme Procedures ─────────────────────────────────────────
+
+  listIssueTypeSchemes: adminProcedure
+    .query(async ({ ctx }) => {
+      return issueTypeSchemeService.listIssueTypeSchemes(ctx.db, ctx.organizationId);
+    }),
+
+  getIssueTypeScheme: adminProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      return issueTypeSchemeService.getIssueTypeScheme(ctx.db, ctx.organizationId, input.id);
+    }),
+
+  createIssueTypeScheme: adminProcedure
+    .input(createIssueTypeSchemeInput)
+    .mutation(async ({ ctx, input }) => {
+      return issueTypeSchemeService.createIssueTypeScheme(ctx.db, ctx.organizationId, input);
+    }),
+
+  updateIssueTypeScheme: adminProcedure
+    .input(updateIssueTypeSchemeInput)
+    .mutation(async ({ ctx, input }) => {
+      return issueTypeSchemeService.updateIssueTypeScheme(ctx.db, ctx.organizationId, input);
+    }),
+
+  deleteIssueTypeScheme: adminProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      return issueTypeSchemeService.deleteIssueTypeScheme(ctx.db, ctx.organizationId, input.id);
+    }),
+
+  addIssueTypeSchemeEntry: adminProcedure
+    .input(addIssueTypeSchemeEntryInput)
+    .mutation(async ({ ctx, input }) => {
+      return issueTypeSchemeService.addEntry(ctx.db, ctx.organizationId, input);
+    }),
+
+  removeIssueTypeSchemeEntry: adminProcedure
+    .input(removeIssueTypeSchemeEntryInput)
+    .mutation(async ({ ctx, input }) => {
+      return issueTypeSchemeService.removeEntry(ctx.db, input.id);
+    }),
+
+  assignIssueTypeScheme: adminProcedure
+    .input(assignIssueTypeSchemeInput)
+    .mutation(async ({ ctx, input }) => {
+      return issueTypeSchemeService.assignToProject(ctx.db, ctx.organizationId, input.schemeId, input.projectId);
     }),
 });

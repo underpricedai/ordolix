@@ -11,8 +11,15 @@ import {
   listCustomFieldsInput,
   setFieldValueInput,
   getFieldValuesInput,
+  createFieldConfigSchemeInput,
+  updateFieldConfigSchemeInput,
+  addFieldConfigEntryInput,
+  updateFieldConfigEntryInput,
+  removeFieldConfigEntryInput,
+  assignFieldConfigSchemeInput,
 } from "../types/schemas";
 import * as customFieldService from "./custom-field-service";
+import * as fieldConfigSchemeService from "./field-config-scheme-service";
 
 export const customFieldRouter = createRouter({
   create: adminProcedure
@@ -84,5 +91,60 @@ export const customFieldRouter = createRouter({
         ctx.organizationId,
         input,
       );
+    }),
+
+  // ── Field Configuration Scheme Procedures ──────────────────────────────
+
+  listFieldConfigSchemes: adminProcedure
+    .query(async ({ ctx }) => {
+      return fieldConfigSchemeService.listFieldConfigSchemes(ctx.db, ctx.organizationId);
+    }),
+
+  getFieldConfigScheme: adminProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      return fieldConfigSchemeService.getFieldConfigScheme(ctx.db, ctx.organizationId, input.id);
+    }),
+
+  createFieldConfigScheme: adminProcedure
+    .input(createFieldConfigSchemeInput)
+    .mutation(async ({ ctx, input }) => {
+      return fieldConfigSchemeService.createFieldConfigScheme(ctx.db, ctx.organizationId, input);
+    }),
+
+  updateFieldConfigScheme: adminProcedure
+    .input(updateFieldConfigSchemeInput)
+    .mutation(async ({ ctx, input }) => {
+      return fieldConfigSchemeService.updateFieldConfigScheme(ctx.db, ctx.organizationId, input);
+    }),
+
+  deleteFieldConfigScheme: adminProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      return fieldConfigSchemeService.deleteFieldConfigScheme(ctx.db, ctx.organizationId, input.id);
+    }),
+
+  addFieldConfigEntry: adminProcedure
+    .input(addFieldConfigEntryInput)
+    .mutation(async ({ ctx, input }) => {
+      return fieldConfigSchemeService.addField(ctx.db, ctx.organizationId, input);
+    }),
+
+  updateFieldConfigEntry: adminProcedure
+    .input(updateFieldConfigEntryInput)
+    .mutation(async ({ ctx, input }) => {
+      return fieldConfigSchemeService.updateField(ctx.db, input);
+    }),
+
+  removeFieldConfigEntry: adminProcedure
+    .input(removeFieldConfigEntryInput)
+    .mutation(async ({ ctx, input }) => {
+      return fieldConfigSchemeService.removeField(ctx.db, input.id);
+    }),
+
+  assignFieldConfigScheme: adminProcedure
+    .input(assignFieldConfigSchemeInput)
+    .mutation(async ({ ctx, input }) => {
+      return fieldConfigSchemeService.assignToProject(ctx.db, ctx.organizationId, input.schemeId, input.projectId);
     }),
 });

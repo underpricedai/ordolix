@@ -26,9 +26,11 @@ import {
   deleteVersionInput,
   releaseVersionInput,
 } from "../types/schemas";
+import { adminProcedure } from "@/server/trpc/init";
 import * as projectService from "./project-service";
 import * as componentService from "./component-service";
 import * as versionService from "./version-service";
+import * as componentSchemeService from "./component-scheme-service";
 
 export const projectRouter = createRouter({
   create: protectedProcedure
@@ -157,5 +159,69 @@ export const projectRouter = createRouter({
     .input(releaseVersionInput)
     .mutation(async ({ ctx, input }) => {
       return versionService.releaseVersion(ctx.db, ctx.organizationId, input.id);
+    }),
+
+  // ── Component Scheme Procedures ──────────────────────────────────────────
+
+  listComponentSchemes: adminProcedure
+    .query(async ({ ctx }) => {
+      return componentSchemeService.listComponentSchemes(ctx.db, ctx.organizationId);
+    }),
+
+  getComponentScheme: adminProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      return componentSchemeService.getComponentScheme(ctx.db, ctx.organizationId, input.id);
+    }),
+
+  createComponentScheme: adminProcedure
+    .input(z.object({
+      name: z.string().min(1).max(255),
+      description: z.string().max(1000).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      return componentSchemeService.createComponentScheme(ctx.db, ctx.organizationId, input);
+    }),
+
+  updateComponentScheme: adminProcedure
+    .input(z.object({
+      id: z.string().min(1),
+      name: z.string().min(1).max(255).optional(),
+      description: z.string().max(1000).nullable().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      return componentSchemeService.updateComponentScheme(ctx.db, ctx.organizationId, input);
+    }),
+
+  deleteComponentScheme: adminProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      return componentSchemeService.deleteComponentScheme(ctx.db, ctx.organizationId, input.id);
+    }),
+
+  addComponentSchemeEntry: adminProcedure
+    .input(z.object({
+      componentSchemeId: z.string().min(1),
+      componentId: z.string().min(1),
+      isDefault: z.boolean().optional(),
+      position: z.number().int().min(0).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      return componentSchemeService.addEntry(ctx.db, ctx.organizationId, input);
+    }),
+
+  removeComponentSchemeEntry: adminProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      return componentSchemeService.removeEntry(ctx.db, input.id);
+    }),
+
+  assignComponentScheme: adminProcedure
+    .input(z.object({
+      schemeId: z.string().min(1),
+      projectId: z.string().min(1),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      return componentSchemeService.assignToProject(ctx.db, ctx.organizationId, input.schemeId, input.projectId);
     }),
 });
