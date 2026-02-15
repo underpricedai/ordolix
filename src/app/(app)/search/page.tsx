@@ -9,8 +9,9 @@
  */
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   Search,
@@ -107,21 +108,26 @@ export default function SearchPage() {
   const tn = useTranslations("nav");
   const ti = useTranslations("issues");
 
-  const [query, setQuery] = useState("");
-  const [submittedQuery, setSubmittedQuery] = useState("");
+  const searchParams = useSearchParams();
+  const initialQuery = searchParams.get("q") ?? "";
+  const [query, setQuery] = useState(initialQuery);
+  const [submittedQuery, setSubmittedQuery] = useState(initialQuery);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [filters, setFilters] = useState<ActiveFilters>(EMPTY_FILTERS);
   const [showFilters, setShowFilters] = useState(false);
 
-  // tRPC query for search results
-  const { data: searchData, isLoading } = trpc.issue.list.useQuery(
-    {
-      projectId: filters.project || "default",
-      search: submittedQuery || undefined,
-      statusId: filters.status || undefined,
-      assigneeId: filters.assignee || undefined,
-      issueTypeId: filters.type || undefined,
-    },
+  // Sync from URL when query param changes (e.g., from header search bar)
+  useEffect(() => {
+    const q = searchParams.get("q") ?? "";
+    if (q && q !== submittedQuery) {
+      setQuery(q);
+      setSubmittedQuery(q);
+    }
+  }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // tRPC query for search results — uses the dedicated search router
+  const { data: searchData, isLoading } = trpc.search.search.useQuery(
+    { query: submittedQuery },
     { enabled: submittedQuery.length > 0 },
   );
 

@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { Bell, Search, Moon, Sun, LogOut, User, Settings } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { useCallback, useState } from "react";
 import { Button } from "@/shared/components/ui/button";
@@ -56,6 +57,8 @@ interface AppHeaderProps {
 export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
   const t = useTranslations("header");
   const tc = useTranslations("common");
+  const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState("");
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     if (typeof document !== "undefined") {
       return document.documentElement.classList.contains("dark") ? "dark" : "light";
@@ -132,6 +135,13 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
             placeholder={t("searchPlaceholder")}
             className="h-9 pl-9 pr-4"
             aria-label={tc("search")}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && searchQuery.trim()) {
+                router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+              }
+            }}
           />
         </div>
       </div>
