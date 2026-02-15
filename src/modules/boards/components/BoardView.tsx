@@ -12,6 +12,7 @@ import { EmptyState } from "@/shared/components/empty-state";
 import { trpc } from "@/shared/lib/trpc";
 import { BoardColumn, type BoardColumnData } from "./BoardColumn";
 import type { BoardCardIssue } from "./BoardCard";
+import { IssueEditDialog } from "@/modules/issues/components/IssueEditDialog";
 
 interface BoardViewProps {
   /** ID of the board to display */
@@ -45,6 +46,7 @@ export function BoardView({
   const tc = useTranslations("common");
   const [showFilters, setShowFilters] = useState(false);
   const [draggingIssue, setDraggingIssue] = useState<string | null>(null);
+  const [editIssueId, setEditIssueId] = useState<string | null>(null);
 
   const {
     data: boardData,
@@ -95,6 +97,13 @@ export function BoardView({
   const handleCardDragEnd = useCallback(() => {
     setDraggingIssue(null);
   }, []);
+
+  const handleCardClick = useCallback(
+    (issue: BoardCardIssue) => {
+      setEditIssueId(issue.id);
+    },
+    [],
+  );
 
   const columns: BoardColumnData[] = boardData?.columns?.map((col) => ({
     id: col.id,
@@ -199,6 +208,7 @@ export function BoardView({
                 onDrop={handleDrop}
                 onCardDragStart={handleCardDragStart}
                 onCardDragEnd={handleCardDragEnd}
+                onCardClick={handleCardClick}
                 className={
                   draggingIssue && !column.issues.some((i) => i.id === draggingIssue)
                     ? "ring-1 ring-muted-foreground/20"
@@ -222,6 +232,18 @@ export function BoardView({
             <p className="text-sm text-muted-foreground">{tc("loading")}</p>
           </div>
         </div>
+      )}
+
+      {/* Issue edit dialog */}
+      {editIssueId && (
+        <IssueEditDialog
+          open={!!editIssueId}
+          onOpenChange={(open) => {
+            if (!open) setEditIssueId(null);
+          }}
+          issueId={editIssueId}
+          onSuccess={() => void refetch()}
+        />
       )}
     </div>
   );

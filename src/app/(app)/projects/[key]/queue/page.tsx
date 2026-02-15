@@ -26,6 +26,7 @@ import {
 import { Badge } from "@/shared/components/ui/badge";
 import { EmptyState } from "@/shared/components/empty-state";
 import { trpc } from "@/shared/lib/trpc";
+import { IssueEditDialog } from "@/modules/issues/components/IssueEditDialog";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type QueueItem = any;
@@ -42,6 +43,7 @@ export default function ProjectQueuePage({
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedQueueId, setSelectedQueueId] = useState<string | null>(null);
+  const [editIssueId, setEditIssueId] = useState<string | null>(null);
 
   const breadcrumbs = [
     { label: tn("projects"), href: "/projects" },
@@ -204,7 +206,11 @@ export default function ProjectQueuePage({
               </TableHeader>
               <TableBody>
                 {items.map((item: QueueItem) => (
-                  <TableRow key={item.id}>
+                  <TableRow
+                    key={item.id}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => setEditIssueId(item.id)}
+                  >
                     <TableCell>
                       <span className="font-medium text-primary">
                         {item.key}
@@ -243,6 +249,16 @@ export default function ProjectQueuePage({
               </TableBody>
             </Table>
           </div>
+        )}
+        {/* Issue edit dialog */}
+        {editIssueId && (
+          <IssueEditDialog
+            open={!!editIssueId}
+            onOpenChange={(open) => {
+              if (!open) setEditIssueId(null);
+            }}
+            issueId={editIssueId}
+          />
         )}
       </div>
     </>

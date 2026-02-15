@@ -9,7 +9,7 @@
  */
 "use client";
 
-import { use, useState, useCallback } from "react";
+import { use, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Plus, Search, ListTodo } from "lucide-react";
 import { AppHeader } from "@/shared/components/app-header";
@@ -27,6 +27,7 @@ import {
 import { Badge } from "@/shared/components/ui/badge";
 import { EmptyState } from "@/shared/components/empty-state";
 import { trpc } from "@/shared/lib/trpc";
+import { IssueEditDialog } from "@/modules/issues/components/IssueEditDialog";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type BacklogIssue = any;
@@ -42,6 +43,7 @@ export default function ProjectBacklogPage({
   const tc = useTranslations("common");
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [editIssueId, setEditIssueId] = useState<string | null>(null);
 
   const breadcrumbs = [
     { label: tn("projects"), href: "/projects" },
@@ -72,9 +74,9 @@ export default function ProjectBacklogPage({
   const issuesResult = issuesData as { items?: BacklogIssue[] } | undefined;
   const issues: BacklogIssue[] = issuesResult?.items ?? [];
 
-  const handleCreateIssue = useCallback(() => {
-    // In production, this would open a create issue dialog
-  }, []);
+  const handleCreateIssue = () => {
+    // TODO: wire to IssueCreateDialog
+  };
 
   if (isLoading) {
     return (
@@ -192,7 +194,11 @@ export default function ProjectBacklogPage({
               </TableHeader>
               <TableBody>
                 {issues.map((issue: BacklogIssue) => (
-                  <TableRow key={issue.id}>
+                  <TableRow
+                    key={issue.id}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => setEditIssueId(issue.id)}
+                  >
                     <TableCell>
                       <span className="font-medium text-primary">
                         {issue.key}
@@ -221,6 +227,17 @@ export default function ProjectBacklogPage({
         {/* Hint text */}
         {issues.length > 0 && (
           <p className="text-xs text-muted-foreground">{t("dragToSprint")}</p>
+        )}
+
+        {/* Issue edit dialog */}
+        {editIssueId && (
+          <IssueEditDialog
+            open={!!editIssueId}
+            onOpenChange={(open) => {
+              if (!open) setEditIssueId(null);
+            }}
+            issueId={editIssueId}
+          />
         )}
       </div>
     </>

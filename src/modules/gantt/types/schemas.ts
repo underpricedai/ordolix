@@ -20,7 +20,8 @@ export const removeDependencyInput = z.object({
 export type RemoveDependencyInput = z.infer<typeof removeDependencyInput>;
 
 export const getGanttDataInput = z.object({
-  projectId: z.string().min(1),
+  projectId: z.string().min(1).optional(),
+  projectIds: z.array(z.string().min(1)).optional(),
 });
 
 export type GetGanttDataInput = z.infer<typeof getGanttDataInput>;

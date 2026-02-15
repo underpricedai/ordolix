@@ -265,6 +265,7 @@ describe("getGanttData", () => {
       },
       include: {
         status: true,
+        project: { select: { key: true, name: true } },
         ganttDepsSource: true,
         ganttDepsTarget: true,
       },

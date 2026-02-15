@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback } from "react";
-import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { GripVertical } from "lucide-react";
 import { Card } from "@/shared/components/ui/card";
@@ -48,6 +47,8 @@ interface BoardCardProps {
   onDragStart?: (e: React.DragEvent, issue: BoardCardIssue) => void;
   /** Callback when drag ends */
   onDragEnd?: (e: React.DragEvent) => void;
+  /** Callback when card is clicked (opens edit dialog) */
+  onClick?: (issue: BoardCardIssue) => void;
   /** Optional additional CSS classes */
   className?: string;
 }
@@ -92,6 +93,7 @@ export function BoardCard({
   issue,
   onDragStart,
   onDragEnd,
+  onClick,
   className,
 }: BoardCardProps) {
   const t = useTranslations("boards");
@@ -127,13 +129,13 @@ export function BoardCard({
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Link
-              href={`/issues/${issue.key}`}
-              className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg"
+            <button
+              type="button"
+              className="block w-full text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg"
               aria-label={`${issue.key}: ${issue.summary}`}
               onClick={(e) => {
-                // Prevent navigation during drag
                 if (e.defaultPrevented) return;
+                onClick?.(issue);
               }}
             >
               <Card
@@ -205,7 +207,7 @@ export function BoardCard({
                   </div>
                 </div>
               </Card>
-            </Link>
+            </button>
           </TooltipTrigger>
           <TooltipContent side="right" className="max-w-xs">
             <p>{issue.summary}</p>

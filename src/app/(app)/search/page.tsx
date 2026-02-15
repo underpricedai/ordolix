@@ -61,6 +61,7 @@ import { PriorityIcon, type PriorityLevel } from "@/shared/components/priority-i
 import { EmptyState } from "@/shared/components/empty-state";
 import { trpc } from "@/shared/lib/trpc";
 import { cn } from "@/shared/lib/utils";
+import { IssueEditDialog } from "@/modules/issues/components/IssueEditDialog";
 
 /**
  * Shape of a search result row.
@@ -115,6 +116,7 @@ export default function SearchPage() {
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [filters, setFilters] = useState<ActiveFilters>(EMPTY_FILTERS);
   const [showFilters, setShowFilters] = useState(false);
+  const [editIssueId, setEditIssueId] = useState<string | null>(null);
 
   // Sync from URL when query param changes (e.g., from header search bar)
   useEffect(() => {
@@ -493,11 +495,16 @@ export default function SearchPage() {
                       </TableHeader>
                       <TableBody>
                         {results.map((result: SearchResult) => (
-                          <TableRow key={result.id}>
+                          <TableRow
+                            key={result.id}
+                            className="cursor-pointer hover:bg-muted/50"
+                            onClick={() => setEditIssueId(result.id)}
+                          >
                             <TableCell>
                               <Link
                                 href={`/issues/${result.key}`}
                                 className="font-medium text-primary hover:underline"
+                                onClick={(e) => e.stopPropagation()}
                               >
                                 {result.key}
                               </Link>
@@ -545,6 +552,17 @@ export default function SearchPage() {
             </Card>
           )}
         </div>
+
+        {/* Issue edit dialog */}
+        {editIssueId && (
+          <IssueEditDialog
+            open={!!editIssueId}
+            onOpenChange={(open) => {
+              if (!open) setEditIssueId(null);
+            }}
+            issueId={editIssueId}
+          />
+        )}
       </div>
     </>
   );

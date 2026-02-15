@@ -24,6 +24,7 @@ import { trpc } from "@/shared/lib/trpc";
 import { cn } from "@/shared/lib/utils";
 import { GanttBar, type GanttBarData } from "./GanttBar";
 import { GanttControls, type ZoomLevel } from "./GanttControls";
+import { IssueEditDialog } from "@/modules/issues/components/IssueEditDialog";
 
 /**
  * Represents a hierarchical issue row in the Gantt left panel.
@@ -32,6 +33,8 @@ interface GanttIssueRow {
   id: string;
   issueKey: string;
   summary: string;
+  projectKey?: string;
+  projectName?: string;
   startDate: string | null;
   endDate: string | null;
   progress: number;
@@ -168,8 +171,10 @@ function flattenRows(
 }
 
 interface GanttChartProps {
-  /** Project ID to load Gantt data for */
-  projectId: string;
+  /** Single project ID to load Gantt data for */
+  projectId?: string;
+  /** Multiple project IDs to load Gantt data for */
+  projectIds?: string[];
 }
 
 /**
@@ -191,7 +196,7 @@ interface GanttChartProps {
  * @example
  * <GanttChart projectId="proj-123" />
  */
-export function GanttChart({ projectId }: GanttChartProps) {
+export function GanttChart({ projectId, projectIds }: GanttChartProps) {
   const t = useTranslations("gantt");
   const tc = useTranslations("common");
 
@@ -200,6 +205,7 @@ export function GanttChart({ projectId }: GanttChartProps) {
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
   const [allCollapsed, setAllCollapsed] = useState(false);
   const [issueListOpen, setIssueListOpen] = useState(false);
+  const [editIssueId, setEditIssueId] = useState<string | null>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
 
   // Pinch-to-zoom on mobile
@@ -215,13 +221,18 @@ export function GanttChart({ projectId }: GanttChartProps) {
   });
 
   // tRPC query for Gantt timeline data
+  const queryInput = projectIds && projectIds.length > 0
+    ? { projectIds }
+    : projectId
+      ? { projectId }
+      : {};
   const {
     data: ganttData,
     isLoading,
     error,
   } = trpc.gantt.getData.useQuery(
-    { projectId },
-    { enabled: Boolean(projectId) },
+    queryInput,
+    { enabled: Boolean(projectId) || (Boolean(projectIds) && projectIds!.length > 0) },
   );
 
   // Parse API data into row structure
@@ -341,7 +352,7 @@ export function GanttChart({ projectId }: GanttChartProps) {
   const updateIssueMutation = trpc.issue.update.useMutation({
     onSuccess: () => {
       // Invalidate gantt data so the timeline re-fetches with new dates
-      void utils.gantt.getData.invalidate({ projectId });
+      void utils.gantt.getData.invalidate(queryInput);
     },
   });
 
@@ -430,15 +441,16 @@ export function GanttChart({ projectId }: GanttChartProps) {
                     <div
                       key={row.id}
                       role="treeitem"
-                      className="flex items-center border-b px-3 hover:bg-muted/30"
+                      className="flex items-center border-b px-3 hover:bg-muted/30 cursor-pointer"
                       style={{ height: ROW_HEIGHT, paddingInlineStart: `${12 + row.depth * 20}px` }}
+                      onClick={() => setEditIssueId(row.id)}
                     >
                       {row.children.length > 0 ? (
                         <Button
                           variant="ghost"
                           size="icon"
                           className="size-5 shrink-0"
-                          onClick={() => toggleCollapse(row.id)}
+                          onClick={(e) => { e.stopPropagation(); toggleCollapse(row.id); }}
                         >
                           {collapsedIds.has(row.id) ? (
                             <ChevronRight className="size-3.5" aria-hidden="true" />
@@ -487,11 +499,12 @@ export function GanttChart({ projectId }: GanttChartProps) {
                     : undefined
                 }
                 aria-level={row.depth + 1}
-                className="flex items-center border-b px-3 hover:bg-muted/30"
+                className="flex items-center border-b px-3 hover:bg-muted/30 cursor-pointer"
                 style={{
                   height: ROW_HEIGHT,
                   paddingInlineStart: `${12 + row.depth * 20}px`,
                 }}
+                onClick={() => setEditIssueId(row.id)}
               >
                 {/* Expand/collapse toggle */}
                 {row.children.length > 0 ? (
@@ -499,7 +512,7 @@ export function GanttChart({ projectId }: GanttChartProps) {
                     variant="ghost"
                     size="icon"
                     className="size-5 shrink-0"
-                    onClick={() => toggleCollapse(row.id)}
+                    onClick={(e) => { e.stopPropagation(); toggleCollapse(row.id); }}
                     aria-label={
                       collapsedIds.has(row.id) ? t("expand") : t("collapse")
                     }
@@ -631,12 +644,13 @@ export function GanttChart({ projectId }: GanttChartProps) {
                 return (
                   <div
                     key={row.id}
-                    className="absolute"
+                    className="absolute cursor-pointer"
                     style={{
                       top: idx * ROW_HEIGHT,
                       height: ROW_HEIGHT,
                       width: totalTimelineWidth,
                     }}
+                    onClick={() => setEditIssueId(row.id)}
                   >
                     <GanttBar
                       bar={barData}
@@ -726,6 +740,18 @@ export function GanttChart({ projectId }: GanttChartProps) {
           </div>
         </div>
       </div>
+
+      {/* Issue edit dialog */}
+      {editIssueId && (
+        <IssueEditDialog
+          open={!!editIssueId}
+          onOpenChange={(open) => {
+            if (!open) setEditIssueId(null);
+          }}
+          issueId={editIssueId}
+          onSuccess={() => void utils.gantt.getData.invalidate(queryInput)}
+        />
+      )}
     </TooltipProvider>
   );
 }

@@ -3,7 +3,6 @@
 import { useState, useCallback, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Inbox, ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
@@ -23,6 +22,7 @@ import { EmptyState } from "@/shared/components/empty-state";
 import { ResponsiveTable, type ResponsiveColumnDef } from "@/shared/components/responsive-table";
 import { trpc } from "@/shared/lib/trpc";
 import { cn } from "@/shared/lib/utils";
+import { IssueEditDialog } from "./IssueEditDialog";
 
 /**
  * Valid sort field options for the issue list.
@@ -99,8 +99,8 @@ export function IssueList({
 }: IssueListProps) {
   const t = useTranslations("issues");
   const tc = useTranslations("common");
-  const router = useRouter();
 
+  const [editIssueId, setEditIssueId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortField>("createdAt");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
   const [cursor, setCursor] = useState<string | undefined>(undefined);
@@ -163,10 +163,10 @@ export function IssueList({
   }, []);
 
   const handleRowClick = useCallback(
-    (issueKey: string) => {
-      router.push(`/issues/${issueKey}`);
+    (issue: IssueRow) => {
+      setEditIssueId(issue.id);
     },
-    [router],
+    [],
   );
 
   if (isLoading) {
@@ -291,7 +291,7 @@ export function IssueList({
           columns={columns}
           data={issues}
           rowKey={(issue: IssueRow) => issue.id}
-          onRowClick={(issue: IssueRow) => handleRowClick(issue.key)}
+          onRowClick={(issue: IssueRow) => handleRowClick(issue)}
           mobileCard={(issue: IssueRow) => (
             <Card className="p-3">
               <div className="flex items-start justify-between gap-2">
@@ -368,6 +368,17 @@ export function IssueList({
           </Button>
         </div>
       </div>
+
+      {/* Issue edit dialog */}
+      {editIssueId && (
+        <IssueEditDialog
+          open={!!editIssueId}
+          onOpenChange={(open) => {
+            if (!open) setEditIssueId(null);
+          }}
+          issueId={editIssueId}
+        />
+      )}
     </div>
   );
 }

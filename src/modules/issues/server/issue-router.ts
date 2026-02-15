@@ -33,6 +33,12 @@ export const issueRouter = createRouter({
       );
     }),
 
+  getById: protectedProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      return issueService.getIssueById(ctx.db, ctx.organizationId, input.id);
+    }),
+
   getByKey: protectedProcedure
     .input(z.object({ key: z.string().min(1) }))
     .query(async ({ ctx, input }) => {

@@ -124,6 +124,11 @@
     "createIssue": "Create Issue",
     "createIssueDescription": "Fill in the details to create a new issue.",
     "editIssue": "Edit Issue",
+    "editIssueDescription": "Update the details of this issue.",
+    "issueSaved": "Issue updated successfully.",
+    "issueUpdateFailed": "Failed to update issue.",
+    "startDate": "Start Date",
+    "viewFullDetail": "View Full Detail",
     "deleteIssue": "Delete Issue",
     "deleteConfirm": "Are you sure you want to delete this issue? This action cannot be undone.",
     "key": "Key",
@@ -355,7 +360,10 @@
     "emptyTitle": "No timeline data",
     "emptyDescription": "Add start and end dates to issues to see them on the Gantt chart.",
     "dateUpdated": "Issue dates updated.",
-    "dateUpdateFailed": "Failed to update issue dates."
+    "dateUpdateFailed": "Failed to update issue dates.",
+    "allProjects": "All Projects",
+    "selectProjects": "Select Projects",
+    "projectCount": "{count} projects"
   },
   "timeTracking": {
     "title": "Time Tracking",

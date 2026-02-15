@@ -34,6 +34,8 @@ interface BoardColumnProps {
   onCardDragStart?: (e: React.DragEvent, issue: BoardCardIssue) => void;
   /** Callback when a card drag ends */
   onCardDragEnd?: (e: React.DragEvent) => void;
+  /** Callback when a card is clicked */
+  onCardClick?: (issue: BoardCardIssue) => void;
   /** Optional additional CSS classes */
   className?: string;
 }
@@ -58,6 +60,7 @@ export function BoardColumn({
   onQuickCreate,
   onCardDragStart,
   onCardDragEnd,
+  onCardClick,
   className,
 }: BoardColumnProps) {
   const t = useTranslations("boards");
@@ -241,6 +244,7 @@ export function BoardColumn({
                 issue={issue}
                 onDragStart={onCardDragStart}
                 onDragEnd={onCardDragEnd}
+                onClick={onCardClick}
               />
             ))
           )}

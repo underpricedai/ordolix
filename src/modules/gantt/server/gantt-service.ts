@@ -71,14 +71,22 @@ export async function getGanttData(
   organizationId: string,
   input: GetGanttDataInput,
 ) {
+  // Support single projectId, multiple projectIds, or all projects
+  const projectFilter = input.projectIds && input.projectIds.length > 0
+    ? { projectId: { in: input.projectIds } }
+    : input.projectId
+      ? { projectId: input.projectId }
+      : {};
+
   const rawIssues = await db.issue.findMany({
     where: {
       organizationId,
-      projectId: input.projectId,
+      ...projectFilter,
       deletedAt: null,
     },
     include: {
       status: true,
+      project: { select: { key: true, name: true } },
       ganttDepsSource: true,
       ganttDepsTarget: true,
     },
@@ -89,6 +97,8 @@ export async function getGanttData(
     id: issue.id,
     issueKey: issue.key,
     summary: issue.summary,
+    projectKey: issue.project?.key ?? "",
+    projectName: issue.project?.name ?? "",
     startDate: issue.startDate?.toISOString() ?? null,
     endDate: issue.dueDate?.toISOString() ?? null,
     progress: 0,

@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
+import { IssueEditDialog } from "@/modules/issues/components/IssueEditDialog";
 import { ListTodo } from "lucide-react";
 import {
   Card,
@@ -83,6 +84,7 @@ export function MyIssuesWidget({
 }: MyIssuesWidgetProps) {
   const t = useTranslations("dashboards");
   const ti = useTranslations("issues");
+  const [editIssueId, setEditIssueId] = useState<string | null>(null);
 
   // Fetch issues assigned to the current user
   // In production, assigneeId would be the current user's ID from session
@@ -154,11 +156,16 @@ export function MyIssuesWidget({
               </TableHeader>
               <TableBody>
                 {issues.map((issue) => (
-                  <TableRow key={issue.id}>
+                  <TableRow
+                    key={issue.id}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => setEditIssueId(issue.id)}
+                  >
                     <TableCell>
                       <Link
                         href={`/issues/${issue.key}`}
                         className="font-medium text-primary hover:underline"
+                        onClick={(e) => e.stopPropagation()}
                       >
                         {issue.key}
                       </Link>
@@ -186,6 +193,17 @@ export function MyIssuesWidget({
           </div>
         )}
       </CardContent>
+
+      {/* Issue edit dialog */}
+      {editIssueId && (
+        <IssueEditDialog
+          open={!!editIssueId}
+          onOpenChange={(open) => {
+            if (!open) setEditIssueId(null);
+          }}
+          issueId={editIssueId}
+        />
+      )}
     </Card>
   );
 }

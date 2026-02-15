@@ -126,6 +126,23 @@ export async function createIssue(
   });
 }
 
+export async function getIssueById(
+  db: PrismaClient,
+  organizationId: string,
+  id: string,
+) {
+  const issue = await db.issue.findFirst({
+    where: { id, organizationId, deletedAt: null },
+    include: ISSUE_INCLUDE,
+  });
+
+  if (!issue) {
+    throw new NotFoundError("Issue", id);
+  }
+
+  return issue;
+}
+
 export async function getIssueByKey(
   db: PrismaClient,
   organizationId: string,
