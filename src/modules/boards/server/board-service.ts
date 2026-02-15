@@ -95,9 +95,10 @@ export async function getBoardData(
   input: GetBoardDataInput,
 ) {
   const board = await getBoard(db, organizationId, input.id);
-  const rawColumns = board.columns as unknown as BoardColumn[];
-  // Guard against old-format columns that may lack statusIds
-  const columns = (rawColumns ?? []).filter((c) => Array.isArray(c.statusIds));
+  const rawColumns = board.columns;
+  // Guard against corrupted or old-format column data
+  const columns = (Array.isArray(rawColumns) ? rawColumns as unknown as BoardColumn[] : [])
+    .filter((c) => c && Array.isArray(c.statusIds));
   const allStatusIds = columns.flatMap((c) => c.statusIds);
 
   const where: Prisma.IssueWhereInput = {

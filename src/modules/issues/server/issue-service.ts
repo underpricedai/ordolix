@@ -71,8 +71,8 @@ export async function createIssue(
     },
   });
 
-  const initialStatus = workflow?.workflowStatuses.find(
-    (ws) => ws.status.category === "TO_DO",
+  const initialStatus = workflow?.workflowStatuses?.find(
+    (ws) => ws.status?.category === "TO_DO",
   )?.status;
 
   if (!initialStatus) {

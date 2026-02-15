@@ -289,7 +289,7 @@ export async function completeSprint(
   }
 
   const incompleteIssues = sprint.issues.filter(
-    (issue) => issue.status.category !== "DONE",
+    (issue) => issue.status?.category !== "DONE",
   );
   const completedCount = sprint.issues.length - incompleteIssues.length;
   const movedCount = incompleteIssues.length;
@@ -421,7 +421,7 @@ export async function getVelocity(
 
   return sprints.map((sprint) => {
     const doneIssues = sprint.issues.filter(
-      (issue) => issue.status.category === "DONE",
+      (issue) => issue.status?.category === "DONE",
     );
     const completedPoints = doneIssues.reduce(
       (sum, issue) => sum + (issue.storyPoints ?? 0),
