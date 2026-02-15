@@ -300,7 +300,7 @@
     "emptyTitle": "No Workflow",
     "emptyDescription": "Create a workflow or assign one to this project.",
     "categories": {
-      "TODO": "To Do",
+      "TO_DO": "To Do",
       "IN_PROGRESS": "In Progress",
       "DONE": "Done"
     },

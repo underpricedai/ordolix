@@ -209,7 +209,7 @@ function StatusProperties({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="TODO">{t("categories.TODO")}</SelectItem>
+            <SelectItem value="TO_DO">{t("categories.TO_DO")}</SelectItem>
             <SelectItem value="IN_PROGRESS">{t("categories.IN_PROGRESS")}</SelectItem>
             <SelectItem value="DONE">{t("categories.DONE")}</SelectItem>
           </SelectContent>

@@ -7,7 +7,7 @@ import { cn } from "@/shared/lib/utils";
 /**
  * Status category for visual styling of workflow nodes.
  */
-export type WorkflowStatusCategory = "TODO" | "IN_PROGRESS" | "DONE";
+export type WorkflowStatusCategory = "TO_DO" | "IN_PROGRESS" | "DONE";
 
 /**
  * Data shape for a status node on the workflow canvas.
@@ -42,7 +42,7 @@ export const NODE_WIDTH = 160;
 export const NODE_HEIGHT = 64;
 
 const categoryColors: Record<WorkflowStatusCategory, { bg: string; text: string; border: string; dot: string }> = {
-  TODO: {
+  TO_DO: {
     bg: "fill-blue-50 dark:fill-blue-950/40",
     text: "fill-blue-700 dark:fill-blue-300",
     border: "stroke-blue-300 dark:stroke-blue-700",
