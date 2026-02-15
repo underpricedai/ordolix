@@ -19,7 +19,12 @@ export interface TRPCContext {
 }
 
 export async function createTRPCContext(): Promise<TRPCContext> {
-  let session = await auth();
+  let session: Session | null = null;
+  try {
+    session = await auth();
+  } catch (error) {
+    logger.warn({ error }, "auth() threw — falling back");
+  }
 
   // Dev auth fallback: use first user from DB when no real session exists
   if (!session && process.env.NODE_ENV !== "production") {
