@@ -18,6 +18,10 @@ import { formRouter } from "@/modules/forms/server/form-router";
 import { reportRouter } from "@/modules/reports/server/report-router";
 import { assetRouter } from "@/modules/assets/server/asset-router";
 import { incidentRouter } from "@/modules/incidents/server/incident-router";
+import { queueRouter } from "@/modules/queues/server/queue-router";
+import { sprintRouter } from "@/modules/sprints/server/sprint-router";
+import { customFieldRouter } from "@/modules/custom-fields/server/custom-field-router";
+import { searchRouter } from "@/modules/search/server/search-router";
 
 export const appRouter = createRouter({
   issue: issueRouter,
@@ -39,6 +43,10 @@ export const appRouter = createRouter({
   report: reportRouter,
   asset: assetRouter,
   incident: incidentRouter,
+  queue: queueRouter,
+  sprint: sprintRouter,
+  customField: customFieldRouter,
+  search: searchRouter,
 });
 
 export type AppRouter = typeof appRouter;
