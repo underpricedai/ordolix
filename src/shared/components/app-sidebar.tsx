@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
   LayoutDashboard,
+  FolderKanban,
   ListTodo,
   Columns3,
   GanttChart,
@@ -41,6 +42,7 @@ interface NavItem {
  */
 const mainNavItems: NavItem[] = [
   { titleKey: "dashboard", href: "/", icon: LayoutDashboard },
+  { titleKey: "projects", href: "/projects", icon: FolderKanban },
   { titleKey: "issues", href: "/issues", icon: ListTodo },
   { titleKey: "boards", href: "/boards", icon: Columns3 },
   { titleKey: "gantt", href: "/gantt", icon: GanttChart },
