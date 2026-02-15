@@ -32,9 +32,7 @@ import {
 import { Badge } from "@/shared/components/ui/badge";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { Separator } from "@/shared/components/ui/separator";
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type ProjectDetail = any;
+import { trpc } from "@/shared/lib/trpc";
 
 export default function ProjectDetailPage({
   params,
@@ -45,13 +43,14 @@ export default function ProjectDetailPage({
   const t = useTranslations("projectPages");
   const tn = useTranslations("nav");
 
-  // TODO: Replace with tRPC project.getByKey query once project router is implemented
-  const project: ProjectDetail = null;
-  const isLoading = false;
+  const {
+    data: project,
+    isLoading,
+  } = trpc.project.getByKey.useQuery({ key });
 
   const breadcrumbs = [
     { label: tn("projects"), href: "/projects" },
-    { label: key.toUpperCase() },
+    { label: project?.name ?? key.toUpperCase() },
   ];
 
   if (isLoading) {
@@ -70,6 +69,9 @@ export default function ProjectDetailPage({
     );
   }
 
+  const issueCount = project?._count?.issues ?? 0;
+  const memberCount = project?._count?.members ?? 0;
+
   return (
     <>
       <AppHeader breadcrumbs={breadcrumbs} />
@@ -84,12 +86,12 @@ export default function ProjectDetailPage({
             </Button>
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-foreground">
-                {(project as ProjectDetail)?.name ?? key.toUpperCase()}
+                {project?.name ?? key.toUpperCase()}
               </h1>
               <div className="mt-1 flex items-center gap-2">
-                <Badge variant="outline">{key.toUpperCase()}</Badge>
+                <Badge variant="outline">{project?.key ?? key.toUpperCase()}</Badge>
                 <span className="text-sm text-muted-foreground">
-                  {(project as ProjectDetail)?.projectType ?? "Software"}
+                  {project?.projectType ?? "Software"}
                 </span>
               </div>
             </div>
@@ -98,19 +100,19 @@ export default function ProjectDetailPage({
           {/* Quick navigation */}
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" asChild>
-              <Link href={`/boards`}>
+              <Link href={`/projects/${key}/board`}>
                 <Columns3 className="mr-2 size-4" aria-hidden="true" />
                 {t("projectBoard")}
               </Link>
             </Button>
             <Button variant="outline" size="sm" asChild>
-              <Link href={`/issues`}>
+              <Link href={`/projects/${key}/backlog`}>
                 <ListTodo className="mr-2 size-4" aria-hidden="true" />
                 {t("projectBacklog")}
               </Link>
             </Button>
             <Button variant="outline" size="sm" asChild>
-              <Link href={`/settings`}>
+              <Link href={`/projects/${key}/settings`}>
                 <Settings className="mr-2 size-4" aria-hidden="true" />
                 {t("projectSettings")}
               </Link>
@@ -131,7 +133,7 @@ export default function ProjectDetailPage({
               />
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">0</p>
+              <p className="text-2xl font-bold">{issueCount}</p>
             </CardContent>
           </Card>
 
@@ -161,7 +163,7 @@ export default function ProjectDetailPage({
               />
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">0</p>
+              <p className="text-2xl font-bold">{memberCount}</p>
             </CardContent>
           </Card>
         </div>
@@ -176,7 +178,7 @@ export default function ProjectDetailPage({
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                {t("noProjects")}
+                {issueCount === 0 ? t("noProjects") : `${issueCount} issues in this project`}
               </p>
             </CardContent>
           </Card>
@@ -186,9 +188,24 @@ export default function ProjectDetailPage({
               <CardTitle>{t("teamMembers")}</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground">
-                {t("noProjects")}
-              </p>
+              {project?.members && project.members.length > 0 ? (
+                <ul className="space-y-2">
+                  {project.members.map(
+                    (m: { user: { id: string; name: string | null; email: string } }) => (
+                      <li
+                        key={m.user.id}
+                        className="text-sm text-muted-foreground"
+                      >
+                        {m.user.name ?? m.user.email}
+                      </li>
+                    ),
+                  )}
+                </ul>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  {t("noProjects")}
+                </p>
+              )}
             </CardContent>
           </Card>
         </div>

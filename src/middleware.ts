@@ -66,14 +66,32 @@ export default auth((request: NextRequest) => {
     return NextResponse.redirect(signInUrl);
   }
 
-  // Tenant detection placeholder
-  // TODO: Read organizationId from session and inject into request headers
-  // once the multi-tenancy session enrichment is wired up.
-  // const organizationId = session.user?.organizationId;
+  // Tenant detection: extract user and organization context from the session
+  // and inject into request headers so downstream handlers (tRPC context,
+  // API routes) can access them without re-querying the auth session.
+  const requestHeaders = new Headers(request.headers);
+  const requestId = crypto.randomUUID();
+  requestHeaders.set("X-Request-Id", requestId);
 
-  const response = NextResponse.next();
+  if (session.user?.id) {
+    requestHeaders.set("X-User-Id", session.user.id);
+  }
+
+  // Forward organizationId if present on the session (enriched via Auth.js
+  // JWT callback when the user's org membership is resolved at login).
+  const organizationId =
+    (session.user as Record<string, unknown> | undefined)?.organizationId as
+      | string
+      | undefined;
+  if (organizationId) {
+    requestHeaders.set("X-Organization-Id", organizationId);
+  }
+
+  const response = NextResponse.next({
+    request: { headers: requestHeaders },
+  });
   applySecurityHeaders(response);
-  response.headers.set("X-Request-Id", crypto.randomUUID());
+  response.headers.set("X-Request-Id", requestId);
 
   return response;
 });

@@ -25,6 +25,7 @@ import {
 } from "@/shared/components/ui/table";
 import { Badge } from "@/shared/components/ui/badge";
 import { EmptyState } from "@/shared/components/empty-state";
+import { trpc } from "@/shared/lib/trpc";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type QueueItem = any;
@@ -40,6 +41,7 @@ export default function ProjectQueuePage({
   const tc = useTranslations("common");
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedQueueId, setSelectedQueueId] = useState<string | null>(null);
 
   const breadcrumbs = [
     { label: tn("projects"), href: "/projects" },
@@ -47,10 +49,40 @@ export default function ProjectQueuePage({
     { label: tn("queue") },
   ];
 
-  // TODO: Replace with tRPC queue.list query once queue router is implemented
-  const isLoading = false;
-  const error = null;
-  const items: QueueItem[] = [];
+  // First, resolve the project to get its ID
+  const {
+    data: project,
+    isLoading: projectLoading,
+  } = trpc.project.getByKey.useQuery({ key });
+
+  const projectId = project?.id;
+
+  // Fetch queues for this project
+  const {
+    data: queues,
+    isLoading: queuesLoading,
+    error: queuesError,
+  } = trpc.queue.list.useQuery(
+    { projectId: projectId! },
+    { enabled: !!projectId },
+  );
+
+  // Auto-select the first queue if none is selected
+  const activeQueueId = selectedQueueId ?? queues?.[0]?.id;
+
+  // Fetch issues for the selected queue
+  const {
+    data: queueIssues,
+    isLoading: issuesLoading,
+    error: issuesError,
+  } = trpc.queue.getIssues.useQuery(
+    { queueId: activeQueueId! },
+    { enabled: !!activeQueueId },
+  );
+
+  const isLoading = projectLoading || queuesLoading || issuesLoading;
+  const error = queuesError ?? issuesError;
+  const items: QueueItem[] = queueIssues?.issues ?? [];
 
   if (isLoading) {
     return (
@@ -102,6 +134,22 @@ export default function ProjectQueuePage({
             {t("pageDescription")}
           </p>
         </div>
+
+        {/* Queue selector tabs */}
+        {queues && queues.length > 1 && (
+          <div className="flex gap-2">
+            {queues.map((q: { id: string; name: string }) => (
+              <Button
+                key={q.id}
+                variant={activeQueueId === q.id ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSelectedQueueId(q.id)}
+              >
+                {q.name}
+              </Button>
+            ))}
+          </div>
+        )}
 
         {/* Search bar */}
         <div className="relative max-w-md">

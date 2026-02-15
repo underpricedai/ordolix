@@ -14,6 +14,16 @@ export const boardRouter = createRouter({
       return boardService.createBoard(ctx.db, ctx.organizationId, input);
     }),
 
+  listByProject: protectedProcedure
+    .input(z.object({ projectId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      return boardService.listByProject(
+        ctx.db,
+        ctx.organizationId,
+        input.projectId,
+      );
+    }),
+
   getById: protectedProcedure
     .input(z.object({ id: z.string().min(1) }))
     .query(async ({ ctx, input }) => {

@@ -2,12 +2,13 @@
 
 import { useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { X } from "lucide-react";
+import { X, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { Separator } from "@/shared/components/ui/separator";
+import { Switch } from "@/shared/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -19,6 +20,15 @@ import { Badge } from "@/shared/components/ui/badge";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import type { WorkflowStatusNodeData, WorkflowStatusCategory } from "./WorkflowStatusNode";
 import type { WorkflowTransitionData } from "./WorkflowTransitionLine";
+
+/**
+ * Known validator types with their configurable options.
+ */
+const VALIDATOR_TYPES = [
+  { value: "required_field", label: "Required Field" },
+  { value: "no_open_subtasks", label: "No Open Subtasks" },
+] as const;
+
 
 /**
  * Selection types for the properties panel.
@@ -272,6 +282,12 @@ function TransitionProperties({
   const t = useTranslations("workflows");
 
   const [name, setName] = useState(transition.name);
+  const [validators, setValidators] = useState<
+    Array<{ type: string; config: Record<string, unknown> }>
+  >(transition.validators ?? []);
+  const [conditions, setConditions] = useState<
+    Array<{ type: string; config: Record<string, unknown> }>
+  >(transition.conditions ?? []);
 
   const handleNameBlur = useCallback(() => {
     if (name !== transition.name && name.trim()) {
@@ -291,6 +307,69 @@ function TransitionProperties({
       onTransitionChange?.(transition.id, { toStatusId: value });
     },
     [transition.id, onTransitionChange],
+  );
+
+  /**
+   * Adds a new validator of the given type with a default config.
+   */
+  const handleAddValidator = useCallback(
+    (type: string) => {
+      const defaultConfig: Record<string, unknown> =
+        type === "required_field"
+          ? { fieldName: "" }
+          : type === "no_open_subtasks"
+            ? { enabled: true }
+            : {};
+      const updated = [...validators, { type, config: defaultConfig }];
+      setValidators(updated);
+    },
+    [validators],
+  );
+
+  /**
+   * Removes a validator at the given index.
+   */
+  const handleRemoveValidator = useCallback(
+    (idx: number) => {
+      const updated = validators.filter((_, i) => i !== idx);
+      setValidators(updated);
+    },
+    [validators],
+  );
+
+  /**
+   * Updates the config for a specific validator.
+   */
+  const handleValidatorConfigChange = useCallback(
+    (idx: number, key: string, value: unknown) => {
+      const updated = validators.map((v, i) =>
+        i === idx ? { ...v, config: { ...v.config, [key]: value } } : v,
+      );
+      setValidators(updated);
+    },
+    [validators],
+  );
+
+  /**
+   * Adds a new condition of the given type with a default config.
+   */
+  const handleAddCondition = useCallback(
+    (type: string) => {
+      const updated = [...conditions, { type, config: {} }];
+      setConditions(updated);
+    },
+    [conditions],
+  );
+
+  /**
+   * Removes a condition at the given index.
+   */
+  const handleRemoveCondition = useCallback(
+    (idx: number) => {
+      const updated = conditions.filter((_, i) => i !== idx);
+      setConditions(updated);
+    },
+    [conditions],
   );
 
   return (
@@ -357,34 +436,119 @@ function TransitionProperties({
       <Separator />
 
       {/* Validators */}
-      <div className="grid gap-1.5">
-        <Label className="text-xs font-semibold">{t("validators")}</Label>
-        {transition.validators && transition.validators.length > 0 ? (
-          <div className="flex flex-col gap-1">
-            {transition.validators.map((validator, idx) => (
-              <Badge key={idx} variant="secondary" className="justify-start text-xs">
-                {validator.type}
-              </Badge>
+      <div className="grid gap-2">
+        <div className="flex items-center justify-between">
+          <Label className="text-xs font-semibold">{t("validators")}</Label>
+          <Select onValueChange={handleAddValidator}>
+            <SelectTrigger className="h-7 w-7 p-0 [&>svg:last-child]:hidden" aria-label={t("addValidator")}>
+              <Plus className="size-3.5" aria-hidden="true" />
+            </SelectTrigger>
+            <SelectContent>
+              {VALIDATOR_TYPES.map((vt) => (
+                <SelectItem key={vt.value} value={vt.value}>
+                  {vt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {validators.length === 0 ? (
+          <p className="text-xs text-muted-foreground">{t("noTransitions")}</p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {validators.map((validator, idx) => (
+              <div
+                key={`${validator.type}-${idx}`}
+                className="rounded-md border bg-muted/30 p-2"
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <Badge variant="secondary" className="text-xs">
+                    {VALIDATOR_TYPES.find((vt) => vt.value === validator.type)?.label ?? validator.type}
+                  </Badge>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-6"
+                    onClick={() => handleRemoveValidator(idx)}
+                    aria-label={t("removeValidator")}
+                  >
+                    <Trash2 className="size-3" aria-hidden="true" />
+                  </Button>
+                </div>
+
+                {/* Validator-specific config fields */}
+                {validator.type === "required_field" && (
+                  <div className="grid gap-1">
+                    <Label htmlFor={`validator-field-${idx}`} className="text-[11px] text-muted-foreground">
+                      {t("fieldName")}
+                    </Label>
+                    <Input
+                      id={`validator-field-${idx}`}
+                      value={(validator.config.fieldName as string) ?? ""}
+                      onChange={(e) => handleValidatorConfigChange(idx, "fieldName", e.target.value)}
+                      placeholder="e.g. assigneeId, resolution"
+                      className="h-7 text-xs"
+                    />
+                  </div>
+                )}
+
+                {validator.type === "no_open_subtasks" && (
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id={`validator-enabled-${idx}`}
+                      checked={(validator.config.enabled as boolean) ?? true}
+                      onCheckedChange={(checked) => handleValidatorConfigChange(idx, "enabled", checked)}
+                    />
+                    <Label htmlFor={`validator-enabled-${idx}`} className="text-[11px] text-muted-foreground">
+                      {t("enabled")}
+                    </Label>
+                  </div>
+                )}
+              </div>
             ))}
           </div>
-        ) : (
-          <p className="text-xs text-muted-foreground">{t("noTransitions")}</p>
         )}
       </div>
 
       {/* Conditions */}
-      <div className="grid gap-1.5">
-        <Label className="text-xs font-semibold">{t("conditions")}</Label>
-        {transition.conditions && transition.conditions.length > 0 ? (
-          <div className="flex flex-col gap-1">
-            {transition.conditions.map((condition, idx) => (
-              <Badge key={idx} variant="secondary" className="justify-start text-xs">
-                {condition.type}
-              </Badge>
+      <div className="grid gap-2">
+        <div className="flex items-center justify-between">
+          <Label className="text-xs font-semibold">{t("conditions")}</Label>
+          <Select onValueChange={handleAddCondition}>
+            <SelectTrigger className="h-7 w-7 p-0 [&>svg:last-child]:hidden" aria-label={t("addCondition")}>
+              <Plus className="size-3.5" aria-hidden="true" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="user_in_group">User in Group</SelectItem>
+              <SelectItem value="only_assignee">Only Assignee</SelectItem>
+              <SelectItem value="permission_check">Permission Check</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {conditions.length === 0 ? (
+          <p className="text-xs text-muted-foreground">{t("noTransitions")}</p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {conditions.map((condition, idx) => (
+              <div
+                key={`${condition.type}-${idx}`}
+                className="flex items-center justify-between rounded-md border bg-muted/30 p-2"
+              >
+                <Badge variant="secondary" className="text-xs">
+                  {condition.type}
+                </Badge>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-6"
+                  onClick={() => handleRemoveCondition(idx)}
+                  aria-label={t("removeCondition")}
+                >
+                  <Trash2 className="size-3" aria-hidden="true" />
+                </Button>
+              </div>
             ))}
           </div>
-        ) : (
-          <p className="text-xs text-muted-foreground">{t("noTransitions")}</p>
         )}
       </div>
     </>

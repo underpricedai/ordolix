@@ -3,7 +3,7 @@
  *
  * @description Project settings including general details (name, key,
  * description, lead), workflow assignment, notification settings,
- * and danger zone with delete project.
+ * and danger zone with archive project.
  *
  * @module project-settings-page
  */
@@ -11,6 +11,7 @@
 
 import { use, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import {
   Settings,
   Workflow,
@@ -24,6 +25,7 @@ import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { Separator } from "@/shared/components/ui/separator";
 import { Switch } from "@/shared/components/ui/switch";
+import { Skeleton } from "@/shared/components/ui/skeleton";
 import {
   Card,
   CardContent,
@@ -43,6 +45,7 @@ import {
   AlertDialogTrigger,
 } from "@/shared/components/ui/alert-dialog";
 import { Badge } from "@/shared/components/ui/badge";
+import { trpc } from "@/shared/lib/trpc";
 
 export default function ProjectSettingsPage({
   params,
@@ -53,28 +56,85 @@ export default function ProjectSettingsPage({
   const t = useTranslations("projectPages.settings");
   const tn = useTranslations("nav");
   const tc = useTranslations("common");
+  const router = useRouter();
 
-  // Form state
-  const [projectName, setProjectName] = useState(key.toUpperCase());
-  const [description, setDescription] = useState("");
+  // Track user overrides for form fields (null = use server data)
+  const [nameOverride, setNameOverride] = useState<string | null>(null);
+  const [descriptionOverride, setDescriptionOverride] = useState<string | null>(
+    null,
+  );
   const [notifyOnCreate, setNotifyOnCreate] = useState(true);
   const [notifyOnStatusChange, setNotifyOnStatusChange] = useState(true);
   const [notifyOnAssignment, setNotifyOnAssignment] = useState(true);
   const [notifyOnComment, setNotifyOnComment] = useState(true);
 
+  const utils = trpc.useUtils();
+
+  // Fetch project data
+  const { data: project, isLoading } = trpc.project.getByKey.useQuery({ key });
+
+  // Derive form values: user override takes precedence, then server data
+  const projectName = nameOverride ?? project?.name ?? "";
+  const description = descriptionOverride ?? project?.description ?? "";
+
+  const updateMutation = trpc.project.update.useMutation({
+    onSuccess: () => {
+      // Reset overrides so form reads fresh server data
+      setNameOverride(null);
+      setDescriptionOverride(null);
+      void utils.project.getByKey.invalidate({ key });
+      void utils.project.list.invalidate();
+    },
+  });
+
+  const archiveMutation = trpc.project.archive.useMutation({
+    onSuccess: () => {
+      void utils.project.list.invalidate();
+      router.push("/projects");
+    },
+  });
+
   const breadcrumbs = [
     { label: tn("projects"), href: "/projects" },
-    { label: key.toUpperCase(), href: `/projects/${key}` },
+    { label: project?.name ?? key.toUpperCase(), href: `/projects/${key}` },
     { label: tn("settings") },
   ];
 
   const handleSave = () => {
-    // TODO: Call tRPC project.update mutation
+    if (!project?.id) return;
+    updateMutation.mutate({
+      id: project.id,
+      name: projectName.trim() || undefined,
+      description: description.trim() || null,
+    });
   };
 
-  const handleDelete = () => {
-    // TODO: Call tRPC project.delete mutation
+  const handleArchive = () => {
+    if (!project?.id) return;
+    archiveMutation.mutate({ id: project.id });
   };
+
+  if (isLoading) {
+    return (
+      <>
+        <AppHeader breadcrumbs={breadcrumbs} />
+        <div className="flex-1 space-y-6 p-6">
+          <Skeleton className="h-8 w-48" />
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-40" />
+              <Skeleton className="h-4 w-64" />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </CardContent>
+          </Card>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -105,14 +165,14 @@ export default function ProjectSettingsPage({
               <Input
                 id="settings-project-name"
                 value={projectName}
-                onChange={(e) => setProjectName(e.target.value)}
+                onChange={(e) => setNameOverride(e.target.value)}
               />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="settings-project-key">{t("projectKey")}</Label>
               <Input
                 id="settings-project-key"
-                value={key.toUpperCase()}
+                value={project?.key ?? key.toUpperCase()}
                 disabled
               />
               <p className="text-xs text-muted-foreground">
@@ -125,16 +185,16 @@ export default function ProjectSettingsPage({
                 id="settings-description"
                 placeholder={t("descriptionPlaceholder")}
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(e) => setDescriptionOverride(e.target.value)}
               />
             </div>
             <div className="grid gap-2">
               <Label>{t("projectLead")}</Label>
-              <Input disabled value="" placeholder="-" />
+              <Input disabled value={project?.lead ?? ""} placeholder="-" />
             </div>
             <div className="grid gap-2">
               <Label>{t("projectCategory")}</Label>
-              <Input disabled value="Software" />
+              <Input disabled value={project?.projectType ?? "Software"} />
             </div>
           </CardContent>
         </Card>
@@ -213,7 +273,12 @@ export default function ProjectSettingsPage({
 
         {/* Save button */}
         <div className="flex justify-end">
-          <Button onClick={handleSave}>{tc("save")}</Button>
+          <Button
+            onClick={handleSave}
+            disabled={updateMutation.isPending}
+          >
+            {updateMutation.isPending ? tc("loading") : tc("save")}
+          </Button>
         </div>
 
         <Separator />
@@ -255,8 +320,11 @@ export default function ProjectSettingsPage({
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>{tc("cancel")}</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDelete}>
-                      {tc("delete")}
+                    <AlertDialogAction
+                      onClick={handleArchive}
+                      disabled={archiveMutation.isPending}
+                    >
+                      {archiveMutation.isPending ? tc("loading") : tc("delete")}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>

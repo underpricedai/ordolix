@@ -9,7 +9,7 @@
  */
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import {
   Search,
@@ -18,6 +18,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { trpc } from "@/shared/lib/trpc";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
@@ -60,9 +61,6 @@ const ACTION_TYPES = [
   "config_change",
 ] as const;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AuditLogEntry = any;
-
 export default function AdminAuditLogPage() {
   const t = useTranslations("admin.auditLog");
   const tc = useTranslations("common");
@@ -71,13 +69,42 @@ export default function AdminAuditLogPage() {
   const [actionFilter, setActionFilter] = useState<string>("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [cursor, setCursor] = useState<string | undefined>(undefined);
+  const [cursorHistory, setCursorHistory] = useState<(string | undefined)[]>([]);
+  const limit = 50;
 
-  // TODO: Replace with tRPC admin.listAuditLogs query once admin router is implemented
-  const isLoading = false;
+  const {
+    data: auditData,
+    isLoading,
+    error,
+  } = trpc.admin.listAuditLog.useQuery({
+    cursor,
+    limit,
+    action: actionFilter !== "all" ? actionFilter : undefined,
+    startDate: dateFrom ? new Date(dateFrom) : undefined,
+    endDate: dateTo ? new Date(dateTo) : undefined,
+  });
 
-  const entries: AuditLogEntry[] = [];
-  const currentPage = 1;
-  const totalPages = 1;
+  const entries = auditData?.items ?? [];
+  const nextCursor = auditData?.nextCursor;
+  const currentPage = cursorHistory.length + 1;
+  const hasNextPage = !!nextCursor;
+
+  const handleNextPage = useCallback(() => {
+    if (nextCursor) {
+      setCursorHistory((prev) => [...prev, cursor]);
+      setCursor(nextCursor);
+    }
+  }, [nextCursor, cursor]);
+
+  const handlePrevPage = useCallback(() => {
+    setCursorHistory((prev) => {
+      const next = [...prev];
+      const prevCursor = next.pop();
+      setCursor(prevCursor);
+      return next;
+    });
+  }, []);
 
   /**
    * Returns a color class for the action badge based on the action type.
@@ -196,16 +223,23 @@ export default function AdminAuditLogPage() {
         </div>
       </div>
 
+      {/* Error state */}
+      {error && (
+        <div className="rounded-md border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
+          {error.message}
+        </div>
+      )}
+
       {/* Audit log table */}
       {isLoading ? (
         <AuditLogSkeleton />
-      ) : entries.length === 0 ? (
+      ) : !error && entries.length === 0 ? (
         <EmptyState
           icon={<Inbox className="size-12" />}
           title={t("noEntries")}
           description={t("noEntriesDescription")}
         />
-      ) : (
+      ) : entries.length > 0 ? (
         <>
           <div className="rounded-md border">
             <Table>
@@ -219,41 +253,45 @@ export default function AdminAuditLogPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {entries.map((entry: AuditLogEntry) => (
-                  <TableRow key={entry.id}>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {entry.timestamp
-                        ? new Intl.DateTimeFormat("en", {
-                            dateStyle: "medium",
-                            timeStyle: "short",
-                          }).format(new Date(entry.timestamp))
-                        : "-"}
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {entry.userName ?? entry.userId ?? "-"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={`text-xs ${getActionBadgeClass(entry.action)}`}
-                      >
-                        {t(`actions.${entry.action}` as "actions.create")}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      <span className="font-medium">{entry.resourceType}</span>
-                      {entry.resourceId && (
-                        <span className="text-muted-foreground">
-                          {" "}
-                          ({entry.resourceId})
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell className="max-w-[300px] truncate text-sm text-muted-foreground">
-                      {entry.details ?? "-"}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {entries.map((entry) => {
+                  const user = (entry as { user?: { name?: string | null; email?: string | null } }).user;
+                  const diff = entry.diff as Record<string, unknown> | null;
+                  return (
+                    <TableRow key={entry.id}>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {entry.createdAt
+                          ? new Intl.DateTimeFormat("en", {
+                              dateStyle: "medium",
+                              timeStyle: "short",
+                            }).format(new Date(entry.createdAt))
+                          : "-"}
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {user?.name ?? user?.email ?? entry.userId ?? "-"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={`text-xs ${getActionBadgeClass(entry.action.toLowerCase())}`}
+                        >
+                          {entry.action}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        <span className="font-medium">{entry.entityType}</span>
+                        {entry.entityId && (
+                          <span className="text-muted-foreground">
+                            {" "}
+                            ({entry.entityId})
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="max-w-[300px] truncate text-sm text-muted-foreground">
+                        {diff ? JSON.stringify(diff) : "-"}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
@@ -261,7 +299,7 @@ export default function AdminAuditLogPage() {
           {/* Pagination */}
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
-              {t("pageInfo", { current: currentPage, total: totalPages })}
+              {t("pageInfo", { current: currentPage, total: hasNextPage ? currentPage + 1 : currentPage })}
             </p>
             <div className="flex gap-2">
               <Button
@@ -269,6 +307,7 @@ export default function AdminAuditLogPage() {
                 size="icon"
                 className="size-8"
                 disabled={currentPage <= 1}
+                onClick={handlePrevPage}
                 aria-label={t("previousPage")}
               >
                 <ChevronLeft className="size-4" aria-hidden="true" />
@@ -277,7 +316,8 @@ export default function AdminAuditLogPage() {
                 variant="outline"
                 size="icon"
                 className="size-8"
-                disabled={currentPage >= totalPages}
+                disabled={!hasNextPage}
+                onClick={handleNextPage}
                 aria-label={t("nextPage")}
               >
                 <ChevronRight className="size-4" aria-hidden="true" />
@@ -285,7 +325,7 @@ export default function AdminAuditLogPage() {
             </div>
           </div>
         </>
-      )}
+      ) : null}
     </div>
   );
 }

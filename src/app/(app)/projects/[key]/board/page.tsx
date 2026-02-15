@@ -9,7 +9,7 @@
  */
 "use client";
 
-import { use, useState, useCallback } from "react";
+import { use, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { Columns3, Plus } from "lucide-react";
 import { AppHeader } from "@/shared/components/app-header";
@@ -17,6 +17,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { EmptyState } from "@/shared/components/empty-state";
 import { BoardView } from "@/modules/boards/components/BoardView";
+import { trpc } from "@/shared/lib/trpc";
 
 export default function ProjectBoardPage({
   params,
@@ -27,19 +28,44 @@ export default function ProjectBoardPage({
   const t = useTranslations("projectPages.board");
   const tn = useTranslations("nav");
 
-  // TODO: Replace with tRPC board.getByProject query once available
-  const [selectedBoardId] = useState<string | undefined>();
-  const isLoading = false;
+  const utils = trpc.useUtils();
+
+  // First resolve project to get its ID
+  const { data: project, isLoading: projectLoading } =
+    trpc.project.getByKey.useQuery({ key });
+
+  const projectId = project?.id;
+
+  // Fetch boards for this project
+  const { data: boards, isLoading: boardsLoading } =
+    trpc.board.listByProject.useQuery(
+      { projectId: projectId! },
+      { enabled: !!projectId },
+    );
+
+  const isLoading = projectLoading || boardsLoading;
+  const firstBoard = boards?.[0];
 
   const breadcrumbs = [
     { label: tn("projects"), href: "/projects" },
-    { label: key.toUpperCase(), href: `/projects/${key}` },
+    { label: project?.name ?? key.toUpperCase(), href: `/projects/${key}` },
     { label: tn("boards") },
   ];
 
+  const createBoardMutation = trpc.board.create.useMutation({
+    onSuccess: () => {
+      void utils.board.listByProject.invalidate();
+    },
+  });
+
   const handleCreateBoard = useCallback(() => {
-    // In production, this would open a create board dialog
-  }, []);
+    if (!projectId) return;
+    createBoardMutation.mutate({
+      projectId,
+      name: `${project?.name ?? key.toUpperCase()} Board`,
+      boardType: "kanban",
+    });
+  }, [projectId, project?.name, key, createBoardMutation]);
 
   if (isLoading) {
     return (
@@ -82,17 +108,22 @@ export default function ProjectBoardPage({
               {t("pageDescription")}
             </p>
           </div>
-          <Button onClick={handleCreateBoard}>
-            <Plus className="mr-2 size-4" aria-hidden="true" />
-            {t("createBoard")}
-          </Button>
+          {!firstBoard && (
+            <Button
+              onClick={handleCreateBoard}
+              disabled={createBoardMutation.isPending}
+            >
+              <Plus className="mr-2 size-4" aria-hidden="true" />
+              {createBoardMutation.isPending ? "Creating..." : t("createBoard")}
+            </Button>
+          )}
         </div>
 
         {/* Board content */}
-        {selectedBoardId ? (
+        {firstBoard ? (
           <BoardView
-            boardId={selectedBoardId}
-            boardName={`${key.toUpperCase()} Board`}
+            boardId={firstBoard.id}
+            boardName={firstBoard.name}
             className="flex flex-1 flex-col"
           />
         ) : (
@@ -102,9 +133,14 @@ export default function ProjectBoardPage({
               title={t("noBoard")}
               description={t("noBoardDescription")}
               action={
-                <Button onClick={handleCreateBoard}>
+                <Button
+                  onClick={handleCreateBoard}
+                  disabled={createBoardMutation.isPending}
+                >
                   <Plus className="mr-2 size-4" aria-hidden="true" />
-                  {t("createBoard")}
+                  {createBoardMutation.isPending
+                    ? "Creating..."
+                    : t("createBoard")}
                 </Button>
               }
             />

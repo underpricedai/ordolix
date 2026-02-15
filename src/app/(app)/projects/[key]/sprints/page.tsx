@@ -41,6 +41,7 @@ import {
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { EmptyState } from "@/shared/components/empty-state";
+import { trpc } from "@/shared/lib/trpc";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Sprint = any;
@@ -67,10 +68,45 @@ export default function ProjectSprintsPage({
     { label: tn("sprints") },
   ];
 
-  // TODO: Replace with tRPC sprint.list query once sprint router is implemented
-  const isLoading = false;
-  const error = null;
-  const sprints: Sprint[] = [];
+  const utils = trpc.useUtils();
+
+  // First resolve project to get its ID
+  const { data: project, isLoading: projectLoading } =
+    trpc.project.getByKey.useQuery({ key });
+
+  const projectId = project?.id;
+
+  // Fetch sprints for this project
+  const {
+    data: sprintsData,
+    isLoading: sprintsLoading,
+    error,
+  } = trpc.sprint.list.useQuery(
+    { projectId: projectId! },
+    { enabled: !!projectId },
+  );
+
+  const sprints: Sprint[] = sprintsData ?? [];
+  const isLoading = projectLoading || sprintsLoading;
+
+  const createMutation = trpc.sprint.create.useMutation({
+    onSuccess: () => {
+      void utils.sprint.list.invalidate();
+      resetForm();
+    },
+  });
+
+  const startMutation = trpc.sprint.start.useMutation({
+    onSuccess: () => {
+      void utils.sprint.list.invalidate();
+    },
+  });
+
+  const completeMutation = trpc.sprint.complete.useMutation({
+    onSuccess: () => {
+      void utils.sprint.list.invalidate();
+    },
+  });
 
   const resetForm = useCallback(() => {
     setSprintName("");
@@ -79,6 +115,30 @@ export default function ProjectSprintsPage({
     setGoal("");
     setCreateOpen(false);
   }, []);
+
+  function handleCreate() {
+    if (!projectId) return;
+    createMutation.mutate({
+      projectId,
+      name: sprintName.trim() || undefined,
+      goal: goal.trim() || undefined,
+      startDate: startDate ? new Date(startDate) : undefined,
+      endDate: endDate ? new Date(endDate) : undefined,
+    });
+  }
+
+  function handleStartSprint(sprintId: string) {
+    const twoWeeksFromNow = new Date();
+    twoWeeksFromNow.setDate(twoWeeksFromNow.getDate() + 14);
+    startMutation.mutate({
+      id: sprintId,
+      endDate: twoWeeksFromNow,
+    });
+  }
+
+  function handleCompleteSprint(sprintId: string) {
+    completeMutation.mutate({ id: sprintId });
+  }
 
   const statusIcon = (status: string) => {
     switch (status) {
@@ -199,7 +259,12 @@ export default function ProjectSprintsPage({
                 <Button variant="outline" onClick={resetForm}>
                   {tc("cancel")}
                 </Button>
-                <Button onClick={resetForm}>{tc("create")}</Button>
+                <Button
+                  onClick={handleCreate}
+                  disabled={createMutation.isPending}
+                >
+                  {createMutation.isPending ? tc("loading") : tc("create")}
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -251,14 +316,24 @@ export default function ProjectSprintsPage({
                     </Badge>
                   </div>
                   <div className="flex items-center gap-2">
-                    {sprint.status === "planned" && (
-                      <Button variant="outline" size="sm">
+                    {sprint.status === "planning" && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleStartSprint(sprint.id)}
+                        disabled={startMutation.isPending}
+                      >
                         <Play className="mr-1.5 size-3.5" aria-hidden="true" />
                         {t("start")}
                       </Button>
                     )}
                     {sprint.status === "active" && (
-                      <Button variant="outline" size="sm">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleCompleteSprint(sprint.id)}
+                        disabled={completeMutation.isPending}
+                      >
                         <CheckCircle2
                           className="mr-1.5 size-3.5"
                           aria-hidden="true"
@@ -273,11 +348,12 @@ export default function ProjectSprintsPage({
                     {sprint.startDate && sprint.endDate && (
                       <span className="flex items-center gap-1.5">
                         <CalendarDays className="size-3.5" aria-hidden="true" />
-                        {sprint.startDate} - {sprint.endDate}
+                        {new Date(sprint.startDate).toLocaleDateString()} -{" "}
+                        {new Date(sprint.endDate).toLocaleDateString()}
                       </span>
                     )}
                     <span>
-                      {t("issues", { count: sprint.issueCount ?? 0 })}
+                      {t("issues", { count: sprint._count?.issues ?? 0 })}
                     </span>
                     {sprint.storyPoints != null && (
                       <span>

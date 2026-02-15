@@ -30,6 +30,10 @@ interface WorkflowStatusNodeProps {
   onClick?: (statusId: string) => void;
   /** Callback when the node position changes via drag */
   onPositionChange?: (statusId: string, position: { x: number; y: number }) => void;
+  /** Callback when a connection drag starts from this node */
+  onConnectStart?: (statusId: string, point: { x: number; y: number }) => void;
+  /** Callback when a connection drag ends on this node */
+  onConnectEnd?: (statusId: string) => void;
 }
 
 /** Width of a status node */
@@ -37,21 +41,24 @@ export const NODE_WIDTH = 160;
 /** Height of a status node */
 export const NODE_HEIGHT = 64;
 
-const categoryColors: Record<WorkflowStatusCategory, { bg: string; text: string; border: string }> = {
+const categoryColors: Record<WorkflowStatusCategory, { bg: string; text: string; border: string; dot: string }> = {
   TODO: {
-    bg: "fill-muted",
-    text: "fill-muted-foreground",
-    border: "stroke-border",
+    bg: "fill-blue-50 dark:fill-blue-950/40",
+    text: "fill-blue-700 dark:fill-blue-300",
+    border: "stroke-blue-300 dark:stroke-blue-700",
+    dot: "fill-blue-500",
   },
   IN_PROGRESS: {
-    bg: "fill-blue-50 dark:fill-blue-950/40",
-    text: "fill-blue-700 dark:fill-blue-400",
-    border: "stroke-blue-300 dark:stroke-blue-700",
+    bg: "fill-yellow-50 dark:fill-yellow-950/40",
+    text: "fill-yellow-700 dark:fill-yellow-300",
+    border: "stroke-yellow-400 dark:stroke-yellow-600",
+    dot: "fill-yellow-500",
   },
   DONE: {
     bg: "fill-green-50 dark:fill-green-950/40",
-    text: "fill-green-700 dark:fill-green-400",
+    text: "fill-green-700 dark:fill-green-300",
     border: "stroke-green-300 dark:stroke-green-700",
+    dot: "fill-green-500",
   },
 };
 
@@ -73,6 +80,8 @@ export function WorkflowStatusNode({
   isSelected = false,
   onClick,
   onPositionChange,
+  onConnectStart,
+  onConnectEnd,
 }: WorkflowStatusNodeProps) {
   const t = useTranslations("workflows");
   const [isDragging, setIsDragging] = useState(false);
@@ -150,12 +159,40 @@ export function WorkflowStatusNode({
     [isDragging, onClick, status.id],
   );
 
+  /**
+   * Handles mousedown on a connection point circle to initiate a drag-to-connect.
+   * The connection point coordinates are computed relative to the SVG canvas.
+   */
+  const handleConnectPointMouseDown = useCallback(
+    (pointX: number, pointY: number) => (e: React.MouseEvent) => {
+      e.stopPropagation();
+      e.preventDefault();
+      onConnectStart?.(status.id, {
+        x: status.position.x + pointX,
+        y: status.position.y + pointY,
+      });
+    },
+    [status.id, status.position, onConnectStart],
+  );
+
+  /**
+   * Handles mouseup on a connection point or the node body to complete a connect.
+   */
+  const handleConnectPointMouseUp = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onConnectEnd?.(status.id);
+    },
+    [status.id, onConnectEnd],
+  );
+
   return (
     <g
       ref={nodeRef}
       transform={`translate(${status.position.x}, ${status.position.y})`}
       onMouseDown={handleMouseDown}
       onClick={handleClick}
+      onMouseUp={handleConnectPointMouseUp}
       className={cn(
         "cursor-pointer select-none",
         isDragging && "cursor-grabbing",
@@ -198,7 +235,18 @@ export function WorkflowStatusNode({
         style={status.color ? { fill: `${status.color}15`, stroke: status.color } : undefined}
       />
 
-      {/* Color indicator bar */}
+      {/* Category color top bar */}
+      <rect
+        x={1}
+        y={1}
+        width={NODE_WIDTH - 2}
+        height={4}
+        rx={4}
+        className={status.color ? undefined : colors.dot}
+        style={status.color ? { fill: status.color } : undefined}
+      />
+
+      {/* Color indicator left bar */}
       {status.color && (
         <rect
           x={0}
@@ -213,7 +261,7 @@ export function WorkflowStatusNode({
       {/* Status name */}
       <text
         x={NODE_WIDTH / 2}
-        y={26}
+        y={28}
         textAnchor="middle"
         className={cn("text-sm font-medium", colors.text)}
         style={status.color ? { fill: status.color } : undefined}
@@ -223,48 +271,62 @@ export function WorkflowStatusNode({
           : status.name}
       </text>
 
-      {/* Category label */}
+      {/* Category indicator dot + label */}
+      <circle
+        cx={NODE_WIDTH / 2 - categoryLabel.length * 2.8 - 4}
+        cy={46}
+        r={3}
+        className={colors.dot}
+      />
       <text
-        x={NODE_WIDTH / 2}
-        y={46}
+        x={NODE_WIDTH / 2 + 4}
+        y={49}
         textAnchor="middle"
         className="fill-muted-foreground text-[10px]"
       >
         {categoryLabel}
       </text>
 
-      {/* Connection points (small circles on edges) */}
+      {/* Connection points (small circles on edges) - draggable for creating transitions */}
       {/* Left */}
       <circle
         cx={0}
         cy={NODE_HEIGHT / 2}
         r={4}
-        className="fill-background stroke-border"
+        className="fill-background stroke-border hover:fill-primary hover:stroke-primary cursor-crosshair transition-colors"
         strokeWidth={1.5}
+        onMouseDown={handleConnectPointMouseDown(0, NODE_HEIGHT / 2)}
+        onMouseUp={handleConnectPointMouseUp}
       />
       {/* Right */}
       <circle
         cx={NODE_WIDTH}
         cy={NODE_HEIGHT / 2}
         r={4}
-        className="fill-background stroke-border"
+        className="fill-background stroke-border hover:fill-primary hover:stroke-primary cursor-crosshair transition-colors"
         strokeWidth={1.5}
+        onMouseDown={handleConnectPointMouseDown(NODE_WIDTH, NODE_HEIGHT / 2)}
+        onMouseUp={handleConnectPointMouseUp}
       />
       {/* Top */}
       <circle
         cx={NODE_WIDTH / 2}
         cy={0}
         r={4}
-        className="fill-background stroke-border"
+        className="fill-background stroke-border hover:fill-primary hover:stroke-primary cursor-crosshair transition-colors"
         strokeWidth={1.5}
+        onMouseDown={handleConnectPointMouseDown(NODE_WIDTH / 2, 0)}
+        onMouseUp={handleConnectPointMouseUp}
       />
       {/* Bottom */}
       <circle
         cx={NODE_WIDTH / 2}
         cy={NODE_HEIGHT}
         r={4}
-        className="fill-background stroke-border"
+        className="fill-background stroke-border hover:fill-primary hover:stroke-primary cursor-crosshair transition-colors"
         strokeWidth={1.5}
+        onMouseDown={handleConnectPointMouseDown(NODE_WIDTH / 2, NODE_HEIGHT)}
+        onMouseUp={handleConnectPointMouseUp}
       />
     </g>
   );

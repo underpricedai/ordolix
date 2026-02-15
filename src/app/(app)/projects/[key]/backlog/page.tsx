@@ -49,16 +49,26 @@ export default function ProjectBacklogPage({
     { label: tn("backlog") },
   ];
 
-  // TODO: Replace projectId with a lookup from project key once project router exists
+  // First resolve project to get its ID
+  const { data: project, isLoading: projectLoading } =
+    trpc.project.getByKey.useQuery({ key });
+
+  const projectId = project?.id;
+
+  // Fetch issues for this project using the resolved projectId
   const {
     data: issuesData,
-    isLoading,
+    isLoading: issuesLoading,
     error,
   } = trpc.issue.list.useQuery(
-    { projectId: key },
-    { enabled: Boolean(key) },
+    {
+      projectId: projectId!,
+      search: searchQuery || undefined,
+    },
+    { enabled: !!projectId },
   );
 
+  const isLoading = projectLoading || issuesLoading;
   const issuesResult = issuesData as { items?: BacklogIssue[] } | undefined;
   const issues: BacklogIssue[] = issuesResult?.items ?? [];
 

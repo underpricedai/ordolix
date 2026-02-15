@@ -25,6 +25,34 @@ const ISSUE_INCLUDE = {
 
 const validatorsSchema = z.array(validatorConfig);
 
+/**
+ * Lists all workflows for an organization.
+ *
+ * @param db - Prisma client instance
+ * @param organizationId - Organization ID for row-level filtering
+ * @returns Array of workflows with status and project counts
+ */
+export async function listWorkflows(
+  db: PrismaClient,
+  organizationId: string,
+) {
+  return db.workflow.findMany({
+    where: { organizationId },
+    include: {
+      _count: {
+        select: {
+          workflowStatuses: true,
+          projects: true,
+        },
+      },
+    },
+    orderBy: [
+      { isDefault: "desc" },
+      { name: "asc" },
+    ],
+  });
+}
+
 export async function getWorkflowForProject(
   db: PrismaClient,
   organizationId: string,

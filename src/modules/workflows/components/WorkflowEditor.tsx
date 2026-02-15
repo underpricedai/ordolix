@@ -80,6 +80,12 @@ export function WorkflowEditor({
   const [statusPositions, setStatusPositions] = useState<
     Record<string, { x: number; y: number }>
   >({});
+  // Drag-to-connect state
+  const [connectingFrom, setConnectingFrom] = useState<{
+    statusId: string;
+    startPoint: { x: number; y: number };
+  } | null>(null);
+  const [connectMousePos, setConnectMousePos] = useState<{ x: number; y: number } | null>(null);
 
   const {
     data: workflowData,
@@ -145,7 +151,78 @@ export function WorkflowEditor({
 
   const handleCanvasClick = useCallback(() => {
     setSelection(null);
+    // Cancel any in-progress connection
+    setConnectingFrom(null);
+    setConnectMousePos(null);
   }, []);
+
+  /**
+   * Called when a user starts dragging from a connection point on a status node.
+   */
+  const handleConnectStart = useCallback(
+    (statusId: string, point: { x: number; y: number }) => {
+      setConnectingFrom({ statusId, startPoint: point });
+      setConnectMousePos(point);
+
+      const svgElement = svgRef.current;
+      if (!svgElement) return;
+
+      const handleMouseMove = (e: MouseEvent) => {
+        const ctm = svgElement.getScreenCTM();
+        if (!ctm) return;
+        const svgPoint = svgElement.createSVGPoint();
+        svgPoint.x = e.clientX;
+        svgPoint.y = e.clientY;
+        const transformed = svgPoint.matrixTransform(ctm.inverse());
+        setConnectMousePos({ x: transformed.x, y: transformed.y });
+      };
+
+      const handleMouseUp = () => {
+        document.removeEventListener("mousemove", handleMouseMove);
+        document.removeEventListener("mouseup", handleMouseUp);
+        // If we didn't drop on a node, cancel the connection
+        setConnectingFrom(null);
+        setConnectMousePos(null);
+      };
+
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+    },
+    [],
+  );
+
+  /**
+   * Called when a user drops a connection drag onto a target status node.
+   * Creates a new transition between the source and target statuses.
+   */
+  const handleConnectEnd = useCallback(
+    (targetStatusId: string) => {
+      if (!connectingFrom || connectingFrom.statusId === targetStatusId) {
+        setConnectingFrom(null);
+        setConnectMousePos(null);
+        return;
+      }
+
+      const fromStatus = statusNodes.find((s) => s.id === connectingFrom.statusId);
+      const toStatus = statusNodes.find((s) => s.id === targetStatusId);
+      const transitionName = fromStatus && toStatus
+        ? `${fromStatus.name} to ${toStatus.name}`
+        : "New Transition";
+
+      // In a full implementation, this would call a tRPC mutation.
+      // For now, log the intended transition for development visibility.
+      if (process.env.NODE_ENV !== "production") {
+        console.log(
+          `[WorkflowEditor] Create transition: ${transitionName} (${connectingFrom.statusId} -> ${targetStatusId})`,
+        );
+      }
+
+      setConnectingFrom(null);
+      setConnectMousePos(null);
+      void refetch();
+    },
+    [connectingFrom, statusNodes, refetch],
+  );
 
   const handlePositionChange = useCallback(
     (statusId: string, position: { x: number; y: number }) => {
@@ -320,8 +397,24 @@ export function WorkflowEditor({
                 }
                 onClick={handleStatusClick}
                 onPositionChange={handlePositionChange}
+                onConnectStart={handleConnectStart}
+                onConnectEnd={handleConnectEnd}
               />
             ))}
+
+            {/* Drag-to-connect preview line */}
+            {connectingFrom && connectMousePos && (
+              <line
+                x1={connectingFrom.startPoint.x}
+                y1={connectingFrom.startPoint.y}
+                x2={connectMousePos.x}
+                y2={connectMousePos.y}
+                className="stroke-primary"
+                strokeWidth={2}
+                strokeDasharray="6 3"
+                pointerEvents="none"
+              />
+            )}
           </svg>
         </div>
       </div>

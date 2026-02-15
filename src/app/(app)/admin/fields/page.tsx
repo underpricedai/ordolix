@@ -19,6 +19,7 @@ import {
   Pencil,
   Trash2,
 } from "lucide-react";
+import { trpc } from "@/shared/lib/trpc";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
@@ -73,9 +74,6 @@ const FIELD_TYPES = [
   "cascadingSelect",
 ] as const;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type FieldRow = any;
-
 export default function AdminFieldsPage() {
   const t = useTranslations("admin.fields");
   const tc = useTranslations("common");
@@ -83,20 +81,49 @@ export default function AdminFieldsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [fieldName, setFieldName] = useState("");
   const [fieldType, setFieldType] = useState<string>("text");
-  const [fieldContext, setFieldContext] = useState<string>("global");
+  const [fieldContext, setFieldContext] = useState<string>("issue");
   const [isRequired, setIsRequired] = useState(false);
 
-  // TODO: Replace with tRPC admin.listCustomFields query once admin router is implemented
-  const isLoading = false;
+  const utils = trpc.useUtils();
 
-  const fields: FieldRow[] = [];
+  const {
+    data: fields,
+    isLoading,
+    error,
+  } = trpc.customField.list.useQuery({});
+
+  const createMutation = trpc.customField.create.useMutation({
+    onSuccess: () => {
+      void utils.customField.list.invalidate();
+      resetForm();
+    },
+  });
+
+  const deleteMutation = trpc.customField.delete.useMutation({
+    onSuccess: () => {
+      void utils.customField.list.invalidate();
+    },
+  });
 
   function resetForm() {
     setFieldName("");
     setFieldType("text");
-    setFieldContext("global");
+    setFieldContext("issue");
     setIsRequired(false);
     setCreateOpen(false);
+  }
+
+  /**
+   * Handles the create field form submission.
+   */
+  function handleCreate() {
+    if (!fieldName) return;
+    createMutation.mutate({
+      name: fieldName,
+      fieldType: fieldType as "text" | "number" | "date" | "select" | "multiSelect" | "checkbox" | "url" | "user" | "label",
+      isRequired,
+      context: fieldContext as "issue" | "project" | "asset",
+    });
   }
 
   return (
@@ -172,16 +199,28 @@ export default function AdminFieldsPage() {
               <Button variant="outline" onClick={resetForm}>
                 {tc("cancel")}
               </Button>
-              <Button onClick={resetForm}>{tc("create")}</Button>
+              <Button
+                onClick={handleCreate}
+                disabled={createMutation.isPending || !fieldName}
+              >
+                {createMutation.isPending ? tc("saving") : tc("create")}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
 
+      {/* Error state */}
+      {error && (
+        <div className="rounded-md border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
+          {error.message}
+        </div>
+      )}
+
       {/* Fields table */}
       {isLoading ? (
         <FieldsTableSkeleton />
-      ) : fields.length === 0 ? (
+      ) : !error && (fields ?? []).length === 0 ? (
         <EmptyState
           icon={<Inbox className="size-12" />}
           title={t("noFields")}
@@ -210,66 +249,75 @@ export default function AdminFieldsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {fields.map((field: FieldRow) => (
-                <TableRow key={field.id}>
-                  <TableCell>
-                    <button
-                      className="cursor-grab text-muted-foreground hover:text-foreground"
-                      aria-label={t("dragToReorder")}
-                    >
-                      <GripVertical className="size-4" aria-hidden="true" />
-                    </button>
-                  </TableCell>
-                  <TableCell className="font-medium">{field.name}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className="text-xs">
-                      {t(`types.${field.fieldType}` as "types.text")}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="text-xs">
-                      {field.context === "global" ? tc("global") : tc("project")}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {field.isRequired ? (
-                      <Badge className="text-xs">{tc("required")}</Badge>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">
-                        {tc("optional")}
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {field.screens?.join(", ") ?? "-"}
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-8"
-                          aria-label={tc("actions")}
-                        >
-                          <MoreHorizontal className="size-4" aria-hidden="true" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
-                          <Pencil className="mr-2 size-4" aria-hidden="true" />
-                          {tc("edit")}
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive">
-                          <Trash2 className="mr-2 size-4" aria-hidden="true" />
-                          {tc("delete")}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {(fields ?? []).map((field) => {
+                const context = field.context as { type?: string } | null;
+                const contextType = context?.type ?? "issue";
+                return (
+                  <TableRow key={field.id}>
+                    <TableCell>
+                      <button
+                        className="cursor-grab text-muted-foreground hover:text-foreground"
+                        aria-label={t("dragToReorder")}
+                      >
+                        <GripVertical className="size-4" aria-hidden="true" />
+                      </button>
+                    </TableCell>
+                    <TableCell className="font-medium">{field.name}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className="text-xs">
+                        {t(`types.${field.fieldType}` as "types.text")}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-xs">
+                        {contextType}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {field.isRequired ? (
+                        <Badge className="text-xs">{tc("required")}</Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">
+                          {tc("optional")}
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      -
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-8"
+                            aria-label={tc("actions")}
+                          >
+                            <MoreHorizontal className="size-4" aria-hidden="true" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem>
+                            <Pencil className="mr-2 size-4" aria-hidden="true" />
+                            {tc("edit")}
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => {
+                              deleteMutation.mutate({ id: field.id });
+                            }}
+                          >
+                            <Trash2 className="mr-2 size-4" aria-hidden="true" />
+                            {tc("delete")}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>

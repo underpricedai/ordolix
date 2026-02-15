@@ -47,9 +47,7 @@ import {
 import { Badge } from "@/shared/components/ui/badge";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { EmptyState } from "@/shared/components/empty-state";
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type ProjectRow = any;
+import { trpc } from "@/shared/lib/trpc";
 
 export default function ProjectsPage() {
   const t = useTranslations("projectPages");
@@ -60,18 +58,42 @@ export default function ProjectsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [projectName, setProjectName] = useState("");
   const [projectKey, setProjectKey] = useState("");
-  const [projectType, setProjectType] = useState("software");
+  const [projectType, setProjectType] = useState<
+    "software" | "service_management" | "business"
+  >("software");
 
-  // TODO: Replace with tRPC project.list query once project router is implemented
-  const isLoading = false;
+  const utils = trpc.useUtils();
 
-  const projects: ProjectRow[] = [];
+  const {
+    data: projectsData,
+    isLoading,
+  } = trpc.project.list.useQuery({
+    search: searchQuery || undefined,
+  });
+
+  const createMutation = trpc.project.create.useMutation({
+    onSuccess: () => {
+      void utils.project.list.invalidate();
+      resetForm();
+    },
+  });
+
+  const projects = projectsData?.items ?? [];
 
   function resetForm() {
     setProjectName("");
     setProjectKey("");
     setProjectType("software");
     setCreateOpen(false);
+  }
+
+  function handleCreate() {
+    if (!projectName.trim() || !projectKey.trim()) return;
+    createMutation.mutate({
+      name: projectName.trim(),
+      key: projectKey.trim(),
+      projectTypeKey: projectType,
+    });
   }
 
   return (
@@ -125,13 +147,22 @@ export default function ProjectsPage() {
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="project-type">{t("projectType")}</Label>
-                  <Select value={projectType} onValueChange={setProjectType}>
+                  <Select
+                    value={projectType}
+                    onValueChange={(v) =>
+                      setProjectType(
+                        v as "software" | "service_management" | "business",
+                      )
+                    }
+                  >
                     <SelectTrigger id="project-type">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="software">Software</SelectItem>
-                      <SelectItem value="service">Service Desk</SelectItem>
+                      <SelectItem value="service_management">
+                        Service Desk
+                      </SelectItem>
                       <SelectItem value="business">Business</SelectItem>
                     </SelectContent>
                   </Select>
@@ -141,7 +172,16 @@ export default function ProjectsPage() {
                 <Button variant="outline" onClick={resetForm}>
                   {tc("cancel")}
                 </Button>
-                <Button onClick={resetForm}>{tc("create")}</Button>
+                <Button
+                  onClick={handleCreate}
+                  disabled={
+                    createMutation.isPending ||
+                    !projectName.trim() ||
+                    !projectKey.trim()
+                  }
+                >
+                  {createMutation.isPending ? tc("loading") : tc("create")}
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -180,7 +220,7 @@ export default function ProjectsPage() {
           />
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {projects.map((project: ProjectRow) => (
+            {projects.map((project) => (
               <Link
                 key={project.id}
                 href={`/projects/${project.key}`}
@@ -209,7 +249,7 @@ export default function ProjectsPage() {
                         {project.projectType ?? "Software"}
                       </span>
                       <span>
-                        {project.lead ?? "-"}
+                        {project._count?.issues ?? 0} issues
                       </span>
                     </div>
                     {project.description && (

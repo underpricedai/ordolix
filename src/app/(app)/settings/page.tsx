@@ -13,6 +13,8 @@ import {
   Trash2,
   Eye,
   EyeOff,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 import { AppHeader } from "@/shared/components/app-header";
 import {
@@ -38,17 +40,80 @@ import {
 } from "@/shared/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui/avatar";
 import { Badge } from "@/shared/components/ui/badge";
+import { Skeleton } from "@/shared/components/ui/skeleton";
+import { trpc } from "@/shared/lib/trpc";
 
 /**
  * Profile section of the settings page.
  *
  * @description Renders editable profile fields including display name,
- * email (read-only), and avatar. All labels use i18n translations.
+ * email (read-only), and avatar. Fetches profile data via tRPC and
+ * saves changes with updateProfile mutation.
  */
 function ProfileSection() {
   const t = useTranslations("settings");
+  const { data: profile, isLoading, error } = trpc.user.getProfile.useQuery();
+  const updateProfile = trpc.user.updateProfile.useMutation();
+
   const [displayName, setDisplayName] = useState("");
-  const [email] = useState("");
+  const [prevProfileName, setPrevProfileName] = useState<string | null>(null);
+
+  // Sync form state when profile data first loads (React-recommended
+  // pattern for adjusting state based on changed props/data during render).
+  const profileName = profile?.name ?? null;
+  if (profileName !== null && prevProfileName === null) {
+    setPrevProfileName(profileName);
+    setDisplayName(profileName);
+  }
+
+  const handleSave = useCallback(() => {
+    updateProfile.mutate({ name: displayName });
+  }, [updateProfile, displayName]);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-5 w-32" />
+            <Skeleton className="h-4 w-64" />
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex items-center gap-4">
+              <Skeleton className="size-16 rounded-full" />
+              <div className="flex gap-2">
+                <Skeleton className="h-8 w-28" />
+                <Skeleton className="h-8 w-28" />
+              </div>
+            </div>
+            <Separator />
+            <Skeleton className="h-10 w-full max-w-md" />
+            <Skeleton className="h-10 w-full max-w-md" />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardContent className="flex items-center gap-2 py-8 text-destructive">
+            <AlertCircle className="size-4" aria-hidden="true" />
+            <p className="text-sm">{error.message}</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const initials = (profile?.name ?? "U")
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
 
   return (
     <div className="space-y-6">
@@ -64,8 +129,8 @@ function ProfileSection() {
           {/* Avatar */}
           <div className="flex items-center gap-4">
             <Avatar size="lg">
-              <AvatarImage src="" alt={t("avatar")} />
-              <AvatarFallback className="text-lg">U</AvatarFallback>
+              <AvatarImage src={profile?.image ?? ""} alt={t("avatar")} />
+              <AvatarFallback className="text-lg">{initials}</AvatarFallback>
             </Avatar>
             <div className="flex gap-2">
               <Button variant="outline" size="sm">
@@ -97,7 +162,7 @@ function ProfileSection() {
             <Input
               id="email"
               type="email"
-              value={email}
+              value={profile?.email ?? ""}
               readOnly
               disabled
               placeholder={t("emailPlaceholder")}
@@ -108,9 +173,29 @@ function ProfileSection() {
               {t("emailHelp")}
             </p>
           </div>
+
+          {/* Save feedback */}
+          {updateProfile.isSuccess && (
+            <p className="text-sm text-green-600 dark:text-green-400">
+              {t("profileSaved")}
+            </p>
+          )}
+          {updateProfile.isError && (
+            <p className="text-sm text-destructive">
+              {updateProfile.error.message}
+            </p>
+          )}
         </CardContent>
         <CardFooter>
-          <Button>{t("saveProfile")}</Button>
+          <Button
+            onClick={handleSave}
+            disabled={updateProfile.isPending}
+          >
+            {updateProfile.isPending && (
+              <Loader2 className="mr-2 size-4 animate-spin" aria-hidden="true" />
+            )}
+            {t("saveProfile")}
+          </Button>
         </CardFooter>
       </Card>
     </div>
@@ -121,13 +206,16 @@ function ProfileSection() {
  * Notification preferences section.
  *
  * @description Allows users to toggle email and in-app notifications,
- * and configure which events trigger notifications.
+ * and configure which events trigger notifications. Saves preferences
+ * via tRPC updateNotificationPrefs mutation.
  */
 function NotificationsSection() {
   const t = useTranslations("settings");
   const tc = useTranslations("common");
   const [emailEnabled, setEmailEnabled] = useState(true);
   const [inAppEnabled, setInAppEnabled] = useState(true);
+
+  const updatePrefs = trpc.user.updateNotificationPrefs.useMutation();
 
   const eventKeys = [
     "notifyIssueAssigned",
@@ -146,6 +234,13 @@ function NotificationsSection() {
   const handleEventToggle = useCallback((key: string, checked: boolean) => {
     setEventToggles((prev) => ({ ...prev, [key]: checked }));
   }, []);
+
+  const handleSave = useCallback(() => {
+    updatePrefs.mutate({
+      emailEnabled,
+      inAppEnabled,
+    });
+  }, [updatePrefs, emailEnabled, inAppEnabled]);
 
   return (
     <div className="space-y-6">
@@ -210,8 +305,26 @@ function NotificationsSection() {
             </div>
           ))}
         </CardContent>
-        <CardFooter>
-          <Button>{tc("save")}</Button>
+        <CardFooter className="flex-col items-start gap-2">
+          {updatePrefs.isSuccess && (
+            <p className="text-sm text-green-600 dark:text-green-400">
+              {t("preferencesSaved")}
+            </p>
+          )}
+          {updatePrefs.isError && (
+            <p className="text-sm text-destructive">
+              {updatePrefs.error.message}
+            </p>
+          )}
+          <Button
+            onClick={handleSave}
+            disabled={updatePrefs.isPending}
+          >
+            {updatePrefs.isPending && (
+              <Loader2 className="mr-2 size-4 animate-spin" aria-hidden="true" />
+            )}
+            {tc("save")}
+          </Button>
         </CardFooter>
       </Card>
     </div>
@@ -309,26 +422,35 @@ function AppearanceSection() {
 }
 
 /**
- * Represents an API token for display in the token list.
- */
-interface ApiToken {
-  id: string;
-  name: string;
-  lastUsed: string | null;
-  expiresAt: string | null;
-  createdAt: string;
-}
-
-/**
  * API token management section.
  *
  * @description Allows users to create, view, copy, and revoke personal
  * API tokens. New tokens are shown once and must be copied immediately.
+ * Backed by tRPC listTokens, createApiToken, and revokeToken procedures.
  */
 function ApiTokensSection() {
   const t = useTranslations("settings");
   const tc = useTranslations("common");
-  const [tokens] = useState<ApiToken[]>([]);
+  const utils = trpc.useUtils();
+
+  const { data: tokens, isLoading, error } = trpc.user.listTokens.useQuery({});
+
+  const createToken = trpc.user.createApiToken.useMutation({
+    onSuccess: (data) => {
+      setGeneratedToken(data.plainToken);
+      setShowCreateForm(false);
+      setNewTokenName("");
+      setNewTokenExpiry("never");
+      void utils.user.listTokens.invalidate();
+    },
+  });
+
+  const revokeToken = trpc.user.revokeToken.useMutation({
+    onSuccess: () => {
+      void utils.user.listTokens.invalidate();
+    },
+  });
+
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newTokenName, setNewTokenName] = useState("");
   const [newTokenExpiry, setNewTokenExpiry] = useState("never");
@@ -336,12 +458,20 @@ function ApiTokensSection() {
   const [showToken, setShowToken] = useState(false);
 
   const handleCreateToken = useCallback(() => {
-    // TODO: Call API to create token
-    // For now, show the form result
-    setGeneratedToken("ordx_" + Math.random().toString(36).slice(2, 18));
-    setShowCreateForm(false);
-    setNewTokenName("");
-  }, []);
+    const expiresInDays =
+      newTokenExpiry === "never" ? undefined : parseInt(newTokenExpiry, 10);
+    createToken.mutate({
+      name: newTokenName,
+      ...(expiresInDays !== undefined && { expiresInDays }),
+    });
+  }, [createToken, newTokenName, newTokenExpiry]);
+
+  const handleRevokeToken = useCallback(
+    (tokenId: string) => {
+      revokeToken.mutate({ tokenId });
+    },
+    [revokeToken],
+  );
 
   const handleCopyToken = useCallback(() => {
     if (generatedToken) {
@@ -350,6 +480,38 @@ function ApiTokensSection() {
       });
     }
   }, [generatedToken]);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-5 w-32" />
+            <Skeleton className="h-4 w-64" />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardContent className="flex items-center gap-2 py-8 text-destructive">
+            <AlertCircle className="size-4" aria-hidden="true" />
+            <p className="text-sm">{error.message}</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const tokenList = tokens ?? [];
 
   return (
     <div className="space-y-6">
@@ -438,11 +600,21 @@ function ApiTokensSection() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {createToken.isError && (
+                <p className="text-sm text-destructive">
+                  {createToken.error.message}
+                </p>
+              )}
+
               <div className="flex gap-2">
                 <Button
                   onClick={handleCreateToken}
-                  disabled={!newTokenName.trim()}
+                  disabled={!newTokenName.trim() || createToken.isPending}
                 >
+                  {createToken.isPending && (
+                    <Loader2 className="mr-2 size-4 animate-spin" aria-hidden="true" />
+                  )}
                   {t("createToken")}
                 </Button>
                 <Button
@@ -459,7 +631,7 @@ function ApiTokensSection() {
           )}
 
           {/* Token list */}
-          {tokens.length === 0 && !showCreateForm && !generatedToken && (
+          {tokenList.length === 0 && !showCreateForm && !generatedToken && (
             <div className="py-8 text-center">
               <Key
                 className="mx-auto mb-3 size-10 text-muted-foreground"
@@ -472,9 +644,9 @@ function ApiTokensSection() {
             </div>
           )}
 
-          {tokens.length > 0 && (
+          {tokenList.length > 0 && (
             <div className="divide-y">
-              {tokens.map((token) => (
+              {tokenList.map((token) => (
                 <div
                   key={token.id}
                   className="flex items-center justify-between py-3"
@@ -484,11 +656,19 @@ function ApiTokensSection() {
                     <div className="flex gap-3 text-xs text-muted-foreground">
                       <span>
                         {t("tokenLastUsed")}:{" "}
-                        {token.lastUsed ?? t("tokenNeverUsed")}
+                        {token.lastUsedAt
+                          ? new Intl.DateTimeFormat().format(
+                              new Date(token.lastUsedAt),
+                            )
+                          : t("tokenNeverUsed")}
                       </span>
                       {token.expiresAt ? (
                         <Badge variant="outline" className="text-xs">
-                          {t("tokenExpiresAt", { date: token.expiresAt })}
+                          {t("tokenExpiresAt", {
+                            date: new Intl.DateTimeFormat().format(
+                              new Date(token.expiresAt),
+                            ),
+                          })}
                         </Badge>
                       ) : (
                         <Badge variant="outline" className="text-xs">
@@ -497,8 +677,18 @@ function ApiTokensSection() {
                       )}
                     </div>
                   </div>
-                  <Button variant="ghost" size="sm" className="text-destructive">
-                    <Trash2 className="mr-1 size-4" aria-hidden="true" />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive"
+                    onClick={() => handleRevokeToken(token.id)}
+                    disabled={revokeToken.isPending}
+                  >
+                    {revokeToken.isPending ? (
+                      <Loader2 className="mr-1 size-4 animate-spin" aria-hidden="true" />
+                    ) : (
+                      <Trash2 className="mr-1 size-4" aria-hidden="true" />
+                    )}
                     {t("revokeToken")}
                   </Button>
                 </div>

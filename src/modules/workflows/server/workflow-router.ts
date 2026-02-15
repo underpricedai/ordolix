@@ -7,6 +7,11 @@ import {
 import * as workflowEngine from "./workflow-engine";
 
 export const workflowRouter = createRouter({
+  list: protectedProcedure
+    .query(async ({ ctx }) => {
+      return workflowEngine.listWorkflows(ctx.db, ctx.organizationId);
+    }),
+
   transition: protectedProcedure
     .input(transitionIssueInput)
     .mutation(async ({ ctx, input }) => {

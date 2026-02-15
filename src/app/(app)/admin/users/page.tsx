@@ -17,8 +17,8 @@ import {
   MoreHorizontal,
   UserCog,
   UserX,
-  UserCheck,
 } from "lucide-react";
+import { trpc } from "@/shared/lib/trpc";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
@@ -72,9 +72,6 @@ function getInitials(name: string | null | undefined): string {
     .slice(0, 2);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type UserRow = any;
-
 export default function AdminUsersPage() {
   const t = useTranslations("admin.users");
   const tc = useTranslations("common");
@@ -84,10 +81,49 @@ export default function AdminUsersPage() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("MEMBER");
 
-  // TODO: Replace with tRPC admin.listUsers query once admin router is implemented
-  const isLoading = false;
+  const utils = trpc.useUtils();
 
-  const users: UserRow[] = [];
+  const {
+    data: usersData,
+    isLoading,
+    error,
+  } = trpc.user.listUsers.useQuery({
+    search: searchQuery || undefined,
+  });
+
+  const inviteMutation = trpc.user.inviteUser.useMutation({
+    onSuccess: () => {
+      void utils.user.listUsers.invalidate();
+      setInviteOpen(false);
+      setInviteEmail("");
+      setInviteRole("MEMBER");
+    },
+  });
+
+  const updateRoleMutation = trpc.user.updateUserRole.useMutation({
+    onSuccess: () => {
+      void utils.user.listUsers.invalidate();
+    },
+  });
+
+  const deactivateMutation = trpc.user.deactivateUser.useMutation({
+    onSuccess: () => {
+      void utils.user.listUsers.invalidate();
+    },
+  });
+
+  const users = usersData?.items ?? [];
+
+  /**
+   * Handles the invite user form submission.
+   */
+  function handleInvite() {
+    if (!inviteEmail) return;
+    inviteMutation.mutate({
+      email: inviteEmail,
+      roleId: inviteRole,
+    });
+  }
 
   return (
     <div className="space-y-6 p-6">
@@ -142,14 +178,10 @@ export default function AdminUsersPage() {
                 {tc("cancel")}
               </Button>
               <Button
-                onClick={() => {
-                  // Invite logic handled via tRPC mutation
-                  setInviteOpen(false);
-                  setInviteEmail("");
-                  setInviteRole("MEMBER");
-                }}
+                onClick={handleInvite}
+                disabled={inviteMutation.isPending || !inviteEmail}
               >
-                {tc("invite")}
+                {inviteMutation.isPending ? tc("saving") : tc("invite")}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -172,10 +204,17 @@ export default function AdminUsersPage() {
         />
       </div>
 
+      {/* Error state */}
+      {error && (
+        <div className="rounded-md border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
+          {error.message}
+        </div>
+      )}
+
       {/* Users table */}
       {isLoading ? (
         <UserTableSkeleton />
-      ) : users.length === 0 ? (
+      ) : !error && users.length === 0 ? (
         <EmptyState
           icon={<Inbox className="size-12" />}
           title={t("noUsers")}
@@ -202,83 +241,90 @@ export default function AdminUsersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {users.map((user: UserRow) => (
-                <TableRow key={user.id}>
-                  <TableCell>
-                    <Avatar className="size-8">
-                      <AvatarImage
-                        src={user.image ?? undefined}
-                        alt={user.name ?? ""}
-                      />
-                      <AvatarFallback className="text-xs">
-                        {getInitials(user.name)}
-                      </AvatarFallback>
-                    </Avatar>
-                  </TableCell>
-                  <TableCell className="font-medium">{user.name ?? "-"}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {user.email}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="text-xs">
-                      {user.role}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="outline"
-                      className={
-                        user.isActive
-                          ? "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/30 dark:text-green-400"
-                          : "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-400"
-                      }
-                    >
-                      {user.isActive ? tc("active") : tc("inactive")}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {user.lastLoginAt
-                      ? new Intl.DateTimeFormat("en", {
-                          dateStyle: "medium",
-                        }).format(new Date(user.lastLoginAt))
-                      : t("neverLoggedIn")}
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-8"
-                          aria-label={tc("actions")}
-                        >
-                          <MoreHorizontal className="size-4" aria-hidden="true" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
-                          <UserCog className="mr-2 size-4" aria-hidden="true" />
-                          {t("editRole")}
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem>
-                          {user.isActive ? (
-                            <>
-                              <UserX className="mr-2 size-4" aria-hidden="true" />
-                              {t("deactivate")}
-                            </>
-                          ) : (
-                            <>
-                              <UserCheck className="mr-2 size-4" aria-hidden="true" />
-                              {t("activate")}
-                            </>
-                          )}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {users.map((member) => {
+                const user = (member as { user?: { id?: string; name?: string | null; email?: string | null; image?: string | null } }).user;
+                return (
+                  <TableRow key={member.id}>
+                    <TableCell>
+                      <Avatar className="size-8">
+                        <AvatarImage
+                          src={user?.image ?? undefined}
+                          alt={user?.name ?? ""}
+                        />
+                        <AvatarFallback className="text-xs">
+                          {getInitials(user?.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                    </TableCell>
+                    <TableCell className="font-medium">{user?.name ?? "-"}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {user?.email ?? "-"}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-xs">
+                        {(member as { role?: string }).role ?? "-"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className="border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/30 dark:text-green-400"
+                      >
+                        {tc("active")}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {(member as { joinedAt?: string | Date }).joinedAt
+                        ? new Intl.DateTimeFormat("en", {
+                            dateStyle: "medium",
+                          }).format(new Date((member as { joinedAt: string | Date }).joinedAt))
+                        : "-"}
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-8"
+                            aria-label={tc("actions")}
+                          >
+                            <MoreHorizontal className="size-4" aria-hidden="true" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => {
+                              if (user?.id) {
+                                const newRole = (member as { role?: string }).role === "admin" ? "member" : "admin";
+                                updateRoleMutation.mutate({
+                                  userId: user.id,
+                                  roleId: newRole,
+                                });
+                              }
+                            }}
+                          >
+                            <UserCog className="mr-2 size-4" aria-hidden="true" />
+                            {t("editRole")}
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => {
+                              if (user?.id) {
+                                deactivateMutation.mutate({ userId: user.id });
+                              }
+                            }}
+                          >
+                            <UserX className="mr-2 size-4" aria-hidden="true" />
+                            {t("deactivate")}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>

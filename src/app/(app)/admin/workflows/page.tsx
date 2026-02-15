@@ -34,18 +34,31 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
 import { EmptyState } from "@/shared/components/empty-state";
+import { trpc } from "@/shared/lib/trpc";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type WorkflowRow = any;
+/**
+ * Shape of a workflow row returned from the tRPC query.
+ */
+interface WorkflowRow {
+  id: string;
+  name: string;
+  description: string | null;
+  isDefault: boolean;
+  isActive: boolean;
+  createdAt: Date | string;
+  _count: {
+    workflowStatuses: number;
+    projects: number;
+  };
+}
 
 export default function AdminWorkflowsPage() {
   const t = useTranslations("admin.workflows");
   const tc = useTranslations("common");
 
-  // TODO: Replace with tRPC admin.listWorkflows query once admin router is implemented
-  const isLoading = false;
+  const { data, isLoading } = trpc.workflow.list.useQuery();
 
-  const workflows: WorkflowRow[] = [];
+  const workflows: WorkflowRow[] = (data as WorkflowRow[] | undefined) ?? [];
 
   return (
     <div className="space-y-6 p-6">

@@ -22,6 +22,7 @@ import {
   CheckCircle2,
   XCircle,
 } from "lucide-react";
+import { trpc } from "@/shared/lib/trpc";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
@@ -74,9 +75,6 @@ const WEBHOOK_EVENTS = [
 
 type WebhookEvent = (typeof WEBHOOK_EVENTS)[number];
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type WebhookRow = any;
-
 export default function AdminWebhooksPage() {
   const t = useTranslations("admin.webhooks");
   const tc = useTranslations("common");
@@ -90,10 +88,28 @@ export default function AdminWebhooksPage() {
   );
   const [testingId, setTestingId] = useState<string | null>(null);
 
-  // TODO: Replace with tRPC admin.listWebhooks query once admin router is implemented
-  const isLoading = false;
+  const utils = trpc.useUtils();
 
-  const webhooks: WebhookRow[] = [];
+  const {
+    data: webhooksData,
+    isLoading,
+    error,
+  } = trpc.admin.listWebhooks.useQuery({});
+
+  const webhooks = webhooksData?.items ?? [];
+
+  const createMutation = trpc.admin.createWebhook.useMutation({
+    onSuccess: () => {
+      void utils.admin.listWebhooks.invalidate();
+      resetForm();
+    },
+  });
+
+  const deleteMutation = trpc.admin.deleteWebhook.useMutation({
+    onSuccess: () => {
+      void utils.admin.listWebhooks.invalidate();
+    },
+  });
 
   /**
    * Toggles a webhook event in the selected events set.
@@ -122,11 +138,24 @@ export default function AdminWebhooksPage() {
   }
 
   /**
+   * Handles the create webhook form submission.
+   */
+  function handleCreate() {
+    if (!webhookUrl || selectedEvents.size === 0) return;
+    createMutation.mutate({
+      url: webhookUrl,
+      events: Array.from(selectedEvents),
+      secret: webhookSecret || undefined,
+      isActive: webhookActive,
+    });
+  }
+
+  /**
    * Simulates sending a test webhook payload to the configured URL.
    */
   function handleTestWebhook(webhookId: string) {
     setTestingId(webhookId);
-    // TODO: Replace with tRPC admin.testWebhook mutation
+    // TODO: Replace with tRPC admin.testWebhook mutation when implemented
     setTimeout(() => setTestingId(null), 2000);
   }
 
@@ -219,16 +248,28 @@ export default function AdminWebhooksPage() {
               <Button variant="outline" onClick={resetForm}>
                 {tc("cancel")}
               </Button>
-              <Button onClick={resetForm}>{tc("create")}</Button>
+              <Button
+                onClick={handleCreate}
+                disabled={createMutation.isPending || !webhookUrl || selectedEvents.size === 0}
+              >
+                {createMutation.isPending ? tc("saving") : tc("create")}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
 
+      {/* Error state */}
+      {error && (
+        <div className="rounded-md border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
+          {error.message}
+        </div>
+      )}
+
       {/* Webhooks table */}
       {isLoading ? (
         <WebhooksSkeleton />
-      ) : webhooks.length === 0 ? (
+      ) : !error && webhooks.length === 0 ? (
         <EmptyState
           icon={<Inbox className="size-12" />}
           title={t("noWebhooks")}
@@ -256,117 +297,125 @@ export default function AdminWebhooksPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {webhooks.map((webhook: WebhookRow) => (
-                <TableRow key={webhook.id}>
-                  <TableCell>
-                    {webhook.isActive ? (
-                      <CheckCircle2
-                        className="size-4 text-green-600 dark:text-green-400"
-                        aria-label={t("active")}
-                      />
-                    ) : (
-                      <XCircle
-                        className="size-4 text-muted-foreground"
-                        aria-label={t("inactive")}
-                      />
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Globe
-                        className="size-4 shrink-0 text-muted-foreground"
-                        aria-hidden="true"
-                      />
-                      <span className="truncate font-mono text-sm">
-                        {webhook.url}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {(webhook.events as string[])
-                        ?.slice(0, 3)
-                        .map((event: string) => (
-                          <Badge
-                            key={event}
-                            variant="secondary"
-                            className="text-xs"
-                          >
-                            {event}
-                          </Badge>
-                        ))}
-                      {(webhook.events as string[])?.length > 3 && (
-                        <Badge variant="outline" className="text-xs">
-                          +{(webhook.events as string[]).length - 3}
-                        </Badge>
+              {webhooks.map((webhook) => {
+                const events = (webhook.events ?? []) as string[];
+                return (
+                  <TableRow key={webhook.id}>
+                    <TableCell>
+                      {webhook.isActive ? (
+                        <CheckCircle2
+                          className="size-4 text-green-600 dark:text-green-400"
+                          aria-label={t("active")}
+                        />
+                      ) : (
+                        <XCircle
+                          className="size-4 text-muted-foreground"
+                          aria-label={t("inactive")}
+                        />
                       )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {webhook.lastTriggeredAt
-                      ? new Intl.DateTimeFormat("en", {
-                          dateStyle: "medium",
-                          timeStyle: "short",
-                        }).format(new Date(webhook.lastTriggeredAt))
-                      : t("neverTriggered")}
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="outline"
-                      className={
-                        webhook.isActive
-                          ? "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/30 dark:text-green-400"
-                          : "border-gray-200 bg-gray-50 text-gray-700 dark:border-gray-800 dark:bg-gray-900/30 dark:text-gray-400"
-                      }
-                    >
-                      {webhook.isActive ? t("active") : t("inactive")}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-8"
-                          aria-label={tc("actions")}
-                        >
-                          <MoreHorizontal
-                            className="size-4"
-                            aria-hidden="true"
-                          />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
-                          <Pencil
-                            className="mr-2 size-4"
-                            aria-hidden="true"
-                          />
-                          {tc("edit")}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleTestWebhook(webhook.id)}
-                          disabled={testingId === webhook.id}
-                        >
-                          <Send className="mr-2 size-4" aria-hidden="true" />
-                          {testingId === webhook.id
-                            ? t("testing")
-                            : t("testWebhook")}
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive">
-                          <Trash2
-                            className="mr-2 size-4"
-                            aria-hidden="true"
-                          />
-                          {tc("delete")}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Globe
+                          className="size-4 shrink-0 text-muted-foreground"
+                          aria-hidden="true"
+                        />
+                        <span className="truncate font-mono text-sm">
+                          {webhook.url}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {events
+                          .slice(0, 3)
+                          .map((event: string) => (
+                            <Badge
+                              key={event}
+                              variant="secondary"
+                              className="text-xs"
+                            >
+                              {event}
+                            </Badge>
+                          ))}
+                        {events.length > 3 && (
+                          <Badge variant="outline" className="text-xs">
+                            +{events.length - 3}
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {(webhook as { lastTriggeredAt?: string | Date | null }).lastTriggeredAt
+                        ? new Intl.DateTimeFormat("en", {
+                            dateStyle: "medium",
+                            timeStyle: "short",
+                          }).format(new Date((webhook as { lastTriggeredAt: string | Date }).lastTriggeredAt))
+                        : t("neverTriggered")}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={
+                          webhook.isActive
+                            ? "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/30 dark:text-green-400"
+                            : "border-gray-200 bg-gray-50 text-gray-700 dark:border-gray-800 dark:bg-gray-900/30 dark:text-gray-400"
+                        }
+                      >
+                        {webhook.isActive ? t("active") : t("inactive")}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-8"
+                            aria-label={tc("actions")}
+                          >
+                            <MoreHorizontal
+                              className="size-4"
+                              aria-hidden="true"
+                            />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem>
+                            <Pencil
+                              className="mr-2 size-4"
+                              aria-hidden="true"
+                            />
+                            {tc("edit")}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleTestWebhook(webhook.id)}
+                            disabled={testingId === webhook.id}
+                          >
+                            <Send className="mr-2 size-4" aria-hidden="true" />
+                            {testingId === webhook.id
+                              ? t("testing")
+                              : t("testWebhook")}
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => {
+                              deleteMutation.mutate({ id: webhook.id });
+                            }}
+                          >
+                            <Trash2
+                              className="mr-2 size-4"
+                              aria-hidden="true"
+                            />
+                            {tc("delete")}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>

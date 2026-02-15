@@ -251,15 +251,19 @@ export function GanttChart({ projectId }: GanttChartProps) {
     0,
   );
 
+  // Pixels per day for the current zoom level
+  const pxPerDay = useMemo(() => {
+    return ZOOM_UNIT_PX[zoomLevel] / (zoomLevel === "day" ? 1 : zoomLevel === "week" ? 7 : zoomLevel === "month" ? 30 : 90);
+  }, [zoomLevel]);
+
   // Today line offset
   const todayOffset = useMemo(() => {
     const now = new Date();
     const msPerDay = 86_400_000;
     const dayOffset =
       (now.getTime() - timelineStart.getTime()) / msPerDay;
-    const pxPerDay = ZOOM_UNIT_PX[zoomLevel] / (zoomLevel === "day" ? 1 : zoomLevel === "week" ? 7 : zoomLevel === "month" ? 30 : 90);
     return dayOffset * pxPerDay;
-  }, [timelineStart, zoomLevel]);
+  }, [timelineStart, pxPerDay]);
 
   const toggleCollapse = useCallback((id: string) => {
     setCollapsedIds((prev) => {
@@ -309,6 +313,21 @@ export function GanttChart({ projectId }: GanttChartProps) {
       timelineRef.current.scrollLeft += scrollAmount;
     }
   }, [zoomLevel]);
+
+  /**
+   * Handles date changes from bar resize or move interactions.
+   * In a full implementation, this would call a tRPC mutation to persist the change.
+   */
+  const handleBarDateChange = useCallback(
+    (id: string, newStartDate: string, newEndDate: string) => {
+      // TODO: Call tRPC mutation to persist the date change (e.g., gantt.updateDates)
+      // For now, log the change for development visibility
+      if (process.env.NODE_ENV !== "production") {
+        console.log(`[Gantt] Date change for ${id}: ${newStartDate} - ${newEndDate}`);
+      }
+    },
+    [],
+  );
 
   const handleGoToToday = useCallback(() => {
     if (timelineRef.current) {
@@ -548,6 +567,9 @@ export function GanttChart({ projectId }: GanttChartProps) {
                       bar={barData}
                       offsetPx={offsetPx}
                       widthPx={widthPx}
+                      pxPerDay={pxPerDay}
+                      onResize={handleBarDateChange}
+                      onMove={handleBarDateChange}
                     />
                   </div>
                 );

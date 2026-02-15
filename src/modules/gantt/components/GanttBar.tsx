@@ -31,8 +31,21 @@ interface GanttBarProps {
   offsetPx: number;
   /** Width of the bar in pixels */
   widthPx: number;
-  /** Callback when the bar is resized via dragging */
+  /** Pixels per day, used to convert drag deltas to date changes */
+  pxPerDay?: number;
+  /** Callback when the bar is resized via edge dragging */
   onResize?: (id: string, newStartDate: string, newEndDate: string) => void;
+  /** Callback when the bar is moved (dragged from the body) */
+  onMove?: (id: string, newStartDate: string, newEndDate: string) => void;
+}
+
+/**
+ * Adds a number of days to a date string, returning a new ISO date string (YYYY-MM-DD).
+ */
+function addDays(dateStr: string, days: number): string {
+  const date = new Date(dateStr);
+  date.setDate(date.getDate() + days);
+  return date.toISOString().split("T")[0]!;
 }
 
 const categoryColors: Record<StatusCategory, string> = {
@@ -60,13 +73,17 @@ const categoryProgressColors: Record<StatusCategory, string> = {
  * @example
  * <GanttBar bar={barData} offsetPx={120} widthPx={200} onResize={handleResize} />
  */
-export function GanttBar({ bar, offsetPx, widthPx, onResize }: GanttBarProps) {
+export function GanttBar({ bar, offsetPx, widthPx, pxPerDay = 17.14, onResize, onMove }: GanttBarProps) {
   const t = useTranslations("gantt");
   const tc = useTranslations("common");
   const barRef = useRef<HTMLDivElement>(null);
-  const [isDragging, setIsDragging] = useState<"start" | "end" | null>(null);
+  const [isDragging, setIsDragging] = useState<"start" | "end" | "move" | null>(null);
 
-  const handleMouseDown = useCallback(
+  /**
+   * Handles edge resize dragging (left or right handle).
+   * On mouseup, computes the day delta from the pixel offset and calls onResize.
+   */
+  const handleResizeMouseDown = useCallback(
     (edge: "start" | "end") => (e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
@@ -88,22 +105,91 @@ export function GanttBar({ bar, offsetPx, widthPx, onResize }: GanttBarProps) {
         }
       };
 
-      const handleMouseUp = () => {
+      const handleMouseUp = (upEvent: MouseEvent) => {
         setIsDragging(null);
         document.removeEventListener("mousemove", handleMouseMove);
         document.removeEventListener("mouseup", handleMouseUp);
+
+        const delta = upEvent.clientX - startX;
+        const dayDelta = Math.round(delta / pxPerDay);
+
         // Reset inline styles
         if (barRef.current) {
           barRef.current.style.width = "";
           barRef.current.style.left = "";
         }
-        // TODO: Compute new dates from pixel delta and call onResize
+
+        // Only fire callback if the drag actually changed dates
+        if (dayDelta !== 0 && onResize) {
+          if (edge === "start") {
+            const newStart = addDays(bar.startDate, dayDelta);
+            // Prevent start from going past end
+            if (new Date(newStart) < new Date(bar.endDate)) {
+              onResize(bar.id, newStart, bar.endDate);
+            }
+          } else {
+            const newEnd = addDays(bar.endDate, dayDelta);
+            // Prevent end from going before start
+            if (new Date(newEnd) > new Date(bar.startDate)) {
+              onResize(bar.id, bar.startDate, newEnd);
+            }
+          }
+        }
       };
 
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
     },
-    [offsetPx, widthPx, onResize],
+    [offsetPx, widthPx, pxPerDay, onResize, bar.id, bar.startDate, bar.endDate],
+  );
+
+  /**
+   * Handles whole-bar move dragging (drag from the bar body).
+   * On mouseup, computes the day delta from the pixel offset and calls onMove.
+   */
+  const handleMoveMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      // Only handle left-click, and only if we're not on a resize handle
+      if (e.button !== 0) return;
+      const target = e.target as HTMLElement;
+      if (target.getAttribute("role") === "separator") return;
+
+      e.preventDefault();
+      setIsDragging("move");
+
+      const startX = e.clientX;
+
+      const handleMouseMove = (moveEvent: MouseEvent) => {
+        if (barRef.current) {
+          const delta = moveEvent.clientX - startX;
+          barRef.current.style.left = `${offsetPx + delta}px`;
+        }
+      };
+
+      const handleMouseUp = (upEvent: MouseEvent) => {
+        setIsDragging(null);
+        document.removeEventListener("mousemove", handleMouseMove);
+        document.removeEventListener("mouseup", handleMouseUp);
+
+        const delta = upEvent.clientX - startX;
+        const dayDelta = Math.round(delta / pxPerDay);
+
+        // Reset inline styles
+        if (barRef.current) {
+          barRef.current.style.left = "";
+        }
+
+        if (dayDelta !== 0 && onMove) {
+          const newStart = addDays(bar.startDate, dayDelta);
+          const newEnd = addDays(bar.endDate, dayDelta);
+          onMove(bar.id, newStart, newEnd);
+        }
+      };
+
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+    },
+    [offsetPx, pxPerDay, onMove, bar.id, bar.startDate, bar.endDate],
   );
 
   const formattedStart = new Intl.DateTimeFormat("en", {
@@ -123,12 +209,15 @@ export function GanttBar({ bar, offsetPx, widthPx, onResize }: GanttBarProps) {
           className={cn(
             "group absolute top-1 h-7 rounded-sm transition-shadow hover:shadow-md",
             categoryColors[bar.statusCategory],
-            isDragging && "shadow-lg ring-2 ring-primary",
+            isDragging === "move" && "cursor-grabbing shadow-lg ring-2 ring-primary",
+            isDragging && isDragging !== "move" && "shadow-lg ring-2 ring-primary",
+            !isDragging && onMove && "cursor-grab",
           )}
           style={{
             left: `${offsetPx}px`,
             width: `${Math.max(widthPx, 24)}px`,
           }}
+          onMouseDown={handleMoveMouseDown}
         >
           {/* Progress fill */}
           <div
@@ -141,7 +230,7 @@ export function GanttBar({ bar, offsetPx, widthPx, onResize }: GanttBarProps) {
           />
 
           {/* Bar label (visible on wider bars) */}
-          <span className="relative z-10 truncate px-2 text-xs font-medium leading-7 text-white">
+          <span className="relative z-10 truncate px-2 text-xs font-medium leading-7 text-white select-none">
             {widthPx > 80 ? bar.issueKey : ""}
           </span>
 
@@ -151,7 +240,7 @@ export function GanttBar({ bar, offsetPx, widthPx, onResize }: GanttBarProps) {
             aria-orientation="vertical"
             aria-label={t("resizeStart")}
             className="absolute inset-y-0 left-0 w-2 cursor-col-resize opacity-0 group-hover:opacity-100"
-            onMouseDown={handleMouseDown("start")}
+            onMouseDown={handleResizeMouseDown("start")}
           />
 
           {/* Right resize handle */}
@@ -160,7 +249,7 @@ export function GanttBar({ bar, offsetPx, widthPx, onResize }: GanttBarProps) {
             aria-orientation="vertical"
             aria-label={t("resizeEnd")}
             className="absolute inset-y-0 right-0 w-2 cursor-col-resize opacity-0 group-hover:opacity-100"
-            onMouseDown={handleMouseDown("end")}
+            onMouseDown={handleResizeMouseDown("end")}
           />
         </div>
       </TooltipTrigger>
