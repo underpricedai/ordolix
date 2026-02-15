@@ -11,7 +11,7 @@ Last updated: 2026-02-14
 ### Authentication Flow
 
 ```
-User → Azure AD SSO → Auth.js (JWT session) → Next.js Middleware
+User → Email/Password (Credentials) → Auth.js (JWT session) → Next.js Middleware
   → tRPC (protectedProcedure + RBAC) → Prisma (tenant-scoped query) → Neon PostgreSQL
 ```
 
@@ -40,7 +40,7 @@ Browser ──TLS 1.2+──▶ Vercel Edge (middleware: auth + headers)
 
 | Control | Implementation |
 |---------|---------------|
-| Authentication | Azure AD SSO via Auth.js (OIDC/OAuth 2.0) |
+| Authentication | Email/Password via Auth.js Credentials provider (bcrypt); Azure AD planned for Track B |
 | Authorization | RBAC at tRPC middleware layer, 6 permission levels |
 | Multi-tenancy | Row-level isolation via `organizationId` on every table |
 | Input validation | Zod schemas on all tRPC/REST inputs |

@@ -8,7 +8,7 @@
 
 | Entity | Description | Key Fields/Relationships |
 |--------|-------------|--------------------------|
-| User | Azure AD synced user | email (unique), name, locale, timezone. Has Roles, Issues, TimeLogs, Approvals, GroupMembers, ApiTokens |
+| User | Authenticated user (email/password or Azure AD) | email (unique), name, locale, timezone. Has Roles, Issues, TimeLogs, Approvals, GroupMembers, ApiTokens |
 | Account | OAuth provider account | userId, provider, providerAccountId, access_token, refresh_token. Belongs to User |
 | Session | Active user session | sessionToken (unique), userId, expires. Belongs to User |
 | VerificationToken | Email verification token | identifier, token, expires. Composite unique on [identifier, token] |

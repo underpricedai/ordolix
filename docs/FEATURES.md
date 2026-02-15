@@ -11,7 +11,7 @@ These are required for the stakeholder demo at end of Month 3.
 | **Epic Sum Up (Rollup)** | Values computed async on child change; cached in Redis; pushed via real-time |
 | **Workflow Engine** | Finite state machine as adjacency list in Postgres; sync validation; async post-functions via QStash |
 | **Board Views** | Kanban + list with drag-and-drop; optimistic UI; real-time sync across tabs |
-| **Gantt Charts** | Dependencies as GanttDependency records; critical path client-side via topological sort; D3.js rendering |
+| **Gantt Charts** | Dependencies as GanttDependency records; critical path client-side via topological sort; Recharts rendering |
 | **Search (AQL)** | Custom parser: Lexer → Parser → AST → SQL Generator; parameterized queries only |
 | **Dashboards** | Drag-and-drop widget grid; widgets reference saved filters or inline AQL |
 | **Plans / Advanced Roadmaps** | Cross-project timeline planning with scenarios; Plan module with scope (projects/epics), timeline view, scenario creation/comparison/application; multi-project issue queries with scenario overrides (JSON). Replaces Jira Advanced Roadmaps / BigPicture |

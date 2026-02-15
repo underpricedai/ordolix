@@ -5,7 +5,7 @@ These standards apply to EVERY module. Reference before beginning any new module
 ## Security & Compliance
 
 ### Authentication
-- NextAuth.js / Auth.js with Azure AD provider
+- NextAuth.js / Auth.js with Credentials provider (email/password, bcrypt). Azure AD planned for production (Track B).
 - JWT-based sessions (stateless, Vercel-compatible)
 - 1-hour access token, automatic silent refresh, 90-day refresh token
 - Session revocation via user version counter (admin panel)
@@ -37,7 +37,7 @@ These standards apply to EVERY module. Reference before beginning any new module
 | Insecure Design | Threat modeling; isolated-vm sandbox; least privilege |
 | Security Misconfiguration | Zod env validation on startup; security headers (CSP, HSTS, X-Frame-Options) |
 | Vulnerable Components | npm audit + Dependabot + CodeQL in CI; block merge on critical/high |
-| Auth Failures | NextAuth.js; rate limiting on login; account lockout (Azure AD) |
+| Auth Failures | NextAuth.js Credentials; rate limiting on login; bcrypt password verification with timing-attack prevention |
 | Data Integrity | Webhook HMAC verification; audited dependencies; CI-gated deployment |
 | Logging Failures | All security events logged; structured logging; immutable audit log |
 | SSRF | Scripting engine HTTP blocked; integration URLs allow-listed; user URLs validated |
@@ -140,7 +140,7 @@ Issue Assigned, Comment Notification, Status Change, SLA Warning, SLA Breached, 
 - Tailwind CSS class strategy (dark: prefix on html element)
 - CSS variables for all colors with light/dark values
 - No flash: theme class applied in HTML head before React hydration
-- Charts/D3: theme-aware color scales
+- Charts/Recharts: theme-aware color schemes
 - Monaco editor: auto-switch light/dark theme
 - Stored in user profile (synced) with localStorage fallback
 
@@ -168,7 +168,7 @@ Error handling: position info, suggestions for typos, type mismatch detection, n
 | Bulk Transition | 500 | Per-issue validator failures don't block others |
 | Bulk Delete | 100 | Soft-delete, admin only |
 | CSV Import (Issues/Assets) | 5,000 rows | Column mapping preview, validate before import |
-| CSV Import (Users) | 1,000 rows | Azure AD sync preferred |
+| CSV Import (Users) | 1,000 rows | Admin bulk import |
 | Bulk Export | No limit | Background job, download link via notification |
 
 UX: checkboxes + "Select All" (filter-based), bottom action bar, progress bar, undo within 30s.
@@ -179,4 +179,4 @@ UX: checkboxes + "Select All" (filter-based), bottom action bar, progress bar, u
 Welcome screen → Theme selection → Notification preferences → Project tour (tooltip highlights) → Keyboard shortcuts intro → Dismissable
 
 ### Project Setup Wizard
-Project basics → Template selection (Kanban/Scrum/Bug Tracking/ITSM/Blank) → Team setup (Azure AD autocomplete) → Board customization → Integrations → Review and create
+Project basics → Template selection (Kanban/Scrum/Bug Tracking/ITSM/Blank) → Team setup (email search autocomplete) → Board customization → Integrations → Review and create

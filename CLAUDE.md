@@ -16,7 +16,7 @@ Ordolix is a Jira Cloud replacement built as a modern, AI-native enterprise issu
 | API | tRPC (internal) + REST /api/v1/ (external) |
 | Database | Neon (PostgreSQL 16) via Prisma ORM |
 | Cache/Queue | Upstash Redis + Upstash QStash |
-| Auth | NextAuth.js / Auth.js with Azure AD |
+| Auth | NextAuth.js / Auth.js with Credentials (email/password) |
 | Real-time | Ably or SSE + Upstash pub/sub |
 | Storage | Cloudflare R2 (S3-compatible) |
 | Background Jobs | Trigger.dev (long-running), QStash (short) |
@@ -24,7 +24,7 @@ Ordolix is a Jira Cloud replacement built as a modern, AI-native enterprise issu
 | Logging | Pino (structured JSON) |
 | Email | Resend + React Email |
 | Search | AQL (Ordolix Query Language) - custom parser |
-| Charts | D3.js (Gantt, visualizations) |
+| Charts | Recharts (dashboards, reports, Gantt visualizations) |
 | Code Editor | Monaco Editor (ScriptRunner) |
 | i18n | next-intl |
 

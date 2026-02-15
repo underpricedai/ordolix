@@ -27,7 +27,7 @@ It is now possible to build an enterprise issue tracker that is both more powerf
 - Build all add-on functionality natively (time tracking, Gantt, scripting, SLAs, test management, forms, CMDB, approvals, retros)
 - Feature parity with current organizational usage within 8 months
 - Integrate with SharePoint, GitHub, Salesforce, Power BI, and MCP
-- Seamless SSO with Azure AD / Entra ID
+- Email/password authentication (Track A dev); Azure AD SSO planned for Track B production
 - Full data migration from Jira with zero data loss
 - Self-documenting, test-driven codebase for Claude Code autonomous development
 
@@ -51,7 +51,7 @@ It is now possible to build an enterprise issue tracker that is both more powerf
 - Full-text search with AQL (Ordolix Query Language)
 - Comments, @mentions, attachments, activity history, checklists
 - Automation engine, dashboard system, notification system
-- SSO/SAML with Azure AD, REST API with OpenAPI docs
+- Auth (email/password dev, Azure AD production), REST API with OpenAPI docs
 - Jira data migration tooling, audit logging
 - Service management: request types, queues, SLA tracking, customer portal
 

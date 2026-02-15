@@ -9,8 +9,8 @@
 | TypeScript (strict mode) | Type safety across entire codebase. strict: true, noUncheckedIndexedAccess: true |
 | Tailwind CSS | Utility-first CSS. No custom CSS files. |
 | shadcn/ui | Accessible components built on Radix UI. Copy-paste model. |
-| React Query (TanStack) | Server state with caching, optimistic updates, background refetching |
-| D3.js | Gantt charts, dependency diagrams, custom visualizations |
+| tRPC React Query | tRPC's built-in React Query integration for server state, caching, optimistic updates |
+| Recharts | Bar, line, pie, area charts for dashboards, reports, burndown, velocity, CFD |
 | Monaco Editor | In-browser code editor for ScriptRunner |
 | next-intl | i18n with App Router support |
 | Tiptap or Plate | Rich text editor for descriptions and comments |
@@ -38,7 +38,7 @@
 | Real-time | Ably / SSE + Upstash | Socket.io |
 | Queue | QStash | BullMQ |
 | Email | Resend | Azure Communication Services |
-| Auth | Azure AD Dev Tenant | Azure AD Production |
+| Auth | Email/Password (Credentials) | Azure AD Production |
 | Secrets | Vercel Env Vars | Azure Key Vault |
 
 ## Two-Track Hosting Strategy
@@ -157,7 +157,7 @@ ordolix-files/                  — Source specification documents
 
 ## Test Infrastructure
 
-- **Vitest** with **1,716+ unit/integration tests** across **116 test files**
+- **Vitest** with **1,761+ unit/integration tests** across **122 test files**
 - Mock-based testing pattern using `vi.fn()` (no real DB connections in tests)
 - Factory pattern in `tests/fixtures/` for test data generation (`createTestIssue()`, `createTestWorkflow()`, etc.)
 - Co-located test files adjacent to source code (`*.test.ts`)
@@ -165,9 +165,9 @@ ordolix-files/                  — Source specification documents
 
 ## tRPC Router Architecture
 
-The appRouter composes **31 domain-specific routers**, each owning its own slice of the API surface:
+The appRouter composes **32 domain-specific routers**, each owning its own slice of the API surface:
 
-`project`, `issue`, `workflow`, `board`, `timeTracking`, `checklist`, `epicRollup`, `gantt`, `dashboard`, `approval`, `script`, `notification`, `retro`, `testManagement`, `sla`, `automation`, `form`, `report`, `asset`, `incident`, `queue`, `sprint`, `customField`, `search`, `user`, `admin`, `permission`, `plan`, `structure`, `budget`, `capacity`
+`project`, `issue`, `workflow`, `board`, `timeTracking`, `checklist`, `epicRollup`, `gantt`, `dashboard`, `approval`, `script`, `notification`, `retro`, `testManagement`, `sla`, `automation`, `form`, `report`, `asset`, `incident`, `integration`, `queue`, `sprint`, `customField`, `search`, `user`, `admin`, `permission`, `plan`, `structure`, `budget`, `capacity`
 
 Routers are defined in their respective `src/modules/[module]/server/` directories and merged into the root router in `src/server/trpc/router.ts`.
 
