@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { Bell, Search, Moon, Sun, LogOut, User, Settings } from "lucide-react";
 import Link from "next/link";
+import { signOut } from "next-auth/react";
 import { useCallback, useState } from "react";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
@@ -204,7 +205,7 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
             <DropdownMenuItem
               onClick={() => {
                 document.cookie = "dev-user-id=; path=/; max-age=0";
-                window.location.href = "/auth/signin";
+                signOut({ callbackUrl: "/auth/signin" });
               }}
             >
               <LogOut className="mr-2 size-4" aria-hidden="true" />

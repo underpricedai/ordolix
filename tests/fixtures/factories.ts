@@ -36,6 +36,7 @@ export function createUser(overrides: Record<string, unknown> = {}) {
     id,
     name: `Test User ${id}`,
     email: `user-${id}@test.ordolix.dev`,
+    passwordHash: null,
     ...overrides,
   };
 }

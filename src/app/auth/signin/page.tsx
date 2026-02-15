@@ -1,8 +1,8 @@
 /**
- * Sign-in page with dev user picker and Azure AD SSO.
+ * Sign-in page with dev user picker and email/password login.
  *
  * @description In development mode, shows a list of seeded users to sign in as.
- * In production, shows the Azure AD SSO button.
+ * In production, shows an email/password form using NextAuth credentials.
  *
  * @module auth-signin
  */
@@ -11,8 +11,11 @@
 import { useState, Suspense, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { Shield, Loader2, User } from "lucide-react";
+import { signIn } from "next-auth/react";
+import { Shield, Loader2, User, LogIn } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
+import { Input } from "@/shared/components/ui/input";
+import { Label } from "@/shared/components/ui/label";
 import {
   Card,
   CardContent,
@@ -102,20 +105,91 @@ function DevUserPicker() {
 }
 
 /**
+ * Email/password login form using NextAuth credentials provider.
+ */
+function CredentialsForm() {
+  const t = useTranslations("signIn");
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get("callbackUrl") ?? "/";
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setIsLoading(true);
+
+    const result = await signIn("credentials", {
+      email,
+      password,
+      redirect: false,
+    });
+
+    if (result?.error) {
+      setError(t("invalidCredentials"));
+      setIsLoading(false);
+    } else {
+      window.location.href = callbackUrl;
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {error && (
+        <div
+          className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive"
+          role="alert"
+        >
+          {error}
+        </div>
+      )}
+      <div className="space-y-2">
+        <Label htmlFor="email">{t("emailLabel")}</Label>
+        <Input
+          id="email"
+          type="email"
+          placeholder={t("emailPlaceholder")}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          autoComplete="email"
+          autoFocus
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="password">{t("passwordLabel")}</Label>
+        <Input
+          id="password"
+          type="password"
+          placeholder={t("passwordPlaceholder")}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          autoComplete="current-password"
+        />
+      </div>
+      <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
+        {isLoading ? (
+          <Loader2 className="mr-2 size-4 animate-spin" aria-hidden="true" />
+        ) : (
+          <LogIn className="mr-2 size-4" aria-hidden="true" />
+        )}
+        {isLoading ? t("signingIn") : t("signInButton")}
+      </Button>
+    </form>
+  );
+}
+
+/**
  * Inner component that reads search params (must be wrapped in Suspense).
  */
 function SignInForm() {
   const t = useTranslations("signIn");
   const searchParams = useSearchParams();
   const errorParam = searchParams.get("error");
-  const [isLoading, setIsLoading] = useState(false);
   const isDev = process.env.NODE_ENV !== "production";
-
-  function handleSignIn() {
-    setIsLoading(true);
-    // In production, this would call signIn("azure-ad") from next-auth
-    window.location.href = "/";
-  }
 
   return (
     <Card className="w-full max-w-md">
@@ -138,23 +212,7 @@ function SignInForm() {
           </div>
         )}
 
-        {isDev ? (
-          <DevUserPicker />
-        ) : (
-          <Button
-            className="w-full"
-            size="lg"
-            onClick={handleSignIn}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <Loader2 className="mr-2 size-4 animate-spin" aria-hidden="true" />
-            ) : (
-              <Shield className="mr-2 size-4" aria-hidden="true" />
-            )}
-            {isLoading ? t("signingIn") : t("ssoButton")}
-          </Button>
-        )}
+        {isDev ? <DevUserPicker /> : <CredentialsForm />}
 
         <p className="text-center text-xs text-muted-foreground">
           {t("noAccount")}

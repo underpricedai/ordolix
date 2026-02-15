@@ -1,5 +1,6 @@
 import { PrismaNeon } from "@prisma/adapter-neon";
 import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
 import { seedDefaults } from "../tests/fixtures/scenarios";
 
 const adapter = new PrismaNeon({ connectionString: process.env.DATABASE_URL! });
@@ -57,12 +58,13 @@ async function main() {
   ] as const;
 
   const users: Record<string, string> = {};
+  const defaultPasswordHash = await bcrypt.hash("password123", 12);
 
   for (const def of userDefs) {
     const user = await prisma.user.upsert({
       where: { email: def.email },
-      update: { name: def.name },
-      create: { name: def.name, email: def.email },
+      update: { name: def.name, passwordHash: defaultPasswordHash },
+      create: { name: def.name, email: def.email, passwordHash: defaultPasswordHash },
     });
     users[def.email] = user.id;
 
@@ -80,8 +82,8 @@ async function main() {
   // Keep the old dev user as an alias for frank
   const devUser = await prisma.user.upsert({
     where: { email: "dev@ordolix.local" },
-    update: {},
-    create: { name: "Dev User", email: "dev@ordolix.local" },
+    update: { passwordHash: defaultPasswordHash },
+    create: { name: "Dev User", email: "dev@ordolix.local", passwordHash: defaultPasswordHash },
   });
   await prisma.organizationMember.upsert({
     where: {

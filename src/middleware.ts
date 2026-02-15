@@ -79,6 +79,14 @@ export default auth((request: NextRequest) => {
   const session = (request as any).auth;
 
   if (!session) {
+    // In development, let requests through — tRPC uses createDevSession() fallback
+    if (process.env.NODE_ENV !== "production") {
+      const response = NextResponse.next();
+      applySecurityHeaders(response);
+      response.headers.set("X-Request-Id", crypto.randomUUID());
+      return response;
+    }
+
     const signInUrl = new URL("/auth/signin", request.url);
     signInUrl.searchParams.set("callbackUrl", request.url);
     return NextResponse.redirect(signInUrl);
