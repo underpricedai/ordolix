@@ -262,7 +262,8 @@
       "done": "Done"
     },
     "issueCount": "{count, plural, =0 {No issues} =1 {1 issue} other {# issues}}",
-    "filterToggle": "Toggle filters"
+    "filterToggle": "Toggle filters",
+    "boardType": "Board Type"
   },
   "workflows": {
     "title": "Workflows",
