@@ -6,6 +6,9 @@ config({ path: path.join(__dirname, "..", ".env") });
 
 export default defineConfig({
   schema: path.join(__dirname, "schema.prisma"),
+  migrations: {
+    seed: "npx tsx prisma/seed.ts",
+  },
   datasource: {
     url: process.env.DATABASE_URL,
   },
