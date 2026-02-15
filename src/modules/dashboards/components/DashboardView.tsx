@@ -75,7 +75,7 @@ export function DashboardView({ dashboardId }: DashboardViewProps) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const dashboard = dashboardData as any;
   const widgets: WidgetData[] = useMemo(() => {
-    if (!dashboard?.widgets) return [];
+    if (!Array.isArray(dashboard?.widgets)) return [];
     return dashboard.widgets as WidgetData[];
   }, [dashboard]);
 

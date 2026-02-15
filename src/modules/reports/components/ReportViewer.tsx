@@ -241,7 +241,8 @@ function ReportChart({
 }) {
   const vizType = (visualization?.type as string) ?? "bar";
   const xAxisKey = (visualization?.xAxis as string) ?? columns[0] ?? "name";
-  const yAxisKeys = (visualization?.yAxis as string[]) ?? columns.slice(1);
+  const rawYAxis = visualization?.yAxis;
+  const yAxisKeys = Array.isArray(rawYAxis) ? rawYAxis as string[] : columns.slice(1);
 
   if (rows.length === 0) {
     return (

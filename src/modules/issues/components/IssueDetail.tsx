@@ -221,7 +221,7 @@ function IssueHeader({ issue }: { issue: any }) {
   const t = useTranslations("issues");
   const tc = useTranslations("common");
   const [isEditingSummary, setIsEditingSummary] = useState(false);
-  const [summaryValue, setSummaryValue] = useState(issue.summary);
+  const [summaryValue, setSummaryValue] = useState(issue.summary ?? "");
 
   const utils = trpc.useUtils();
 
