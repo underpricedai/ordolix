@@ -126,6 +126,7 @@ model Organization {
   teamsChannelMappings TeamsChannelMapping[]
   outlookSubscriptions OutlookSubscription[]
   mcpSessions          MCPSession[]
+  webhookEndpoints     WebhookEndpoint[]
 }
 
 model OrganizationMember {
@@ -1391,4 +1392,20 @@ model UsageMetric {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId, metric, measuredAt])
+}
+
+model WebhookEndpoint {
+  id              String    @id @default(cuid())
+  organizationId  String
+  url             String
+  events          Json      @default("[]")
+  secretHash      String?
+  isActive        Boolean   @default(true)
+  lastTriggeredAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
 }

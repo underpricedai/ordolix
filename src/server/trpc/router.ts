@@ -1,4 +1,5 @@
 import { createRouter } from "./init";
+import { projectRouter } from "@/modules/projects/server/project-router";
 import { issueRouter } from "@/modules/issues/server/issue-router";
 import { workflowRouter } from "@/modules/workflows/server/workflow-router";
 import { boardRouter } from "@/modules/boards/server/board-router";
@@ -22,8 +23,11 @@ import { queueRouter } from "@/modules/queues/server/queue-router";
 import { sprintRouter } from "@/modules/sprints/server/sprint-router";
 import { customFieldRouter } from "@/modules/custom-fields/server/custom-field-router";
 import { searchRouter } from "@/modules/search/server/search-router";
+import { userRouter } from "@/modules/users/server/user-router";
+import { adminRouter } from "@/modules/admin/server/admin-router";
 
 export const appRouter = createRouter({
+  project: projectRouter,
   issue: issueRouter,
   workflow: workflowRouter,
   board: boardRouter,
@@ -47,6 +51,8 @@ export const appRouter = createRouter({
   sprint: sprintRouter,
   customField: customFieldRouter,
   search: searchRouter,
+  user: userRouter,
+  admin: adminRouter,
 });
 
 export type AppRouter = typeof appRouter;
