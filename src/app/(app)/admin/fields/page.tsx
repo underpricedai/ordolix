@@ -32,15 +32,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/components/ui/table";
+import { ResponsiveTable, type ResponsiveColumnDef } from "@/shared/components/responsive-table";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/shared/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+  ResponsiveDialogTrigger,
+} from "@/shared/components/responsive-dialog";
+import { Card, CardContent } from "@/shared/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -113,6 +115,100 @@ export default function AdminFieldsPage() {
     setCreateOpen(false);
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const fieldColumns: ResponsiveColumnDef<any>[] = [
+    {
+      key: "drag",
+      header: "",
+      priority: 2,
+      className: "w-[40px]",
+      cell: () => (
+        <button className="cursor-grab text-muted-foreground hover:text-foreground" aria-label={t("dragToReorder")}>
+          <GripVertical className="size-4" aria-hidden="true" />
+        </button>
+      ),
+    },
+    {
+      key: "name",
+      header: tc("name"),
+      priority: 1,
+      cell: (field) => <span className="font-medium">{field.name}</span>,
+    },
+    {
+      key: "type",
+      header: tc("type"),
+      priority: 3,
+      className: "w-[140px]",
+      cell: (field) => (
+        <Badge variant="secondary" className="text-xs">
+          {t(`types.${field.fieldType}` as "types.text")}
+        </Badge>
+      ),
+    },
+    {
+      key: "context",
+      header: t("context"),
+      priority: 4,
+      className: "w-[140px]",
+      cell: (field) => {
+        const context = field.context as { type?: string } | null;
+        return (
+          <Badge variant="outline" className="text-xs">
+            {context?.type ?? "issue"}
+          </Badge>
+        );
+      },
+    },
+    {
+      key: "required",
+      header: tc("required"),
+      priority: 4,
+      className: "w-[100px]",
+      cell: (field) =>
+        field.isRequired ? (
+          <Badge className="text-xs">{tc("required")}</Badge>
+        ) : (
+          <span className="text-xs text-muted-foreground">{tc("optional")}</span>
+        ),
+    },
+    {
+      key: "screens",
+      header: t("screens"),
+      priority: 5,
+      className: "w-[140px]",
+      cell: () => <span className="text-sm text-muted-foreground">-</span>,
+    },
+    {
+      key: "actions",
+      header: tc("actions"),
+      priority: 1,
+      className: "w-[60px]",
+      cell: (field) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="size-8" aria-label={tc("actions")}>
+              <MoreHorizontal className="size-4" aria-hidden="true" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem>
+              <Pencil className="mr-2 size-4" aria-hidden="true" />
+              {tc("edit")}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-destructive"
+              onClick={() => deleteMutation.mutate({ id: field.id })}
+            >
+              <Trash2 className="mr-2 size-4" aria-hidden="true" />
+              {tc("delete")}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+    },
+  ];
+
   /**
    * Handles the create field form submission.
    */
@@ -127,7 +223,7 @@ export default function AdminFieldsPage() {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-4 sm:p-6">
       {/* Page header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -137,18 +233,18 @@ export default function AdminFieldsPage() {
           <p className="text-sm text-muted-foreground">{t("description")}</p>
         </div>
 
-        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogTrigger asChild>
+        <ResponsiveDialog open={createOpen} onOpenChange={setCreateOpen}>
+          <ResponsiveDialogTrigger asChild>
             <Button>
               <Plus className="mr-2 size-4" aria-hidden="true" />
               {t("createField")}
             </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>{t("createField")}</DialogTitle>
-              <DialogDescription>{t("createFieldDescription")}</DialogDescription>
-            </DialogHeader>
+          </ResponsiveDialogTrigger>
+          <ResponsiveDialogContent className="sm:max-w-md">
+            <ResponsiveDialogHeader>
+              <ResponsiveDialogTitle>{t("createField")}</ResponsiveDialogTitle>
+              <ResponsiveDialogDescription>{t("createFieldDescription")}</ResponsiveDialogDescription>
+            </ResponsiveDialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
                 <Label htmlFor="field-name">{t("fieldName")}</Label>
@@ -195,7 +291,7 @@ export default function AdminFieldsPage() {
                 <Label htmlFor="field-required">{t("isRequired")}</Label>
               </div>
             </div>
-            <DialogFooter>
+            <ResponsiveDialogFooter>
               <Button variant="outline" onClick={resetForm}>
                 {tc("cancel")}
               </Button>
@@ -205,9 +301,9 @@ export default function AdminFieldsPage() {
               >
                 {createMutation.isPending ? tc("saving") : tc("create")}
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </ResponsiveDialogFooter>
+          </ResponsiveDialogContent>
+        </ResponsiveDialog>
       </div>
 
       {/* Error state */}
@@ -234,92 +330,55 @@ export default function AdminFieldsPage() {
         />
       ) : (
         <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[40px]">
-                  <span className="sr-only">{t("dragToReorder")}</span>
-                </TableHead>
-                <TableHead>{tc("name")}</TableHead>
-                <TableHead className="w-[140px]">{tc("type")}</TableHead>
-                <TableHead className="w-[140px]">{t("context")}</TableHead>
-                <TableHead className="w-[100px]">{tc("required")}</TableHead>
-                <TableHead className="w-[140px]">{t("screens")}</TableHead>
-                <TableHead className="w-[60px]">{tc("actions")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(fields ?? []).map((field) => {
-                const context = field.context as { type?: string } | null;
-                const contextType = context?.type ?? "issue";
-                return (
-                  <TableRow key={field.id}>
-                    <TableCell>
-                      <button
-                        className="cursor-grab text-muted-foreground hover:text-foreground"
-                        aria-label={t("dragToReorder")}
-                      >
-                        <GripVertical className="size-4" aria-hidden="true" />
-                      </button>
-                    </TableCell>
-                    <TableCell className="font-medium">{field.name}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className="text-xs">
-                        {t(`types.${field.fieldType}` as "types.text")}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="text-xs">
-                        {contextType}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {field.isRequired ? (
-                        <Badge className="text-xs">{tc("required")}</Badge>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">
-                          {tc("optional")}
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      -
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="size-8"
-                            aria-label={tc("actions")}
-                          >
-                            <MoreHorizontal className="size-4" aria-hidden="true" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
-                            <Pencil className="mr-2 size-4" aria-hidden="true" />
-                            {tc("edit")}
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={() => {
-                              deleteMutation.mutate({ id: field.id });
-                            }}
-                          >
-                            <Trash2 className="mr-2 size-4" aria-hidden="true" />
-                            {tc("delete")}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+          <ResponsiveTable
+            columns={fieldColumns}
+            data={fields ?? []}
+            rowKey={(field) => field.id}
+            mobileCard={(field) => {
+              const context = field.context as { type?: string } | null;
+              return (
+                <Card>
+                  <CardContent className="flex items-center justify-between gap-3 p-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium truncate">{field.name}</p>
+                      <div className="mt-1 flex flex-wrap items-center gap-1">
+                        <Badge variant="secondary" className="text-xs">
+                          {t(`types.${field.fieldType}` as "types.text")}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {context?.type ?? "issue"}
+                        </Badge>
+                        {field.isRequired && (
+                          <Badge className="text-xs">{tc("required")}</Badge>
+                        )}
+                      </div>
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="size-8" aria-label={tc("actions")}>
+                          <MoreHorizontal className="size-4" aria-hidden="true" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem>
+                          <Pencil className="mr-2 size-4" aria-hidden="true" />
+                          {tc("edit")}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          onClick={() => deleteMutation.mutate({ id: field.id })}
+                        >
+                          <Trash2 className="mr-2 size-4" aria-hidden="true" />
+                          {tc("delete")}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </CardContent>
+                </Card>
+              );
+            }}
+          />
         </div>
       )}
     </div>

@@ -38,7 +38,14 @@ import {
 import { Switch } from "@/shared/components/ui/switch";
 import { Checkbox } from "@/shared/components/ui/checkbox";
 import { Badge } from "@/shared/components/ui/badge";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/shared/components/ui/sheet";
 import { cn } from "@/shared/lib/utils";
+import { useIsMobile } from "@/shared/hooks/use-mobile";
 import { trpc } from "@/shared/lib/trpc";
 
 /** Field types available in the form builder */
@@ -81,12 +88,14 @@ interface FormBuilderProps {
 export function FormBuilder({ onSuccess }: FormBuilderProps) {
   const t = useTranslations("forms");
   const tc = useTranslations("common");
+  const isMobile = useIsMobile();
 
   const [formName, setFormName] = useState("");
   const [formDescription, setFormDescription] = useState("");
   const [fields, setFields] = useState<FormField[]>([]);
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [showPropertiesSheet, setShowPropertiesSheet] = useState(false);
 
   const createMutation = trpc.form.createTemplate.useMutation({
     onSuccess: () => onSuccess?.(),
@@ -159,7 +168,7 @@ export function FormBuilder({ onSuccess }: FormBuilderProps) {
 
   return (
     <form onSubmit={handleSubmit}>
-      <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
+      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[1fr_300px]">
         {/* Main area */}
         <div className="space-y-6">
           {/* Form header */}
@@ -283,7 +292,10 @@ export function FormBuilder({ onSuccess }: FormBuilderProps) {
                       <button
                         type="button"
                         className="flex flex-1 items-center gap-2 text-left"
-                        onClick={() => setSelectedFieldId(field.id)}
+                        onClick={() => {
+                          setSelectedFieldId(field.id);
+                          if (isMobile) setShowPropertiesSheet(true);
+                        }}
                       >
                         <Badge variant="secondary" className="shrink-0">
                           {field.type}
@@ -330,137 +342,178 @@ export function FormBuilder({ onSuccess }: FormBuilderProps) {
           </Card>
         </div>
 
-        {/* Properties panel */}
-        <div className="space-y-4">
-          <Card className="sticky top-4">
-            <CardHeader>
-              <CardTitle className="text-base">Field Properties</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {selectedField ? (
-                <div className="space-y-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="field-label">Label</Label>
-                    <Input
-                      id="field-label"
-                      value={selectedField.label}
-                      onChange={(e) =>
-                        updateField(selectedField.id, { label: e.target.value })
-                      }
-                    />
-                  </div>
-
-                  <div className="grid gap-2">
-                    <Label htmlFor="field-type">Type</Label>
-                    <Select
-                      value={selectedField.type}
-                      onValueChange={(val) =>
-                        updateField(selectedField.id, { type: val as FieldType })
-                      }
-                    >
-                      <SelectTrigger id="field-type">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {FIELD_TYPES.map((ft) => (
-                          <SelectItem key={ft.value} value={ft.value}>
-                            {ft.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="field-required">{tc("required")}</Label>
-                    <Switch
-                      id="field-required"
-                      checked={selectedField.required}
-                      onCheckedChange={(checked) =>
-                        updateField(selectedField.id, { required: checked })
-                      }
-                    />
-                  </div>
-
-                  <div className="grid gap-2">
-                    <Label htmlFor="field-help">Help Text</Label>
-                    <Input
-                      id="field-help"
-                      placeholder="Optional help text"
-                      value={selectedField.helpText}
-                      onChange={(e) =>
-                        updateField(selectedField.id, {
-                          helpText: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-
-                  {/* Options for select/multiselect */}
-                  {(selectedField.type === "select" ||
-                    selectedField.type === "multiselect") && (
-                    <div className="space-y-2">
-                      <Label>Options</Label>
-                      {selectedField.options.map((opt, idx) => (
-                        <div key={idx} className="flex items-center gap-1">
-                          <Input
-                            value={opt}
-                            onChange={(e) => {
-                              const newOpts = [...selectedField.options];
-                              newOpts[idx] = e.target.value;
-                              updateField(selectedField.id, {
-                                options: newOpts,
-                              });
-                            }}
-                            className="flex-1"
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-xs"
-                            onClick={() => {
-                              updateField(selectedField.id, {
-                                options: selectedField.options.filter(
-                                  (_, i) => i !== idx,
-                                ),
-                              });
-                            }}
-                            aria-label="Remove option"
-                          >
-                            <Trash2 className="size-3" aria-hidden="true" />
-                          </Button>
-                        </div>
-                      ))}
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="w-full"
-                        onClick={() =>
-                          updateField(selectedField.id, {
-                            options: [
-                              ...selectedField.options,
-                              `Option ${selectedField.options.length + 1}`,
-                            ],
-                          })
-                        }
-                      >
-                        <Plus className="mr-1 size-3.5" aria-hidden="true" />
-                        Add Option
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  Select a field to edit its properties.
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+        {/* Properties panel - Sheet on mobile, inline on desktop */}
+        {isMobile ? (
+          <Sheet open={showPropertiesSheet} onOpenChange={setShowPropertiesSheet}>
+            <SheetContent side="right">
+              <SheetHeader>
+                <SheetTitle>Field Properties</SheetTitle>
+              </SheetHeader>
+              <div className="overflow-y-auto px-4 pb-4">
+                <FieldPropertiesContent
+                  selectedField={selectedField}
+                  updateField={updateField}
+                  tc={tc}
+                />
+              </div>
+            </SheetContent>
+          </Sheet>
+        ) : (
+          <div className="space-y-4">
+            <Card className="sticky top-4">
+              <CardHeader>
+                <CardTitle className="text-base">Field Properties</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <FieldPropertiesContent
+                  selectedField={selectedField}
+                  updateField={updateField}
+                  tc={tc}
+                />
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
     </form>
+  );
+}
+
+/**
+ * FieldPropertiesContent renders the field properties editing controls.
+ * Extracted to share between inline panel (desktop) and Sheet (mobile).
+ */
+function FieldPropertiesContent({
+  selectedField,
+  updateField,
+  tc,
+}: {
+  selectedField: FormField | undefined;
+  updateField: (id: string, updates: Partial<FormField>) => void;
+  tc: (key: string) => string;
+}) {
+  if (!selectedField) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        Select a field to edit its properties.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-2">
+        <Label htmlFor="field-label">Label</Label>
+        <Input
+          id="field-label"
+          value={selectedField.label}
+          onChange={(e) =>
+            updateField(selectedField.id, { label: e.target.value })
+          }
+        />
+      </div>
+
+      <div className="grid gap-2">
+        <Label htmlFor="field-type">Type</Label>
+        <Select
+          value={selectedField.type}
+          onValueChange={(val) =>
+            updateField(selectedField.id, { type: val as FieldType })
+          }
+        >
+          <SelectTrigger id="field-type">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {FIELD_TYPES.map((ft) => (
+              <SelectItem key={ft.value} value={ft.value}>
+                {ft.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <Label htmlFor="field-required">{tc("required")}</Label>
+        <Switch
+          id="field-required"
+          checked={selectedField.required}
+          onCheckedChange={(checked) =>
+            updateField(selectedField.id, { required: checked })
+          }
+        />
+      </div>
+
+      <div className="grid gap-2">
+        <Label htmlFor="field-help">Help Text</Label>
+        <Input
+          id="field-help"
+          placeholder="Optional help text"
+          value={selectedField.helpText}
+          onChange={(e) =>
+            updateField(selectedField.id, {
+              helpText: e.target.value,
+            })
+          }
+        />
+      </div>
+
+      {/* Options for select/multiselect */}
+      {(selectedField.type === "select" ||
+        selectedField.type === "multiselect") && (
+        <div className="space-y-2">
+          <Label>Options</Label>
+          {selectedField.options.map((opt, idx) => (
+            <div key={idx} className="flex items-center gap-1">
+              <Input
+                value={opt}
+                onChange={(e) => {
+                  const newOpts = [...selectedField.options];
+                  newOpts[idx] = e.target.value;
+                  updateField(selectedField.id, {
+                    options: newOpts,
+                  });
+                }}
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-xs"
+                onClick={() => {
+                  updateField(selectedField.id, {
+                    options: selectedField.options.filter(
+                      (_, i) => i !== idx,
+                    ),
+                  });
+                }}
+                aria-label="Remove option"
+              >
+                <Trash2 className="size-3" aria-hidden="true" />
+              </Button>
+            </div>
+          ))}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="w-full"
+            onClick={() =>
+              updateField(selectedField.id, {
+                options: [
+                  ...selectedField.options,
+                  `Option ${selectedField.options.length + 1}`,
+                ],
+              })
+            }
+          >
+            <Plus className="mr-1 size-3.5" aria-hidden="true" />
+            Add Option
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }
 

@@ -163,7 +163,7 @@ export function ReportBuilder({ reportId, onSuccess }: ReportBuilderProps) {
 
   return (
     <form onSubmit={handleSubmit}>
-      <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
+      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[1fr_1fr]">
         {/* Configuration panel */}
         <div className="space-y-6">
           <Card>
@@ -308,7 +308,7 @@ export function ReportBuilder({ reportId, onSuccess }: ReportBuilderProps) {
                     {filters.map((filter) => (
                       <div
                         key={filter.id}
-                        className="flex items-center gap-2 rounded-md border p-2"
+                        className="flex flex-wrap items-center gap-2 rounded-md border p-2 sm:flex-nowrap"
                       >
                         <Select
                           value={filter.field}
@@ -316,7 +316,7 @@ export function ReportBuilder({ reportId, onSuccess }: ReportBuilderProps) {
                             updateFilter(filter.id, "field", v)
                           }
                         >
-                          <SelectTrigger className="w-[120px]">
+                          <SelectTrigger className="w-full sm:w-[120px]">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -333,7 +333,7 @@ export function ReportBuilder({ reportId, onSuccess }: ReportBuilderProps) {
                             updateFilter(filter.id, "operator", v)
                           }
                         >
-                          <SelectTrigger className="w-[100px]">
+                          <SelectTrigger className="w-full sm:w-[100px]">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>

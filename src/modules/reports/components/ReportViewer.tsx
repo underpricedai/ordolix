@@ -23,13 +23,9 @@ import {
   CardTitle,
 } from "@/shared/components/ui/card";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/shared/components/ui/table";
+  ResponsiveTable,
+  type ResponsiveColumnDef,
+} from "@/shared/components/responsive-table";
 import { Badge } from "@/shared/components/ui/badge";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { Separator } from "@/shared/components/ui/separator";
@@ -184,26 +180,35 @@ export function ReportViewer({ reportId }: ReportViewerProps) {
             />
           ) : (
             <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    {resultColumns.map((col: string) => (
-                      <TableHead key={col}>{col}</TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {resultRows.map((row: Record<string, unknown>, idx: number) => (
-                    <TableRow key={idx}>
-                      {resultColumns.map((col: string) => (
-                        <TableCell key={col}>
+              <ResponsiveTable
+                columns={resultColumns.map(
+                  (col: string, idx: number): ResponsiveColumnDef<Record<string, unknown>> => ({
+                    key: col,
+                    header: col,
+                    cell: (row) => <>{String(row[col] ?? "-")}</>,
+                    priority: idx < 2 ? 1 : idx + 2,
+                  }),
+                )}
+                data={resultRows}
+                rowKey={(row) =>
+                  resultColumns
+                    .slice(0, 3)
+                    .map((col) => String(row[col] ?? ""))
+                    .join("|")
+                }
+                mobileCard={(row) => (
+                  <Card className="p-3">
+                    {resultColumns.slice(0, 3).map((col: string) => (
+                      <div key={col} className="flex items-center justify-between py-0.5">
+                        <span className="text-xs text-muted-foreground">{col}</span>
+                        <span className="text-sm font-medium">
                           {String(row[col] ?? "-")}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                        </span>
+                      </div>
+                    ))}
+                  </Card>
+                )}
+              />
             </div>
           )}
         </CardContent>

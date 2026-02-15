@@ -6,13 +6,13 @@ import { z } from "zod";
 import { Loader2, Check, ChevronsUpDown } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/shared/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/shared/components/responsive-dialog";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { Textarea } from "@/shared/components/ui/textarea";
@@ -232,12 +232,12 @@ export function IssueCreateDialog({
   ];
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{t("createIssue")}</DialogTitle>
-          <DialogDescription>{t("createIssueDescription")}</DialogDescription>
-        </DialogHeader>
+    <ResponsiveDialog open={open} onOpenChange={handleOpenChange}>
+      <ResponsiveDialogContent className="sm:max-w-lg">
+        <ResponsiveDialogHeader>
+          <ResponsiveDialogTitle>{t("createIssue")}</ResponsiveDialogTitle>
+          <ResponsiveDialogDescription>{t("createIssueDescription")}</ResponsiveDialogDescription>
+        </ResponsiveDialogHeader>
         <form onSubmit={handleSubmit} noValidate>
           <div className="grid gap-4 py-4">
             {/* Summary */}
@@ -453,7 +453,7 @@ export function IssueCreateDialog({
             </div>
           </div>
 
-          <DialogFooter>
+          <ResponsiveDialogFooter>
             <Button
               type="button"
               variant="outline"
@@ -471,9 +471,9 @@ export function IssueCreateDialog({
               )}
               {tc("create")}
             </Button>
-          </DialogFooter>
+          </ResponsiveDialogFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }

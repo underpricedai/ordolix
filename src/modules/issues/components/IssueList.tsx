@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { Inbox, ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
+import { Card } from "@/shared/components/ui/card";
 import {
   Table,
   TableBody,
@@ -19,6 +20,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui/avat
 import { StatusBadge, type StatusCategory } from "@/shared/components/status-badge";
 import { PriorityIcon, type PriorityLevel } from "@/shared/components/priority-icon";
 import { EmptyState } from "@/shared/components/empty-state";
+import { ResponsiveTable, type ResponsiveColumnDef } from "@/shared/components/responsive-table";
 import { trpc } from "@/shared/lib/trpc";
 import { cn } from "@/shared/lib/utils";
 
@@ -201,137 +203,141 @@ export function IssueList({
     );
   }
 
+  const columns: ResponsiveColumnDef<IssueRow>[] = [
+    {
+      key: "key",
+      header: t("columns.key"),
+      cell: (issue) => (
+        <Link
+          href={`/issues/${issue.id}`}
+          className="font-medium text-primary hover:underline"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {issue.key}
+        </Link>
+      ),
+      priority: 1,
+      className: "w-[120px]",
+    },
+    {
+      key: "summary",
+      header: t("columns.summary"),
+      cell: (issue) => <span className="max-w-[400px] truncate">{issue.summary}</span>,
+      priority: 1,
+    },
+    {
+      key: "status",
+      header: t("columns.status"),
+      cell: (issue) =>
+        issue.status ? (
+          <StatusBadge name={issue.status.name} category={issue.status.category as StatusCategory} />
+        ) : null,
+      priority: 2,
+      className: "w-[140px]",
+    },
+    {
+      key: "priority",
+      header: t("columns.priority"),
+      cell: (issue) =>
+        issue.priority ? <PriorityIcon priority={toPriorityLevel(issue.priority.name)} showLabel /> : null,
+      priority: 3,
+      className: "w-[100px]",
+    },
+    {
+      key: "type",
+      header: t("type"),
+      cell: (issue) =>
+        issue.issueType ? <span className="text-xs text-muted-foreground">{issue.issueType.name}</span> : null,
+      priority: 4,
+      className: "w-[100px]",
+    },
+    {
+      key: "assignee",
+      header: t("columns.assignee"),
+      cell: (issue) =>
+        issue.assignee ? (
+          <div className="flex items-center gap-2">
+            <Avatar className="size-6">
+              <AvatarImage src={issue.assignee.image ?? undefined} alt={issue.assignee.name ?? ""} />
+              <AvatarFallback className="text-[10px]">{getInitials(issue.assignee.name)}</AvatarFallback>
+            </Avatar>
+            <span className="text-sm">{issue.assignee.name ?? t("unassigned")}</span>
+          </div>
+        ) : (
+          <span className="text-sm text-muted-foreground">{t("unassigned")}</span>
+        ),
+      priority: 4,
+      className: "w-[160px]",
+    },
+    {
+      key: "created",
+      header: t("created"),
+      cell: (issue) => (
+        <span className="text-sm text-muted-foreground">
+          {issue.createdAt
+            ? new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(issue.createdAt))
+            : "-"}
+        </span>
+      ),
+      priority: 5,
+      className: "w-[140px]",
+    },
+  ];
+
   return (
     <div className={cn("space-y-4", className)}>
       <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[120px]">
-                <SortableHeader
-                  label={t("columns.key")}
-                  active={false}
-                  direction={sortOrder}
-                />
-              </TableHead>
-              <TableHead>
-                <SortableHeader
-                  label={t("columns.summary")}
-                  active={false}
-                  direction={sortOrder}
-                />
-              </TableHead>
-              <TableHead className="w-[100px]">{t("type")}</TableHead>
-              <TableHead className="w-[140px]">
-                <SortableHeader
-                  label={t("columns.status")}
-                  active={false}
-                  direction={sortOrder}
-                />
-              </TableHead>
-              <TableHead className="w-[100px]">
-                <SortableHeader
-                  label={t("columns.priority")}
-                  active={sortBy === "priority"}
-                  direction={sortOrder}
-                  onClick={() => handleSort("priority")}
-                />
-              </TableHead>
-              <TableHead className="w-[160px]">{t("columns.assignee")}</TableHead>
-              <TableHead className="w-[140px]">
-                <SortableHeader
-                  label={t("created")}
-                  active={sortBy === "createdAt"}
-                  direction={sortOrder}
-                  onClick={() => handleSort("createdAt")}
-                />
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {issues.map((issue: IssueRow) => (
-              <TableRow
-                key={issue.id}
-                className="cursor-pointer"
-                onClick={() => handleRowClick(issue.id)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    handleRowClick(issue.id);
-                  }
-                }}
-                tabIndex={0}
-                role="link"
-                aria-label={`${issue.key}: ${issue.summary}`}
-              >
-                <TableCell>
-                  <Link
-                    href={`/issues/${issue.id}`}
-                    className="font-medium text-primary hover:underline"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {issue.key}
-                  </Link>
-                </TableCell>
-                <TableCell className="max-w-[400px] truncate">
-                  {issue.summary}
-                </TableCell>
-                <TableCell>
-                  {issue.issueType && (
-                    <span className="text-xs text-muted-foreground">
-                      {issue.issueType.name}
-                    </span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {issue.status && (
-                    <StatusBadge
-                      name={issue.status.name}
-                      category={issue.status.category as StatusCategory}
-                    />
-                  )}
-                </TableCell>
-                <TableCell>
-                  {issue.priority && (
-                    <PriorityIcon
-                      priority={toPriorityLevel(issue.priority.name)}
-                      showLabel
-                    />
-                  )}
-                </TableCell>
-                <TableCell>
-                  {issue.assignee ? (
-                    <div className="flex items-center gap-2">
-                      <Avatar className="size-6">
-                        <AvatarImage
-                          src={issue.assignee.image ?? undefined}
-                          alt={issue.assignee.name ?? ""}
-                        />
-                        <AvatarFallback className="text-[10px]">
-                          {getInitials(issue.assignee.name)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="text-sm">
-                        {issue.assignee.name ?? t("unassigned")}
+        <ResponsiveTable
+          columns={columns}
+          data={issues}
+          rowKey={(issue: IssueRow) => issue.id}
+          onRowClick={(issue: IssueRow) => handleRowClick(issue.id)}
+          mobileCard={(issue: IssueRow) => (
+            <Card className="p-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href={`/issues/${issue.id}`}
+                      className="text-xs font-medium text-primary hover:underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {issue.key}
+                    </Link>
+                    {issue.status && (
+                      <StatusBadge
+                        name={issue.status.name}
+                        category={issue.status.category as StatusCategory}
+                      />
+                    )}
+                  </div>
+                  <p className="mt-1 text-sm font-medium leading-snug line-clamp-2">
+                    {issue.summary}
+                  </p>
+                  <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                    {issue.priority && (
+                      <PriorityIcon priority={toPriorityLevel(issue.priority.name)} />
+                    )}
+                    {issue.issueType && <span>{issue.issueType.name}</span>}
+                    {issue.createdAt && (
+                      <span>
+                        {new Intl.DateTimeFormat("en", { dateStyle: "short" }).format(
+                          new Date(issue.createdAt),
+                        )}
                       </span>
-                    </div>
-                  ) : (
-                    <span className="text-sm text-muted-foreground">
-                      {t("unassigned")}
-                    </span>
-                  )}
-                </TableCell>
-                <TableCell className="text-sm text-muted-foreground">
-                  {issue.createdAt
-                    ? new Intl.DateTimeFormat("en", {
-                        dateStyle: "medium",
-                      }).format(new Date(issue.createdAt))
-                    : "-"}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+                    )}
+                  </div>
+                </div>
+                {issue.assignee && (
+                  <Avatar className="size-6 shrink-0">
+                    <AvatarImage src={issue.assignee.image ?? undefined} alt={issue.assignee.name ?? ""} />
+                    <AvatarFallback className="text-[10px]">{getInitials(issue.assignee.name)}</AvatarFallback>
+                  </Avatar>
+                )}
+              </div>
+            </Card>
+          )}
+        />
       </div>
 
       {/* Pagination controls */}

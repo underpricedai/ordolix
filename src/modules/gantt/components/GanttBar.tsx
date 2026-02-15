@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/shared/lib/utils";
+import { useIsMobile } from "@/shared/hooks/use-mobile";
 import {
   Tooltip,
   TooltipContent,
@@ -77,6 +78,7 @@ export function GanttBar({ bar, offsetPx, widthPx, pxPerDay = 17.14, onResize, o
   const t = useTranslations("gantt");
   const tc = useTranslations("common");
   const barRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
   const [isDragging, setIsDragging] = useState<"start" | "end" | "move" | null>(null);
 
   /**
@@ -192,6 +194,115 @@ export function GanttBar({ bar, offsetPx, widthPx, pxPerDay = 17.14, onResize, o
     [offsetPx, pxPerDay, onMove, bar.id, bar.startDate, bar.endDate],
   );
 
+  /**
+   * Touch handler for edge resize on mobile.
+   */
+  const handleResizeTouchStart = useCallback(
+    (edge: "start" | "end") => (e: React.TouchEvent) => {
+      e.stopPropagation();
+      const touch = e.touches[0];
+      if (!touch) return;
+      setIsDragging(edge);
+
+      const startX = touch.clientX;
+
+      const handleTouchMove = (moveEvent: TouchEvent) => {
+        moveEvent.preventDefault();
+        const t2 = moveEvent.touches[0];
+        if (!t2 || !barRef.current) return;
+        const delta = t2.clientX - startX;
+        if (edge === "end") {
+          barRef.current.style.width = `${Math.max(24, widthPx + delta)}px`;
+        } else {
+          const newWidth = Math.max(24, widthPx - delta);
+          barRef.current.style.width = `${newWidth}px`;
+          barRef.current.style.left = `${offsetPx + (widthPx - newWidth)}px`;
+        }
+      };
+
+      const handleTouchEnd = (endEvent: TouchEvent) => {
+        setIsDragging(null);
+        document.removeEventListener("touchmove", handleTouchMove);
+        document.removeEventListener("touchend", handleTouchEnd);
+
+        const changedTouch = endEvent.changedTouches[0];
+        const delta = changedTouch ? changedTouch.clientX - startX : 0;
+        const dayDelta = Math.round(delta / pxPerDay);
+
+        if (barRef.current) {
+          barRef.current.style.width = "";
+          barRef.current.style.left = "";
+        }
+
+        if (dayDelta !== 0 && onResize) {
+          if (edge === "start") {
+            const newStart = addDays(bar.startDate, dayDelta);
+            if (new Date(newStart) < new Date(bar.endDate)) {
+              onResize(bar.id, newStart, bar.endDate);
+            }
+          } else {
+            const newEnd = addDays(bar.endDate, dayDelta);
+            if (new Date(newEnd) > new Date(bar.startDate)) {
+              onResize(bar.id, bar.startDate, newEnd);
+            }
+          }
+        }
+      };
+
+      document.addEventListener("touchmove", handleTouchMove, { passive: false });
+      document.addEventListener("touchend", handleTouchEnd);
+    },
+    [offsetPx, widthPx, pxPerDay, onResize, bar.id, bar.startDate, bar.endDate],
+  );
+
+  /**
+   * Touch handler for whole-bar move on mobile.
+   */
+  const handleMoveTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.getAttribute("role") === "separator") return;
+
+      const touch = e.touches[0];
+      if (!touch) return;
+      setIsDragging("move");
+
+      const startX = touch.clientX;
+
+      const handleTouchMove = (moveEvent: TouchEvent) => {
+        moveEvent.preventDefault();
+        const t2 = moveEvent.touches[0];
+        if (!t2 || !barRef.current) return;
+        const delta = t2.clientX - startX;
+        barRef.current.style.left = `${offsetPx + delta}px`;
+      };
+
+      const handleTouchEnd = (endEvent: TouchEvent) => {
+        setIsDragging(null);
+        document.removeEventListener("touchmove", handleTouchMove);
+        document.removeEventListener("touchend", handleTouchEnd);
+
+        const changedTouch = endEvent.changedTouches[0];
+        const delta = changedTouch ? changedTouch.clientX - startX : 0;
+        const dayDelta = Math.round(delta / pxPerDay);
+
+        if (barRef.current) {
+          barRef.current.style.left = "";
+        }
+
+        if (dayDelta !== 0 && onMove) {
+          const newStart = addDays(bar.startDate, dayDelta);
+          const newEnd = addDays(bar.endDate, dayDelta);
+          onMove(bar.id, newStart, newEnd);
+        }
+      };
+
+      document.addEventListener("touchmove", handleTouchMove, { passive: false });
+      document.addEventListener("touchend", handleTouchEnd);
+    },
+    [offsetPx, pxPerDay, onMove, bar.id, bar.startDate, bar.endDate],
+  );
+
   const formattedStart = new Intl.DateTimeFormat("en", {
     dateStyle: "medium",
   }).format(new Date(bar.startDate));
@@ -218,6 +329,7 @@ export function GanttBar({ bar, offsetPx, widthPx, pxPerDay = 17.14, onResize, o
             width: `${Math.max(widthPx, 24)}px`,
           }}
           onMouseDown={handleMoveMouseDown}
+          onTouchStart={handleMoveTouchStart}
         >
           {/* Progress fill */}
           <div
@@ -239,8 +351,12 @@ export function GanttBar({ bar, offsetPx, widthPx, pxPerDay = 17.14, onResize, o
             role="separator"
             aria-orientation="vertical"
             aria-label={t("resizeStart")}
-            className="absolute inset-y-0 left-0 w-2 cursor-col-resize opacity-0 group-hover:opacity-100"
+            className={cn(
+              "absolute inset-y-0 left-0 cursor-col-resize",
+              isMobile ? "w-4 opacity-100" : "w-2 opacity-0 group-hover:opacity-100",
+            )}
             onMouseDown={handleResizeMouseDown("start")}
+            onTouchStart={handleResizeTouchStart("start")}
           />
 
           {/* Right resize handle */}
@@ -248,8 +364,12 @@ export function GanttBar({ bar, offsetPx, widthPx, pxPerDay = 17.14, onResize, o
             role="separator"
             aria-orientation="vertical"
             aria-label={t("resizeEnd")}
-            className="absolute inset-y-0 right-0 w-2 cursor-col-resize opacity-0 group-hover:opacity-100"
+            className={cn(
+              "absolute inset-y-0 right-0 cursor-col-resize",
+              isMobile ? "w-4 opacity-100" : "w-2 opacity-0 group-hover:opacity-100",
+            )}
             onMouseDown={handleResizeMouseDown("end")}
+            onTouchStart={handleResizeTouchStart("end")}
           />
         </div>
       </TooltipTrigger>

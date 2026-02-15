@@ -250,7 +250,7 @@ export default function SearchPage() {
         </aside>
 
         {/* Main content */}
-        <div className="flex-1 space-y-4 p-6">
+        <div className="flex-1 space-y-4 p-4 sm:p-6">
           {/* Search input */}
           <form onSubmit={handleSearch}>
             <div className="relative">

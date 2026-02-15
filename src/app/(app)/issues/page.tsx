@@ -60,7 +60,7 @@ export default function IssuesPage() {
     return (
       <>
         <AppHeader breadcrumbs={[{ label: tn("issues") }]} />
-        <div className="flex-1 space-y-4 p-6">
+        <div className="flex-1 space-y-4 p-4 sm:p-6">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-10 w-full max-w-md" />
           <Skeleton className="h-64 w-full" />
@@ -107,7 +107,7 @@ export default function IssuesPage() {
   return (
     <>
       <AppHeader breadcrumbs={[{ label: tn("issues") }]} />
-      <div className="flex-1 space-y-4 p-6">
+      <div className="flex-1 space-y-4 p-4 sm:p-6">
         {/* Page header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>

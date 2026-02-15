@@ -8,6 +8,7 @@ import {
   Search,
 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
+import { Card } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
 import { Badge } from "@/shared/components/ui/badge";
 import { Skeleton } from "@/shared/components/ui/skeleton";
@@ -26,6 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/components/ui/select";
+import { ResponsiveTable, type ResponsiveColumnDef } from "@/shared/components/responsive-table";
 import { EmptyState } from "@/shared/components/empty-state";
 import { trpc } from "@/shared/lib/trpc";
 import { cn } from "@/shared/lib/utils";
@@ -59,6 +61,83 @@ const triggerTypeBadgeColors: Record<string, string> = {
   transition: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400",
   post_function: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
 };
+
+/**
+ * Builds responsive column definitions for the script table.
+ */
+function scriptColumns(
+  t: (key: string) => string,
+): ResponsiveColumnDef<ScriptRow>[] {
+  return [
+    {
+      key: "name",
+      header: t("scriptName"),
+      priority: 1,
+      cell: (script) => (
+        <div className="flex items-center gap-2">
+          <Code2 className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <div>
+            <p className="font-medium">{script.name}</p>
+            {script.description && (
+              <p className="text-xs text-muted-foreground truncate max-w-[300px]">
+                {script.description}
+              </p>
+            )}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "language",
+      header: t("triggerType"),
+      priority: 2,
+      className: "w-[160px]",
+      cell: (script) => (
+        <Badge
+          variant="outline"
+          className={cn(
+            "border-transparent text-xs",
+            triggerTypeBadgeColors[script.triggerType] ?? triggerTypeBadgeColors.manual,
+          )}
+        >
+          {triggerTypeLabels[script.triggerType] ?? script.triggerType}
+        </Badge>
+      ),
+    },
+    {
+      key: "status",
+      header: t("status"),
+      priority: 3,
+      className: "w-[100px]",
+      cell: (script) => (
+        <Badge
+          variant="outline"
+          className={cn(
+            "border-transparent text-xs",
+            script.isEnabled
+              ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+              : "bg-muted text-muted-foreground",
+          )}
+        >
+          {script.isEnabled ? t("enabled") : t("disabled")}
+        </Badge>
+      ),
+    },
+    {
+      key: "lastRun",
+      header: t("lastModified"),
+      priority: 4,
+      className: "w-[160px]",
+      cell: (script) => (
+        <span className="text-sm text-muted-foreground">
+          {new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(
+            new Date(script.updatedAt),
+          )}
+        </span>
+      ),
+    },
+  ];
+}
 
 interface ScriptListProps {
   /** Callback when a script row is selected for editing */
@@ -170,71 +249,54 @@ export function ScriptList({ onSelectScript }: ScriptListProps) {
         />
       ) : (
         <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("scriptName")}</TableHead>
-                <TableHead className="w-[160px]">{t("triggerType")}</TableHead>
-                <TableHead className="w-[100px]">{t("status")}</TableHead>
-                <TableHead className="w-[160px]">{t("lastModified")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredScripts.map((script) => (
-                <TableRow
-                  key={script.id}
-                  className="cursor-pointer"
-                  onClick={() => onSelectScript?.(script.id)}
-                >
-                  <TableCell>
+          <ResponsiveTable<ScriptRow>
+            columns={scriptColumns(t)}
+            data={filteredScripts}
+            rowKey={(row) => row.id}
+            onRowClick={(row) => onSelectScript?.(row.id)}
+            mobileCard={(script) => (
+              <Card
+                className="p-3"
+                onClick={() => onSelectScript?.(script.id)}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <Code2
-                        className="size-4 shrink-0 text-muted-foreground"
-                        aria-hidden="true"
-                      />
-                      <div>
-                        <p className="font-medium">{script.name}</p>
-                        {script.description && (
-                          <p className="text-xs text-muted-foreground truncate max-w-[300px]">
-                            {script.description}
-                          </p>
-                        )}
-                      </div>
+                      <Code2 className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                      <span className="font-medium">{script.name}</span>
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        "border-transparent text-xs",
-                        triggerTypeBadgeColors[script.triggerType] ?? triggerTypeBadgeColors.manual,
-                      )}
-                    >
-                      {triggerTypeLabels[script.triggerType] ?? script.triggerType}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        "border-transparent text-xs",
-                        script.isEnabled
-                          ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-                          : "bg-muted text-muted-foreground",
-                      )}
-                    >
-                      {script.isEnabled ? t("enabled") : t("disabled")}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {new Intl.DateTimeFormat("en", {
-                      dateStyle: "medium",
-                    }).format(new Date(script.updatedAt))}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                    {script.description && (
+                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                        {script.description}
+                      </p>
+                    )}
+                    <div className="mt-1.5">
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "border-transparent text-xs",
+                          triggerTypeBadgeColors[script.triggerType] ?? triggerTypeBadgeColors.manual,
+                        )}
+                      >
+                        {triggerTypeLabels[script.triggerType] ?? script.triggerType}
+                      </Badge>
+                    </div>
+                  </div>
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "border-transparent text-xs",
+                      script.isEnabled
+                        ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                        : "bg-muted text-muted-foreground",
+                    )}
+                  >
+                    {script.isEnabled ? t("enabled") : t("disabled")}
+                  </Badge>
+                </div>
+              </Card>
+            )}
+          />
         </div>
       )}
     </div>

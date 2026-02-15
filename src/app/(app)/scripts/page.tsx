@@ -36,7 +36,7 @@ export default function ScriptsPage() {
               : []),
         ]}
       />
-      <div className="flex flex-1 flex-col p-6">
+      <div className="flex flex-1 flex-col p-4 sm:p-6">
         {activeScriptId || isCreating ? (
           <ScriptEditor
             scriptId={activeScriptId ?? undefined}

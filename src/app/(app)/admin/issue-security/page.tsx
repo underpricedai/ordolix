@@ -18,23 +18,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/shared/components/ui/card";
+import { ResponsiveTable, type ResponsiveColumnDef } from "@/shared/components/responsive-table";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/shared/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/shared/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+  ResponsiveDialogTrigger,
+} from "@/shared/components/responsive-dialog";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { Skeleton } from "@/shared/components/ui/skeleton";
@@ -69,9 +62,26 @@ export default function AdminIssueSecurityPage() {
   const [levelName, setLevelName] = useState("");
   const [levelDesc, setLevelDesc] = useState("");
 
+  const levelColumns: ResponsiveColumnDef<{ id: string; name: string; description: string | null }>[] = [
+    {
+      key: "name",
+      header: tc("name"),
+      priority: 1,
+      cell: (level) => <span className="font-medium">{level.name}</span>,
+    },
+    {
+      key: "description",
+      header: tc("details"),
+      priority: 3,
+      cell: (level) => (
+        <span className="text-sm text-muted-foreground">{level.description ?? "\u2014"}</span>
+      ),
+    },
+  ];
+
   if (isLoading) {
     return (
-      <div className="space-y-6 p-6">
+      <div className="space-y-6 p-4 sm:p-6">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-64 w-full" />
       </div>
@@ -79,24 +89,24 @@ export default function AdminIssueSecurityPage() {
   }
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 p-4 sm:p-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">{t("title")}</h1>
           <p className="text-sm text-muted-foreground">{t("description")}</p>
         </div>
-        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogTrigger asChild>
+        <ResponsiveDialog open={createOpen} onOpenChange={setCreateOpen}>
+          <ResponsiveDialogTrigger asChild>
             <Button>
               <Plus className="mr-2 size-4" aria-hidden="true" />
               {t("createScheme")}
             </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{t("createScheme")}</DialogTitle>
-              <DialogDescription>{t("createSchemeDescription")}</DialogDescription>
-            </DialogHeader>
+          </ResponsiveDialogTrigger>
+          <ResponsiveDialogContent>
+            <ResponsiveDialogHeader>
+              <ResponsiveDialogTitle>{t("createScheme")}</ResponsiveDialogTitle>
+              <ResponsiveDialogDescription>{t("createSchemeDescription")}</ResponsiveDialogDescription>
+            </ResponsiveDialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="scheme-name">{tc("name")}</Label>
@@ -117,7 +127,7 @@ export default function AdminIssueSecurityPage() {
                 />
               </div>
             </div>
-            <DialogFooter>
+            <ResponsiveDialogFooter>
               <Button variant="outline" onClick={() => setCreateOpen(false)}>
                 {tc("cancel")}
               </Button>
@@ -129,9 +139,9 @@ export default function AdminIssueSecurityPage() {
               >
                 {tc("create")}
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </ResponsiveDialogFooter>
+          </ResponsiveDialogContent>
+        </ResponsiveDialog>
       </div>
 
       {!schemes || schemes.length === 0 ? (
@@ -185,30 +195,12 @@ export default function AdminIssueSecurityPage() {
                 {t("projectCount", { count: (scheme as { _count?: { projects: number } })._count?.projects ?? 0 })}
               </p>
               <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>{tc("name")}</TableHead>
-                      <TableHead>{tc("details")}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {(scheme as { levels?: { id: string; name: string; description: string | null }[] }).levels?.map((level) => (
-                      <TableRow key={level.id}>
-                        <TableCell className="font-medium">{level.name}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {level.description ?? "—"}
-                        </TableCell>
-                      </TableRow>
-                    )) ?? (
-                      <TableRow>
-                        <TableCell colSpan={2} className="text-center text-sm text-muted-foreground">
-                          {t("noLevels")}
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                <ResponsiveTable
+                  columns={levelColumns}
+                  data={(scheme as { levels?: { id: string; name: string; description: string | null }[] }).levels ?? []}
+                  rowKey={(level) => level.id}
+                  emptyMessage={t("noLevels")}
+                />
               </div>
             </CardContent>
           </Card>
@@ -216,11 +208,11 @@ export default function AdminIssueSecurityPage() {
       )}
 
       {/* Add Level dialog */}
-      <Dialog open={addLevelOpen} onOpenChange={setAddLevelOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("addLevel")}</DialogTitle>
-          </DialogHeader>
+      <ResponsiveDialog open={addLevelOpen} onOpenChange={setAddLevelOpen}>
+        <ResponsiveDialogContent>
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle>{t("addLevel")}</ResponsiveDialogTitle>
+          </ResponsiveDialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="level-name">{tc("name")}</Label>
@@ -241,7 +233,7 @@ export default function AdminIssueSecurityPage() {
               />
             </div>
           </div>
-          <DialogFooter>
+          <ResponsiveDialogFooter>
             <Button variant="outline" onClick={() => setAddLevelOpen(false)}>
               {tc("cancel")}
             </Button>
@@ -260,9 +252,9 @@ export default function AdminIssueSecurityPage() {
             >
               {tc("create")}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ResponsiveDialogFooter>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
     </div>
   );
 }

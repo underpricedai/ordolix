@@ -37,7 +37,7 @@ export default function RetrospectivesPage() {
   return (
     <>
       <AppHeader breadcrumbs={[{ label: tn("retrospectives") }]} />
-      <div className="flex flex-1 flex-col p-6">
+      <div className="flex flex-1 flex-col p-4 sm:p-6">
         {/* Page header */}
         <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>

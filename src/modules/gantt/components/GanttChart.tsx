@@ -11,7 +11,15 @@ import { Button } from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { EmptyState } from "@/shared/components/empty-state";
 import { TooltipProvider } from "@/shared/components/ui/tooltip";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/shared/components/ui/sheet";
 import { StatusBadge, type StatusCategory } from "@/shared/components/status-badge";
+import { useIsMobile } from "@/shared/hooks/use-mobile";
+import { usePinchZoom } from "@/shared/hooks/use-pinch-zoom";
 import { trpc } from "@/shared/lib/trpc";
 import { cn } from "@/shared/lib/utils";
 import { GanttBar, type GanttBarData } from "./GanttBar";
@@ -187,10 +195,24 @@ export function GanttChart({ projectId }: GanttChartProps) {
   const t = useTranslations("gantt");
   const tc = useTranslations("common");
 
-  const [zoomLevel, setZoomLevel] = useState<ZoomLevel>("week");
+  const isMobile = useIsMobile();
+  const [zoomLevel, setZoomLevel] = useState<ZoomLevel>(isMobile ? "month" : "week");
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
   const [allCollapsed, setAllCollapsed] = useState(false);
+  const [issueListOpen, setIssueListOpen] = useState(false);
   const timelineRef = useRef<HTMLDivElement>(null);
+
+  // Pinch-to-zoom on mobile
+  usePinchZoom(timelineRef, {
+    minScale: 0.5,
+    maxScale: 3,
+    onScaleChange: (scale) => {
+      if (timelineRef.current) {
+        timelineRef.current.style.transform = `scale(${scale})`;
+        timelineRef.current.style.transformOrigin = "0 0";
+      }
+    },
+  });
 
   // tRPC query for Gantt timeline data
   const {
@@ -391,13 +413,57 @@ export function GanttChart({ projectId }: GanttChartProps) {
           onExport={() => {
             // Placeholder: export as image
           }}
+          onShowIssueList={isMobile ? () => setIssueListOpen(true) : undefined}
         />
 
         {/* Main content: left panel + timeline */}
         <div className="flex flex-1 overflow-hidden">
-          {/* Left panel: issue list */}
+          {/* Mobile issue list Sheet */}
+          {isMobile && (
+            <Sheet open={issueListOpen} onOpenChange={setIssueListOpen}>
+              <SheetContent side="left" className="w-[85vw] overflow-y-auto p-0">
+                <SheetHeader className="p-4">
+                  <SheetTitle>{t("issueList")}</SheetTitle>
+                </SheetHeader>
+                <div role="tree" aria-label={t("issueList")}>
+                  {visibleRows.map((row) => (
+                    <div
+                      key={row.id}
+                      role="treeitem"
+                      className="flex items-center border-b px-3 hover:bg-muted/30"
+                      style={{ height: ROW_HEIGHT, paddingInlineStart: `${12 + row.depth * 20}px` }}
+                    >
+                      {row.children.length > 0 ? (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-5 shrink-0"
+                          onClick={() => toggleCollapse(row.id)}
+                        >
+                          {collapsedIds.has(row.id) ? (
+                            <ChevronRight className="size-3.5" aria-hidden="true" />
+                          ) : (
+                            <ChevronDown className="size-3.5" aria-hidden="true" />
+                          )}
+                        </Button>
+                      ) : (
+                        <span className="size-5 shrink-0" />
+                      )}
+                      <span className="ms-1.5 shrink-0 text-xs font-medium text-primary">{row.issueKey}</span>
+                      <span className="ms-2 truncate text-xs text-foreground">{row.summary}</span>
+                      <span className="ms-auto shrink-0">
+                        <StatusBadge name={row.statusName} category={row.statusCategory} className="text-[10px]" />
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </SheetContent>
+            </Sheet>
+          )}
+
+          {/* Left panel: issue list (desktop only) */}
           <div
-            className="shrink-0 overflow-y-auto border-r"
+            className="hidden shrink-0 overflow-y-auto border-r md:block"
             style={{ width: LEFT_PANEL_WIDTH }}
             role="tree"
             aria-label={t("issueList")}
@@ -681,8 +747,8 @@ function GanttSkeleton() {
       </div>
 
       <div className="flex flex-1">
-        {/* Left panel skeleton */}
-        <div className="w-[360px] shrink-0 border-r">
+        {/* Left panel skeleton (hidden on mobile) */}
+        <div className="hidden w-[360px] shrink-0 border-r md:block">
           <div className="h-10 border-b bg-muted/50 px-3">
             <Skeleton className="mt-3 h-4 w-16" />
           </div>

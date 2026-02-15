@@ -116,6 +116,35 @@ export function WorkflowStatusNode({
     [status.position],
   );
 
+  /**
+   * Touch handler for dragging status nodes on mobile.
+   */
+  const handleTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      const touch = e.touches[0];
+      if (!touch) return;
+      e.stopPropagation();
+
+      const svgElement = nodeRef.current?.ownerSVGElement;
+      if (!svgElement) return;
+
+      const ctm = svgElement.getScreenCTM();
+      if (!ctm) return;
+
+      const point = svgElement.createSVGPoint();
+      point.x = touch.clientX;
+      point.y = touch.clientY;
+      const svgPoint = point.matrixTransform(ctm.inverse());
+
+      setDragOffset({
+        x: svgPoint.x - status.position.x,
+        y: svgPoint.y - status.position.y,
+      });
+      setIsDragging(true);
+    },
+    [status.position],
+  );
+
   useEffect(() => {
     if (!isDragging) return;
 
@@ -137,15 +166,42 @@ export function WorkflowStatusNode({
       onPositionChange?.(status.id, { x: newX, y: newY });
     };
 
+    const handleTouchMove = (e: TouchEvent) => {
+      e.preventDefault();
+      const touch = e.touches[0];
+      if (!touch) return;
+
+      const ctm = svgElement.getScreenCTM();
+      if (!ctm) return;
+
+      const point = svgElement.createSVGPoint();
+      point.x = touch.clientX;
+      point.y = touch.clientY;
+      const svgPoint = point.matrixTransform(ctm.inverse());
+
+      const newX = Math.max(0, svgPoint.x - dragOffset.x);
+      const newY = Math.max(0, svgPoint.y - dragOffset.y);
+
+      onPositionChange?.(status.id, { x: newX, y: newY });
+    };
+
     const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    const handleTouchEnd = () => {
       setIsDragging(false);
     };
 
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
+    window.addEventListener("touchmove", handleTouchMove, { passive: false });
+    window.addEventListener("touchend", handleTouchEnd);
     return () => {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("touchend", handleTouchEnd);
     };
   }, [isDragging, dragOffset, status.id, onPositionChange]);
 
@@ -191,6 +247,7 @@ export function WorkflowStatusNode({
       ref={nodeRef}
       transform={`translate(${status.position.x}, ${status.position.y})`}
       onMouseDown={handleMouseDown}
+      onTouchStart={handleTouchStart}
       onClick={handleClick}
       onMouseUp={handleConnectPointMouseUp}
       className={cn(
@@ -287,46 +344,43 @@ export function WorkflowStatusNode({
         {categoryLabel}
       </text>
 
-      {/* Connection points (small circles on edges) - draggable for creating transitions */}
+      {/* Connection points (circles on edges) - draggable for creating transitions */}
+      {/* Invisible larger touch targets behind visible circles */}
       {/* Left */}
+      <circle cx={0} cy={NODE_HEIGHT / 2} r={12} fill="transparent" onMouseDown={handleConnectPointMouseDown(0, NODE_HEIGHT / 2)} onMouseUp={handleConnectPointMouseUp} className="cursor-crosshair" />
       <circle
         cx={0}
         cy={NODE_HEIGHT / 2}
-        r={4}
-        className="fill-background stroke-border hover:fill-primary hover:stroke-primary cursor-crosshair transition-colors"
+        r={5}
+        className="fill-background stroke-border hover:fill-primary hover:stroke-primary cursor-crosshair transition-colors pointer-events-none"
         strokeWidth={1.5}
-        onMouseDown={handleConnectPointMouseDown(0, NODE_HEIGHT / 2)}
-        onMouseUp={handleConnectPointMouseUp}
       />
       {/* Right */}
+      <circle cx={NODE_WIDTH} cy={NODE_HEIGHT / 2} r={12} fill="transparent" onMouseDown={handleConnectPointMouseDown(NODE_WIDTH, NODE_HEIGHT / 2)} onMouseUp={handleConnectPointMouseUp} className="cursor-crosshair" />
       <circle
         cx={NODE_WIDTH}
         cy={NODE_HEIGHT / 2}
-        r={4}
-        className="fill-background stroke-border hover:fill-primary hover:stroke-primary cursor-crosshair transition-colors"
+        r={5}
+        className="fill-background stroke-border hover:fill-primary hover:stroke-primary cursor-crosshair transition-colors pointer-events-none"
         strokeWidth={1.5}
-        onMouseDown={handleConnectPointMouseDown(NODE_WIDTH, NODE_HEIGHT / 2)}
-        onMouseUp={handleConnectPointMouseUp}
       />
       {/* Top */}
+      <circle cx={NODE_WIDTH / 2} cy={0} r={12} fill="transparent" onMouseDown={handleConnectPointMouseDown(NODE_WIDTH / 2, 0)} onMouseUp={handleConnectPointMouseUp} className="cursor-crosshair" />
       <circle
         cx={NODE_WIDTH / 2}
         cy={0}
-        r={4}
-        className="fill-background stroke-border hover:fill-primary hover:stroke-primary cursor-crosshair transition-colors"
+        r={5}
+        className="fill-background stroke-border hover:fill-primary hover:stroke-primary cursor-crosshair transition-colors pointer-events-none"
         strokeWidth={1.5}
-        onMouseDown={handleConnectPointMouseDown(NODE_WIDTH / 2, 0)}
-        onMouseUp={handleConnectPointMouseUp}
       />
       {/* Bottom */}
+      <circle cx={NODE_WIDTH / 2} cy={NODE_HEIGHT} r={12} fill="transparent" onMouseDown={handleConnectPointMouseDown(NODE_WIDTH / 2, NODE_HEIGHT)} onMouseUp={handleConnectPointMouseUp} className="cursor-crosshair" />
       <circle
         cx={NODE_WIDTH / 2}
         cy={NODE_HEIGHT}
-        r={4}
-        className="fill-background stroke-border hover:fill-primary hover:stroke-primary cursor-crosshair transition-colors"
+        r={5}
+        className="fill-background stroke-border hover:fill-primary hover:stroke-primary cursor-crosshair transition-colors pointer-events-none"
         strokeWidth={1.5}
-        onMouseDown={handleConnectPointMouseDown(NODE_WIDTH / 2, NODE_HEIGHT)}
-        onMouseUp={handleConnectPointMouseUp}
       />
     </g>
   );

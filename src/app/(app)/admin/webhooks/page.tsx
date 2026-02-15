@@ -37,15 +37,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/components/ui/table";
+import { ResponsiveTable, type ResponsiveColumnDef } from "@/shared/components/responsive-table";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/shared/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+  ResponsiveDialogTrigger,
+} from "@/shared/components/responsive-dialog";
+import { Card, CardContent } from "@/shared/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -171,6 +173,131 @@ export default function AdminWebhooksPage() {
     success: boolean;
   } | null>(null);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const webhookColumns: ResponsiveColumnDef<any>[] = [
+    {
+      key: "status-icon",
+      header: "",
+      priority: 2,
+      className: "w-[40px]",
+      cell: (webhook) =>
+        webhook.isActive ? (
+          <CheckCircle2 className="size-4 text-green-600 dark:text-green-400" aria-label={t("active")} />
+        ) : (
+          <XCircle className="size-4 text-muted-foreground" aria-label={t("inactive")} />
+        ),
+    },
+    {
+      key: "url",
+      header: t("url"),
+      priority: 1,
+      cell: (webhook) => (
+        <div className="flex items-center gap-2">
+          <Globe className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <span className="truncate font-mono text-sm">{webhook.url}</span>
+        </div>
+      ),
+    },
+    {
+      key: "events",
+      header: t("events"),
+      priority: 3,
+      className: "w-[200px]",
+      cell: (webhook) => {
+        const events = (webhook.events ?? []) as string[];
+        return (
+          <div className="flex flex-wrap gap-1">
+            {events.slice(0, 3).map((event: string) => (
+              <Badge key={event} variant="secondary" className="text-xs">{event}</Badge>
+            ))}
+            {events.length > 3 && (
+              <Badge variant="outline" className="text-xs">+{events.length - 3}</Badge>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      key: "lastTriggered",
+      header: t("lastTriggered"),
+      priority: 4,
+      className: "w-[120px]",
+      cell: (webhook) => (
+        <span className="text-sm text-muted-foreground">
+          {(webhook as { lastTriggeredAt?: string | Date | null }).lastTriggeredAt
+            ? new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(
+                new Date((webhook as { lastTriggeredAt: string | Date }).lastTriggeredAt),
+              )
+            : t("neverTriggered")}
+        </span>
+      ),
+    },
+    {
+      key: "status",
+      header: tc("status"),
+      priority: 4,
+      className: "w-[100px]",
+      cell: (webhook) => (
+        <div className="flex flex-col gap-1">
+          <Badge
+            variant="outline"
+            className={
+              webhook.isActive
+                ? "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/30 dark:text-green-400"
+                : "border-gray-200 bg-gray-50 text-gray-700 dark:border-gray-800 dark:bg-gray-900/30 dark:text-gray-400"
+            }
+          >
+            {webhook.isActive ? t("active") : t("inactive")}
+          </Badge>
+          {testResult?.id === webhook.id && (
+            <span
+              className={cn("text-xs", testResult?.success ? "text-green-600 dark:text-green-400" : "text-destructive")}
+              role="status"
+            >
+              {testResult?.success ? t("testSent") : t("testFailed")}
+            </span>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "actions",
+      header: tc("actions"),
+      priority: 1,
+      className: "w-[60px]",
+      cell: (webhook) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="size-8" aria-label={tc("actions")}>
+              <MoreHorizontal className="size-4" aria-hidden="true" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem>
+              <Pencil className="mr-2 size-4" aria-hidden="true" />
+              {tc("edit")}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => handleTestWebhook(webhook.id)}
+              disabled={testingId === webhook.id}
+            >
+              <Send className="mr-2 size-4" aria-hidden="true" />
+              {testingId === webhook.id ? t("testing") : t("testWebhook")}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-destructive"
+              onClick={() => deleteMutation.mutate({ id: webhook.id })}
+            >
+              <Trash2 className="mr-2 size-4" aria-hidden="true" />
+              {tc("delete")}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+    },
+  ];
+
   /**
    * Sends a test ping to the webhook by toggling its isActive status
    * off and back on as a proof-of-life check.
@@ -187,7 +314,7 @@ export default function AdminWebhooksPage() {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-4 sm:p-6">
       {/* Page header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -197,20 +324,20 @@ export default function AdminWebhooksPage() {
           <p className="text-sm text-muted-foreground">{t("description")}</p>
         </div>
 
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
+        <ResponsiveDialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <ResponsiveDialogTrigger asChild>
             <Button>
               <Plus className="mr-2 size-4" aria-hidden="true" />
               {t("createWebhook")}
             </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle>{t("createWebhook")}</DialogTitle>
-              <DialogDescription>
+          </ResponsiveDialogTrigger>
+          <ResponsiveDialogContent className="sm:max-w-lg">
+            <ResponsiveDialogHeader>
+              <ResponsiveDialogTitle>{t("createWebhook")}</ResponsiveDialogTitle>
+              <ResponsiveDialogDescription>
                 {t("createWebhookDescription")}
-              </DialogDescription>
-            </DialogHeader>
+              </ResponsiveDialogDescription>
+            </ResponsiveDialogHeader>
             <div className="grid gap-4 py-4">
               {/* URL */}
               <div className="grid gap-2">
@@ -271,7 +398,7 @@ export default function AdminWebhooksPage() {
                 </div>
               </div>
             </div>
-            <DialogFooter>
+            <ResponsiveDialogFooter>
               <Button variant="outline" onClick={resetForm}>
                 {tc("cancel")}
               </Button>
@@ -281,9 +408,9 @@ export default function AdminWebhooksPage() {
               >
                 {createMutation.isPending ? tc("saving") : tc("create")}
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </ResponsiveDialogFooter>
+          </ResponsiveDialogContent>
+        </ResponsiveDialog>
       </div>
 
       {/* Error state */}
@@ -310,126 +437,33 @@ export default function AdminWebhooksPage() {
         />
       ) : (
         <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[40px]">
-                  <span className="sr-only">{tc("status")}</span>
-                </TableHead>
-                <TableHead>{t("url")}</TableHead>
-                <TableHead className="w-[200px]">{t("events")}</TableHead>
-                <TableHead className="w-[120px]">{t("lastTriggered")}</TableHead>
-                <TableHead className="w-[100px]">{tc("status")}</TableHead>
-                <TableHead className="w-[60px]">{tc("actions")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {webhooks.map((webhook) => {
-                const events = (webhook.events ?? []) as string[];
-                return (
-                  <TableRow key={webhook.id}>
-                    <TableCell>
-                      {webhook.isActive ? (
-                        <CheckCircle2
-                          className="size-4 text-green-600 dark:text-green-400"
-                          aria-label={t("active")}
-                        />
-                      ) : (
-                        <XCircle
-                          className="size-4 text-muted-foreground"
-                          aria-label={t("inactive")}
-                        />
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Globe
-                          className="size-4 shrink-0 text-muted-foreground"
-                          aria-hidden="true"
-                        />
-                        <span className="truncate font-mono text-sm">
-                          {webhook.url}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {events
-                          .slice(0, 3)
-                          .map((event: string) => (
-                            <Badge
-                              key={event}
-                              variant="secondary"
-                              className="text-xs"
-                            >
-                              {event}
-                            </Badge>
-                          ))}
-                        {events.length > 3 && (
-                          <Badge variant="outline" className="text-xs">
-                            +{events.length - 3}
-                          </Badge>
+          <ResponsiveTable
+            columns={webhookColumns}
+            data={webhooks}
+            rowKey={(webhook) => webhook.id}
+            mobileCard={(webhook) => {
+              const events = (webhook.events ?? []) as string[];
+              return (
+                <Card>
+                  <CardContent className="p-3 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        {webhook.isActive ? (
+                          <CheckCircle2 className="size-4 shrink-0 text-green-600 dark:text-green-400" aria-label={t("active")} />
+                        ) : (
+                          <XCircle className="size-4 shrink-0 text-muted-foreground" aria-label={t("inactive")} />
                         )}
+                        <span className="truncate font-mono text-sm">{webhook.url}</span>
                       </div>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {(webhook as { lastTriggeredAt?: string | Date | null }).lastTriggeredAt
-                        ? new Intl.DateTimeFormat("en", {
-                            dateStyle: "medium",
-                            timeStyle: "short",
-                          }).format(new Date((webhook as { lastTriggeredAt: string | Date }).lastTriggeredAt))
-                        : t("neverTriggered")}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col gap-1">
-                        <Badge
-                          variant="outline"
-                          className={
-                            webhook.isActive
-                              ? "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/30 dark:text-green-400"
-                              : "border-gray-200 bg-gray-50 text-gray-700 dark:border-gray-800 dark:bg-gray-900/30 dark:text-gray-400"
-                          }
-                        >
-                          {webhook.isActive ? t("active") : t("inactive")}
-                        </Badge>
-                        {testResult?.id === webhook.id && (
-                          <span
-                            className={cn(
-                              "text-xs",
-                              testResult.success
-                                ? "text-green-600 dark:text-green-400"
-                                : "text-destructive",
-                            )}
-                            role="status"
-                          >
-                            {testResult.success
-                              ? t("testSent")
-                              : t("testFailed")}
-                          </span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="size-8"
-                            aria-label={tc("actions")}
-                          >
-                            <MoreHorizontal
-                              className="size-4"
-                              aria-hidden="true"
-                            />
+                          <Button variant="ghost" size="icon" className="size-8 shrink-0" aria-label={tc("actions")}>
+                            <MoreHorizontal className="size-4" aria-hidden="true" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem>
-                            <Pencil
-                              className="mr-2 size-4"
-                              aria-hidden="true"
-                            />
+                            <Pencil className="mr-2 size-4" aria-hidden="true" />
                             {tc("edit")}
                           </DropdownMenuItem>
                           <DropdownMenuItem
@@ -437,31 +471,32 @@ export default function AdminWebhooksPage() {
                             disabled={testingId === webhook.id}
                           >
                             <Send className="mr-2 size-4" aria-hidden="true" />
-                            {testingId === webhook.id
-                              ? t("testing")
-                              : t("testWebhook")}
+                            {testingId === webhook.id ? t("testing") : t("testWebhook")}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             className="text-destructive"
-                            onClick={() => {
-                              deleteMutation.mutate({ id: webhook.id });
-                            }}
+                            onClick={() => deleteMutation.mutate({ id: webhook.id })}
                           >
-                            <Trash2
-                              className="mr-2 size-4"
-                              aria-hidden="true"
-                            />
+                            <Trash2 className="mr-2 size-4" aria-hidden="true" />
                             {tc("delete")}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {events.slice(0, 3).map((event: string) => (
+                        <Badge key={event} variant="secondary" className="text-xs">{event}</Badge>
+                      ))}
+                      {events.length > 3 && (
+                        <Badge variant="outline" className="text-xs">+{events.length - 3}</Badge>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            }}
+          />
         </div>
       )}
     </div>

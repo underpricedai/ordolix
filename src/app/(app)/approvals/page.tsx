@@ -16,7 +16,7 @@ export default function ApprovalsPage() {
   return (
     <>
       <AppHeader breadcrumbs={[{ label: tn("approvals") }]} />
-      <div className="flex-1 space-y-4 p-6">
+      <div className="flex-1 space-y-4 p-4 sm:p-6">
         <ApprovalList />
       </div>
     </>

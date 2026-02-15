@@ -6,7 +6,15 @@ import { Plus, GitBranch, Workflow } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Separator } from "@/shared/components/ui/separator";
 import { Skeleton } from "@/shared/components/ui/skeleton";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/shared/components/ui/sheet";
 import { EmptyState } from "@/shared/components/empty-state";
+import { useIsMobile } from "@/shared/hooks/use-mobile";
+import { usePinchZoom } from "@/shared/hooks/use-pinch-zoom";
 import { trpc } from "@/shared/lib/trpc";
 import {
   WorkflowStatusNode,
@@ -75,6 +83,20 @@ export function WorkflowEditor({
   const t = useTranslations("workflows");
   const tc = useTranslations("common");
   const svgRef = useRef<SVGSVGElement>(null);
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
+
+  // Pinch-to-zoom on SVG canvas container
+  usePinchZoom(canvasContainerRef, {
+    minScale: 0.5,
+    maxScale: 3,
+    onScaleChange: (scale) => {
+      if (svgRef.current) {
+        svgRef.current.style.transform = `scale(${scale})`;
+        svgRef.current.style.transformOrigin = "0 0";
+      }
+    },
+  });
 
   const [selection, setSelection] = useState<Selection>(null);
   const [statusPositions, setStatusPositions] = useState<
@@ -330,11 +352,12 @@ export function WorkflowEditor({
         </div>
 
         {/* SVG Canvas */}
-        <div className="flex-1 overflow-auto bg-muted/20">
+        <div ref={canvasContainerRef} className="flex-1 overflow-auto bg-muted/20 touch-pan-x touch-pan-y">
           <svg
             ref={svgRef}
             width={canvasSize.width}
             height={canvasSize.height}
+            viewBox={`0 0 ${canvasSize.width} ${canvasSize.height}`}
             className="min-h-full min-w-full"
             onClick={handleCanvasClick}
             role="img"
@@ -419,14 +442,39 @@ export function WorkflowEditor({
         </div>
       </div>
 
-      {/* Properties panel */}
-      <WorkflowProperties
-        selection={selectionData}
-        availableStatuses={statusNodes}
-        onStatusChange={handleStatusChange}
-        onTransitionChange={handleTransitionChange}
-        onClose={handleCloseProperties}
-      />
+      {/* Properties panel: Sheet on mobile, side panel on desktop */}
+      {isMobile ? (
+        <Sheet open={!!selectionData} onOpenChange={(open) => { if (!open) handleCloseProperties(); }}>
+          <SheetContent side="bottom" className="max-h-[70vh] overflow-y-auto">
+            <SheetHeader>
+              <SheetTitle>
+                {selectionData?.type === "status"
+                  ? t("statusProperties")
+                  : selectionData?.type === "transition"
+                    ? t("transitionProperties")
+                    : ""}
+              </SheetTitle>
+            </SheetHeader>
+            <div className="p-4">
+              <WorkflowProperties
+                selection={selectionData}
+                availableStatuses={statusNodes}
+                onStatusChange={handleStatusChange}
+                onTransitionChange={handleTransitionChange}
+                onClose={handleCloseProperties}
+              />
+            </div>
+          </SheetContent>
+        </Sheet>
+      ) : (
+        <WorkflowProperties
+          selection={selectionData}
+          availableStatuses={statusNodes}
+          onStatusChange={handleStatusChange}
+          onTransitionChange={handleTransitionChange}
+          onClose={handleCloseProperties}
+        />
+      )}
     </div>
   );
 }

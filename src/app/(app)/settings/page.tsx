@@ -715,8 +715,8 @@ export default function SettingsPage() {
   return (
     <>
       <AppHeader breadcrumbs={[{ label: tn("settings") }]} />
-      <div className="flex-1 space-y-6 p-6">
-        <div className="flex items-center gap-3">
+      <div className="flex-1 space-y-6 p-4 sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-3">
           <Settings
             className="size-6 text-muted-foreground"
             aria-hidden="true"

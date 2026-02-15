@@ -199,12 +199,12 @@ export function WorkflowTransitionLine({
         </marker>
       </defs>
 
-      {/* Invisible wider path for easier clicking */}
+      {/* Invisible wider path for easier clicking/tapping */}
       <path
         d={pathD}
         fill="none"
         stroke="transparent"
-        strokeWidth={16}
+        strokeWidth={24}
         className="cursor-pointer"
       />
 

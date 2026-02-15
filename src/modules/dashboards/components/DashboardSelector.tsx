@@ -14,14 +14,14 @@ import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/shared/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+  ResponsiveDialogTrigger,
+} from "@/shared/components/responsive-dialog";
 import { Switch } from "@/shared/components/ui/switch";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { EmptyState } from "@/shared/components/empty-state";
@@ -102,18 +102,18 @@ export function DashboardSelector({
   return (
     <div className="space-y-4">
       {/* Create button */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogTrigger asChild>
+      <ResponsiveDialog open={createOpen} onOpenChange={setCreateOpen}>
+        <ResponsiveDialogTrigger asChild>
           <Button variant="outline" className="w-full">
             <Plus className="mr-2 size-4" aria-hidden="true" />
             {t("createDashboard")}
           </Button>
-        </DialogTrigger>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t("createDashboard")}</DialogTitle>
-            <DialogDescription>{t("createDashboardDescription")}</DialogDescription>
-          </DialogHeader>
+        </ResponsiveDialogTrigger>
+        <ResponsiveDialogContent className="sm:max-w-md">
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle>{t("createDashboard")}</ResponsiveDialogTitle>
+            <ResponsiveDialogDescription>{t("createDashboardDescription")}</ResponsiveDialogDescription>
+          </ResponsiveDialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label htmlFor="dashboard-name">{t("dashboardName")}</Label>
@@ -133,16 +133,16 @@ export function DashboardSelector({
               <Label htmlFor="dashboard-shared">{t("sharedDashboard")}</Label>
             </div>
           </div>
-          <DialogFooter>
+          <ResponsiveDialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>
               {tc("cancel")}
             </Button>
             <Button onClick={handleCreate} disabled={!newName.trim()}>
               {tc("create")}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ResponsiveDialogFooter>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
 
       {/* Dashboard sections */}
       <ScrollArea className="max-h-[400px]">

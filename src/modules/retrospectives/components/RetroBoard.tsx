@@ -16,9 +16,11 @@ import { Skeleton } from "@/shared/components/ui/skeleton";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { Switch } from "@/shared/components/ui/switch";
 import { Label } from "@/shared/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
 import { EmptyState } from "@/shared/components/empty-state";
 import { trpc } from "@/shared/lib/trpc";
 import { cn } from "@/shared/lib/utils";
+import { useIsMobile } from "@/shared/hooks/use-mobile";
 import { RetroCard, type RetroCardData } from "./RetroCard";
 
 /**
@@ -65,6 +67,7 @@ const columnStyles: Record<string, { bg: string; header: string }> = {
 export function RetroBoard({ retrospectiveId }: RetroBoardProps) {
   const t = useTranslations("retrospectives");
   const tc = useTranslations("common");
+  const isMobile = useIsMobile();
 
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [newCardTexts, setNewCardTexts] = useState<Record<string, string>>({});
@@ -245,97 +248,186 @@ export function RetroBoard({ retrospectiveId }: RetroBoardProps) {
       </div>
 
       {/* Columns */}
-      <div className="flex flex-1 gap-4 overflow-x-auto pb-4">
-        {columns.map((column) => {
-          const style = columnStyles[column.category] ?? {
-            bg: "bg-muted/20",
-            header: "text-foreground",
-          };
-
-          return (
-            <div
-              key={column.category}
-              className={cn(
-                "flex w-80 shrink-0 flex-col rounded-lg",
-                style.bg,
-              )}
-              role="region"
-              aria-label={column.category}
-            >
-              {/* Column header */}
-              <div className="flex items-center justify-between px-4 py-3">
-                <h3
-                  className={cn("text-sm font-semibold", style.header)}
+      {isMobile ? (
+        <Tabs defaultValue={columns[0]?.category ?? "Went Well"} className="flex-1">
+          <TabsList className="w-full">
+            {columns.map((column) => {
+              const style = columnStyles[column.category] ?? {
+                bg: "bg-muted/20",
+                header: "text-foreground",
+              };
+              return (
+                <TabsTrigger key={column.category} value={column.category} className="flex-1">
+                  <span className={cn("text-xs font-semibold", style.header)}>
+                    {column.category === "Went Well"
+                      ? t("wentWell")
+                      : column.category === "To Improve"
+                        ? t("toImprove")
+                        : column.category === "Action Items"
+                          ? t("actionItems")
+                          : column.category}
+                  </span>
+                  <Badge variant="secondary" className="ms-1.5 text-xs">
+                    {column.cards.length}
+                  </Badge>
+                </TabsTrigger>
+              );
+            })}
+          </TabsList>
+          {columns.map((column) => {
+            const style = columnStyles[column.category] ?? {
+              bg: "bg-muted/20",
+              header: "text-foreground",
+            };
+            return (
+              <TabsContent key={column.category} value={column.category}>
+                <div
+                  className={cn("flex flex-col rounded-lg", style.bg)}
+                  role="region"
+                  aria-label={column.category}
                 >
-                  {column.category === "Went Well"
-                    ? t("wentWell")
-                    : column.category === "To Improve"
-                      ? t("toImprove")
-                      : column.category === "Action Items"
-                        ? t("actionItems")
-                        : column.category}
-                </h3>
-                <Badge variant="secondary" className="text-xs">
-                  {column.cards.length}
-                </Badge>
-              </div>
-
-              {/* Cards */}
-              <ScrollArea className="flex-1 px-3">
-                <div className="space-y-3 pb-3" role="list">
-                  {column.cards.map((card) => (
-                    <RetroCard
-                      key={card.id}
-                      card={card}
-                      onVote={handleVote}
-                      onEdit={handleEdit}
-                      onDelete={handleDelete}
-                    />
-                  ))}
+                  <ScrollArea className="flex-1 px-3 pt-3">
+                    <div className="space-y-3 pb-3" role="list">
+                      {column.cards.map((card) => (
+                        <RetroCard
+                          key={card.id}
+                          card={card}
+                          onVote={handleVote}
+                          onEdit={handleEdit}
+                          onDelete={handleDelete}
+                        />
+                      ))}
+                    </div>
+                  </ScrollArea>
+                  <div className="border-t px-3 py-3">
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder={t("addCard")}
+                        value={newCardTexts[column.category] ?? ""}
+                        onChange={(e) =>
+                          setNewCardTexts((prev) => ({
+                            ...prev,
+                            [column.category]: e.target.value,
+                          }))
+                        }
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            handleAddCard(column.category);
+                          }
+                        }}
+                        className="text-sm"
+                        aria-label={`${t("addCard")} - ${column.category}`}
+                      />
+                      <Button
+                        size="icon"
+                        className="size-9 shrink-0"
+                        onClick={() => handleAddCard(column.category)}
+                        disabled={!newCardTexts[column.category]?.trim()}
+                        aria-label={t("addCard")}
+                      >
+                        <MessageSquarePlus className="size-4" aria-hidden="true" />
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-              </ScrollArea>
+              </TabsContent>
+            );
+          })}
+        </Tabs>
+      ) : (
+        <div className="flex flex-1 gap-4 overflow-x-auto pb-4">
+          {columns.map((column) => {
+            const style = columnStyles[column.category] ?? {
+              bg: "bg-muted/20",
+              header: "text-foreground",
+            };
 
-              {/* Add card input */}
-              <div className="border-t px-3 py-3">
-                <div className="flex gap-2">
-                  <Input
-                    placeholder={t("addCard")}
-                    value={newCardTexts[column.category] ?? ""}
-                    onChange={(e) =>
-                      setNewCardTexts((prev) => ({
-                        ...prev,
-                        [column.category]: e.target.value,
-                      }))
-                    }
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        handleAddCard(column.category);
-                      }
-                    }}
-                    className="text-sm"
-                    aria-label={`${t("addCard")} - ${column.category}`}
-                  />
-                  <Button
-                    size="icon"
-                    className="size-9 shrink-0"
-                    onClick={() => handleAddCard(column.category)}
-                    disabled={
-                      !newCardTexts[column.category]?.trim()
-                    }
-                    aria-label={t("addCard")}
+            return (
+              <div
+                key={column.category}
+                className={cn(
+                  "flex w-80 shrink-0 flex-col rounded-lg",
+                  style.bg,
+                )}
+                role="region"
+                aria-label={column.category}
+              >
+                {/* Column header */}
+                <div className="flex items-center justify-between px-4 py-3">
+                  <h3
+                    className={cn("text-sm font-semibold", style.header)}
                   >
-                    <MessageSquarePlus
-                      className="size-4"
-                      aria-hidden="true"
+                    {column.category === "Went Well"
+                      ? t("wentWell")
+                      : column.category === "To Improve"
+                        ? t("toImprove")
+                        : column.category === "Action Items"
+                          ? t("actionItems")
+                          : column.category}
+                  </h3>
+                  <Badge variant="secondary" className="text-xs">
+                    {column.cards.length}
+                  </Badge>
+                </div>
+
+                {/* Cards */}
+                <ScrollArea className="flex-1 px-3">
+                  <div className="space-y-3 pb-3" role="list">
+                    {column.cards.map((card) => (
+                      <RetroCard
+                        key={card.id}
+                        card={card}
+                        onVote={handleVote}
+                        onEdit={handleEdit}
+                        onDelete={handleDelete}
+                      />
+                    ))}
+                  </div>
+                </ScrollArea>
+
+                {/* Add card input */}
+                <div className="border-t px-3 py-3">
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder={t("addCard")}
+                      value={newCardTexts[column.category] ?? ""}
+                      onChange={(e) =>
+                        setNewCardTexts((prev) => ({
+                          ...prev,
+                          [column.category]: e.target.value,
+                        }))
+                      }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          handleAddCard(column.category);
+                        }
+                      }}
+                      className="text-sm"
+                      aria-label={`${t("addCard")} - ${column.category}`}
                     />
-                  </Button>
+                    <Button
+                      size="icon"
+                      className="size-9 shrink-0"
+                      onClick={() => handleAddCard(column.category)}
+                      disabled={
+                        !newCardTexts[column.category]?.trim()
+                      }
+                      aria-label={t("addCard")}
+                    >
+                      <MessageSquarePlus
+                        className="size-4"
+                        aria-hidden="true"
+                      />
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

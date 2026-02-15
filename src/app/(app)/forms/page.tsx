@@ -56,7 +56,7 @@ export default function FormsPage() {
   return (
     <>
       <AppHeader breadcrumbs={[{ label: tn("forms") }]} />
-      <div className="flex-1 space-y-4 p-6">
+      <div className="flex-1 space-y-4 p-4 sm:p-6">
         {/* Page header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>

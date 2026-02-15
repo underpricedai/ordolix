@@ -92,7 +92,7 @@ export default function AdminDashboardPage() {
   } = trpc.admin.getSystemHealth.useQuery({});
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-4 sm:p-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">
           {t("title")}

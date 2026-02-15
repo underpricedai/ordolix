@@ -26,6 +26,10 @@ import {
   SelectValue,
 } from "@/shared/components/ui/select";
 import { Skeleton } from "@/shared/components/ui/skeleton";
+import {
+  ResponsiveTable,
+  type ResponsiveColumnDef,
+} from "@/shared/components/responsive-table";
 import { trpc } from "@/shared/lib/trpc";
 
 /** Notification event types with labels */
@@ -111,22 +115,13 @@ export function NotificationPreferences() {
       </CardHeader>
       <CardContent>
         <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Event Type</TableHead>
-                <TableHead className="w-[200px]">Channel</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {EVENT_TYPES.map((event) => (
-                <TableRow key={event.value}>
-                  <TableCell>
-                    <div className="flex flex-col">
-                      <span className="font-medium">{event.label}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
+          <ResponsiveTable
+            columns={
+              [
+                {
+                  key: "channel",
+                  header: "Channel",
+                  cell: (event) => (
                     <Select
                       value={getChannelForType(event.value)}
                       onValueChange={(val) =>
@@ -144,11 +139,59 @@ export function NotificationPreferences() {
                         ))}
                       </SelectContent>
                     </Select>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                  ),
+                  priority: 1,
+                  className: "w-[200px]",
+                },
+                {
+                  key: "type",
+                  header: "Event Type",
+                  cell: (event) => (
+                    <div className="flex flex-col">
+                      <span className="font-medium">{event.label}</span>
+                    </div>
+                  ),
+                  priority: 2,
+                },
+                {
+                  key: "enabled",
+                  header: "Enabled",
+                  cell: (event) => (
+                    <span className="text-sm text-muted-foreground">
+                      {getChannelForType(event.value) !== "none" ? "Yes" : "No"}
+                    </span>
+                  ),
+                  priority: 1,
+                },
+              ] satisfies ResponsiveColumnDef<(typeof EVENT_TYPES)[number]>[]
+            }
+            data={[...EVENT_TYPES]}
+            rowKey={(event) => event.value}
+            mobileCard={(event) => (
+              <Card className="p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">{event.label}</span>
+                  <Select
+                    value={getChannelForType(event.value)}
+                    onValueChange={(val) =>
+                      handleChannelChange(event.value, val as Channel)
+                    }
+                  >
+                    <SelectTrigger className="w-[140px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CHANNELS.map((ch) => (
+                        <SelectItem key={ch.value} value={ch.value}>
+                          {ch.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </Card>
+            )}
+          />
         </div>
       </CardContent>
     </Card>

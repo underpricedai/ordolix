@@ -27,6 +27,7 @@ import {
 import { Badge } from "@/shared/components/ui/badge";
 import { Progress } from "@/shared/components/ui/progress";
 import { Skeleton } from "@/shared/components/ui/skeleton";
+import { ResponsiveTable, type ResponsiveColumnDef } from "@/shared/components/responsive-table";
 import { EmptyState } from "@/shared/components/empty-state";
 import { cn } from "@/shared/lib/utils";
 import { trpc } from "@/shared/lib/trpc";
@@ -73,6 +74,104 @@ function formatTimeRemaining(minutes: number): string {
   }
   if (h === 0) return `${m}m`;
   return `${h}h ${m}m`;
+}
+
+/**
+ * Builds responsive column definitions for the SLA instances table.
+ */
+function slaColumns(
+  t: (key: string) => string,
+): ResponsiveColumnDef<SLAInstance>[] {
+  return [
+    {
+      key: "name",
+      header: "SLA",
+      priority: 1,
+      cell: (instance) => (
+        <span className="font-medium">
+          {instance.slaConfig?.name ?? instance.slaConfigId}
+        </span>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      priority: 1,
+      className: "w-[100px]",
+      cell: (instance) => {
+        const status = (instance.status ?? "active") as SLAStatus;
+        return (
+          <Badge
+            variant={
+              status === "breached"
+                ? "destructive"
+                : status === "met"
+                  ? "default"
+                  : "secondary"
+            }
+          >
+            {status}
+          </Badge>
+        );
+      },
+    },
+    {
+      key: "remaining",
+      header: t("timeRemaining"),
+      priority: 2,
+      className: "w-[200px]",
+      cell: (instance) => {
+        const status = (instance.status ?? "active") as SLAStatus;
+        const targetDuration = instance.targetDuration ?? 0;
+        const remainingTime = instance.remainingTime ?? 0;
+        const percentRemaining =
+          targetDuration > 0
+            ? Math.max(0, Math.min(100, (remainingTime / targetDuration) * 100))
+            : 0;
+        const statusColor = getStatusColor(status, percentRemaining);
+        const progressClass = getProgressClass(status, percentRemaining);
+
+        return (
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between text-xs">
+              <span className={cn("font-medium", statusColor)}>
+                {formatTimeRemaining(remainingTime)}
+              </span>
+              <span className="text-muted-foreground">
+                {Math.round(percentRemaining)}%
+              </span>
+            </div>
+            <Progress
+              value={percentRemaining}
+              className={cn("h-2", progressClass)}
+              aria-label={`${Math.round(percentRemaining)}% time remaining`}
+            />
+          </div>
+        );
+      },
+    },
+    {
+      key: "target",
+      header: t("target"),
+      priority: 3,
+      className: "w-[120px]",
+      cell: (instance) => (
+        <span className="text-sm text-muted-foreground">
+          {formatTimeRemaining(instance.targetDuration ?? 0)}
+        </span>
+      ),
+    },
+    {
+      key: "issue",
+      header: "Issue",
+      priority: 4,
+      cell: (instance) => (
+        <span className="text-primary">
+          {instance.issue?.key ?? instance.issueId}
+        </span>
+      ),
+    },
+  ];
 }
 
 /**
@@ -215,74 +314,63 @@ export function SLADashboard() {
         />
       ) : (
         <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>SLA</TableHead>
-                <TableHead>Issue</TableHead>
-                <TableHead className="w-[100px]">Status</TableHead>
-                <TableHead className="w-[200px]">{t("timeRemaining")}</TableHead>
-                <TableHead className="w-[120px]">{t("target")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {instances.map((instance: SLAInstance) => {
-                const status = (instance.status ?? "active") as SLAStatus;
-                const targetDuration = instance.targetDuration ?? 0;
-                const remainingTime = instance.remainingTime ?? 0;
-                const percentRemaining =
-                  targetDuration > 0
-                    ? Math.max(0, Math.min(100, (remainingTime / targetDuration) * 100))
-                    : 0;
-                const statusColor = getStatusColor(status, percentRemaining);
-                const progressClass = getProgressClass(status, percentRemaining);
+          <ResponsiveTable<SLAInstance>
+            columns={slaColumns(t)}
+            data={instances}
+            rowKey={(instance) => instance.id}
+            mobileCard={(instance) => {
+              const status = (instance.status ?? "active") as SLAStatus;
+              const targetDuration = instance.targetDuration ?? 0;
+              const remainingTime = instance.remainingTime ?? 0;
+              const percentRemaining =
+                targetDuration > 0
+                  ? Math.max(0, Math.min(100, (remainingTime / targetDuration) * 100))
+                  : 0;
+              const statusColor = getStatusColor(status, percentRemaining);
+              const progressClass = getProgressClass(status, percentRemaining);
 
-                return (
-                  <TableRow key={instance.id}>
-                    <TableCell className="font-medium">
-                      {instance.slaConfig?.name ?? instance.slaConfigId}
-                    </TableCell>
-                    <TableCell className="text-primary">
-                      {instance.issue?.key ?? instance.issueId}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          status === "breached"
-                            ? "destructive"
-                            : status === "met"
-                              ? "default"
-                              : "secondary"
-                        }
-                      >
-                        {status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className={cn("font-medium", statusColor)}>
-                            {formatTimeRemaining(remainingTime)}
-                          </span>
-                          <span className="text-muted-foreground">
-                            {Math.round(percentRemaining)}%
-                          </span>
-                        </div>
-                        <Progress
-                          value={percentRemaining}
-                          className={cn("h-2", progressClass)}
-                          aria-label={`${Math.round(percentRemaining)}% time remaining`}
-                        />
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {formatTimeRemaining(targetDuration)}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+              return (
+                <Card className="p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium">
+                        {instance.slaConfig?.name ?? instance.slaConfigId}
+                      </p>
+                      <p className="mt-0.5 text-xs text-primary">
+                        {instance.issue?.key ?? instance.issueId}
+                      </p>
+                    </div>
+                    <Badge
+                      variant={
+                        status === "breached"
+                          ? "destructive"
+                          : status === "met"
+                            ? "default"
+                            : "secondary"
+                      }
+                    >
+                      {status}
+                    </Badge>
+                  </div>
+                  <div className="mt-2 flex flex-col gap-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className={cn("font-medium", statusColor)}>
+                        {formatTimeRemaining(remainingTime)}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {Math.round(percentRemaining)}%
+                      </span>
+                    </div>
+                    <Progress
+                      value={percentRemaining}
+                      className={cn("h-2", progressClass)}
+                      aria-label={`${Math.round(percentRemaining)}% time remaining`}
+                    />
+                  </div>
+                </Card>
+              );
+            }}
+          />
         </div>
       )}
     </div>

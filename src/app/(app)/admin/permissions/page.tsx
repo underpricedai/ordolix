@@ -37,14 +37,14 @@ import {
   TableRow,
 } from "@/shared/components/ui/table";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/shared/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+  ResponsiveDialogTrigger,
+} from "@/shared/components/responsive-dialog";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { Skeleton } from "@/shared/components/ui/skeleton";
@@ -129,7 +129,7 @@ export default function AdminPermissionsPage() {
 
   if (schemesLoading) {
     return (
-      <div className="space-y-6 p-6">
+      <div className="space-y-6 p-4 sm:p-6">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-64 w-full" />
       </div>
@@ -137,7 +137,7 @@ export default function AdminPermissionsPage() {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-4 sm:p-6">
       {/* Page header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -156,18 +156,18 @@ export default function AdminPermissionsPage() {
               {tc("delete")}
             </Button>
           )}
-          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-            <DialogTrigger asChild>
+          <ResponsiveDialog open={createOpen} onOpenChange={setCreateOpen}>
+            <ResponsiveDialogTrigger asChild>
               <Button>
                 <Plus className="mr-2 size-4" aria-hidden="true" />
                 {t("createScheme")}
               </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{t("createScheme")}</DialogTitle>
-                <DialogDescription>{t("createSchemeDescription")}</DialogDescription>
-              </DialogHeader>
+            </ResponsiveDialogTrigger>
+            <ResponsiveDialogContent>
+              <ResponsiveDialogHeader>
+                <ResponsiveDialogTitle>{t("createScheme")}</ResponsiveDialogTitle>
+                <ResponsiveDialogDescription>{t("createSchemeDescription")}</ResponsiveDialogDescription>
+              </ResponsiveDialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
                   <Label htmlFor="scheme-name">{tc("name")}</Label>
@@ -186,7 +186,7 @@ export default function AdminPermissionsPage() {
                   />
                 </div>
               </div>
-              <DialogFooter>
+              <ResponsiveDialogFooter>
                 <Button variant="outline" onClick={() => setCreateOpen(false)}>
                   {tc("cancel")}
                 </Button>
@@ -198,9 +198,9 @@ export default function AdminPermissionsPage() {
                 >
                   {tc("create")}
                 </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+              </ResponsiveDialogFooter>
+            </ResponsiveDialogContent>
+          </ResponsiveDialog>
         </div>
       </div>
 

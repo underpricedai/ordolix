@@ -61,7 +61,7 @@ export default function WorkflowsPage() {
       />
       <div className="flex flex-1 flex-col">
         {/* Page header */}
-        <div className="flex items-center justify-between border-b px-6 py-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b px-4 sm:px-6 py-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground">
               {t("title")}

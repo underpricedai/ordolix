@@ -149,7 +149,7 @@ export function BoardCard({
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5">
                       <GripVertical
-                        className="size-3.5 shrink-0 text-muted-foreground/40 opacity-0 transition-opacity group-hover/card:opacity-100"
+                        className="size-3.5 shrink-0 text-muted-foreground/40 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover/card:opacity-100"
                         aria-hidden="true"
                       />
                       {issue.priority && (

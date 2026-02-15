@@ -11,14 +11,14 @@ import { Button } from "@/shared/components/ui/button";
 import { Badge } from "@/shared/components/ui/badge";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/shared/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+  ResponsiveDialogTrigger,
+} from "@/shared/components/responsive-dialog";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import {
@@ -152,18 +152,18 @@ export function DashboardView({ dashboardId }: DashboardViewProps) {
           </Button>
 
           {/* Add widget */}
-          <Dialog open={addWidgetOpen} onOpenChange={setAddWidgetOpen}>
-            <DialogTrigger asChild>
+          <ResponsiveDialog open={addWidgetOpen} onOpenChange={setAddWidgetOpen}>
+            <ResponsiveDialogTrigger asChild>
               <Button size="sm">
                 <Plus className="mr-1.5 size-3.5" aria-hidden="true" />
                 {t("addWidget")}
               </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>{t("addWidget")}</DialogTitle>
-                <DialogDescription>{t("addWidgetDescription")}</DialogDescription>
-              </DialogHeader>
+            </ResponsiveDialogTrigger>
+            <ResponsiveDialogContent className="sm:max-w-md">
+              <ResponsiveDialogHeader>
+                <ResponsiveDialogTitle>{t("addWidget")}</ResponsiveDialogTitle>
+                <ResponsiveDialogDescription>{t("addWidgetDescription")}</ResponsiveDialogDescription>
+              </ResponsiveDialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
                   <Label htmlFor="widget-title">{t("widgetTitle")}</Label>
@@ -209,7 +209,7 @@ export function DashboardView({ dashboardId }: DashboardViewProps) {
                   </Select>
                 </div>
               </div>
-              <DialogFooter>
+              <ResponsiveDialogFooter>
                 <Button
                   variant="outline"
                   onClick={() => setAddWidgetOpen(false)}
@@ -222,9 +222,9 @@ export function DashboardView({ dashboardId }: DashboardViewProps) {
                 >
                   {t("addWidget")}
                 </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+              </ResponsiveDialogFooter>
+            </ResponsiveDialogContent>
+          </ResponsiveDialog>
         </div>
       </div>
 

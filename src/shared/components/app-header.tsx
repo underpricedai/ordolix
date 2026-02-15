@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Bell, Search, Moon, Sun, LogOut, User, Settings } from "lucide-react";
+import { Bell, Search, Moon, Sun, LogOut, User, Settings, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
@@ -28,6 +28,12 @@ import {
 } from "@/shared/components/ui/breadcrumb";
 import { Separator } from "@/shared/components/ui/separator";
 import { SidebarTrigger } from "@/shared/components/ui/sidebar";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/shared/components/ui/sheet";
 import { trpc } from "@/shared/lib/trpc";
 
 /**
@@ -90,12 +96,13 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
     document.documentElement.classList.toggle("dark", next === "dark");
   }, [theme]);
 
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const displayCount = unreadCount ?? 0;
 
   return (
     <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
       {/* Left: Sidebar toggle + Breadcrumbs */}
-      <div className="flex items-center gap-2">
+      <div className="flex min-w-0 flex-1 items-center gap-2">
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="mr-2 h-4" />
         {breadcrumbs.length > 0 && (
@@ -147,7 +154,52 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
       </div>
 
       {/* Right: Actions */}
-      <div className="flex items-center gap-1">
+      <div className="flex shrink-0 items-center gap-1">
+        {/* Mobile search button */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-9 md:hidden"
+          aria-label={tc("search")}
+          onClick={() => setMobileSearchOpen(true)}
+        >
+          <Search className="size-4" aria-hidden="true" />
+        </Button>
+
+        {/* Mobile search sheet */}
+        <Sheet open={mobileSearchOpen} onOpenChange={setMobileSearchOpen}>
+          <SheetContent side="top" className="h-auto">
+            <SheetHeader>
+              <SheetTitle>{tc("search")}</SheetTitle>
+            </SheetHeader>
+            <div className="px-4 pb-4">
+              <div className="relative">
+                <Search
+                  className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                  aria-hidden="true"
+                />
+                <Input
+                  type="search"
+                  placeholder={t("searchPlaceholder")}
+                  className="h-10 pl-9 pr-4"
+                  aria-label={tc("search")}
+                  autoFocus
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && searchQuery.trim()) {
+                      setMobileSearchOpen(false);
+                      router.push(
+                        `/search?q=${encodeURIComponent(searchQuery.trim())}`,
+                      );
+                    }
+                  }}
+                />
+              </div>
+            </div>
+          </SheetContent>
+        </Sheet>
+
         {/* Theme toggle */}
         <Button
           variant="ghost"

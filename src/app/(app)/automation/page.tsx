@@ -22,7 +22,7 @@ export default function AutomationPage() {
   return (
     <>
       <AppHeader breadcrumbs={[{ label: tn("automation") }]} />
-      <div className="flex-1 space-y-4 p-6">
+      <div className="flex-1 space-y-4 p-4 sm:p-6">
         {showEditor ? (
           <AutomationRuleEditor
             ruleId={editingRuleId ?? undefined}

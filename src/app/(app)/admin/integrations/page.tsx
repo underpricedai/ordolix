@@ -35,13 +35,13 @@ import {
   CardTitle,
 } from "@/shared/components/ui/card";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/shared/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/shared/components/responsive-dialog";
 import { trpc } from "@/shared/lib/trpc";
 
 /**
@@ -183,7 +183,7 @@ export default function AdminIntegrationsPage() {
   const activeConfig = INTEGRATIONS.find((i) => i.id === activeIntegration);
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-4 sm:p-6">
       {/* Page header */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">
@@ -250,16 +250,16 @@ export default function AdminIntegrationsPage() {
       </div>
 
       {/* Configuration dialog */}
-      <Dialog open={configOpen} onOpenChange={setConfigOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>
+      <ResponsiveDialog open={configOpen} onOpenChange={setConfigOpen}>
+        <ResponsiveDialogContent className="sm:max-w-md">
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle>
               {activeConfig ? t(activeConfig.nameKey) : tc("configure")}
-            </DialogTitle>
-            <DialogDescription>
+            </ResponsiveDialogTitle>
+            <ResponsiveDialogDescription>
               {activeConfig ? t(activeConfig.descKey) : ""}
-            </DialogDescription>
-          </DialogHeader>
+            </ResponsiveDialogDescription>
+          </ResponsiveDialogHeader>
           <div className="grid gap-4 py-4">
             {activeConfig?.fields.includes("apiKey") && (
               <div className="grid gap-2">
@@ -286,7 +286,7 @@ export default function AdminIntegrationsPage() {
               </div>
             )}
           </div>
-          <DialogFooter className="gap-2 sm:gap-0">
+          <ResponsiveDialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={closeConfig}>
               {tc("cancel")}
             </Button>
@@ -312,9 +312,9 @@ export default function AdminIntegrationsPage() {
               )}
               {t("saveConfig")}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ResponsiveDialogFooter>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
     </div>
   );
 }

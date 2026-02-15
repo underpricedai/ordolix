@@ -43,7 +43,7 @@ export default function GanttPage() {
     return (
       <>
         <AppHeader breadcrumbs={[{ label: tn("gantt") }]} />
-        <div className="flex-1 space-y-4 p-6">
+        <div className="flex-1 space-y-4 p-4 sm:p-6">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-96 w-full" />
         </div>
@@ -55,7 +55,7 @@ export default function GanttPage() {
     return (
       <>
         <AppHeader breadcrumbs={[{ label: tn("gantt") }]} />
-        <div className="flex-1 p-6">
+        <div className="flex-1 p-4 sm:p-6">
           <EmptyState
             icon={<GanttIcon className="size-12" />}
             title={tc("error")}
@@ -75,7 +75,7 @@ export default function GanttPage() {
     return (
       <>
         <AppHeader breadcrumbs={[{ label: tn("gantt") }]} />
-        <div className="flex-1 p-6">
+        <div className="flex-1 p-4 sm:p-6">
           <EmptyState
             icon={<FolderOpen className="size-12" />}
             title="No projects yet"
@@ -90,7 +90,7 @@ export default function GanttPage() {
     <>
       <AppHeader breadcrumbs={[{ label: tn("gantt") }]} />
       <div className="flex flex-1 flex-col">
-        <div className="flex items-center justify-between border-b px-6 py-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b px-4 sm:px-6 py-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground">
               {t("title")}

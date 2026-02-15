@@ -178,7 +178,7 @@ export function BoardView({
 
       {/* Board columns */}
       {isEmpty ? (
-        <div className="flex-1 px-6 py-8">
+        <div className="flex-1 px-4 py-8 sm:px-6">
           <EmptyState
             icon={<Columns3 className="size-12" />}
             title={t("emptyTitle")}
@@ -188,7 +188,7 @@ export function BoardView({
       ) : (
         <ScrollArea className="flex-1">
           <div
-            className="flex gap-4 p-6"
+            className="flex snap-x snap-mandatory gap-4 overflow-x-auto p-4 sm:snap-none sm:p-6"
             role="region"
             aria-label={t("boardColumns")}
           >

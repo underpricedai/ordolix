@@ -30,6 +30,7 @@ import {
 } from "@/shared/components/ui/card";
 import { trpc } from "@/shared/lib/trpc";
 import { cn } from "@/shared/lib/utils";
+import { useIsMobile } from "@/shared/hooks/use-mobile";
 
 interface ScriptEditorProps {
   /** Script ID for editing, undefined for create mode */
@@ -57,6 +58,7 @@ interface ScriptEditorProps {
 export function ScriptEditor({ scriptId, onSave, onBack }: ScriptEditorProps) {
   const t = useTranslations("scripts");
   const tc = useTranslations("common");
+  const isMobile = useIsMobile();
 
   const isEdit = Boolean(scriptId);
 
@@ -223,7 +225,7 @@ export function ScriptEditor({ scriptId, onSave, onBack }: ScriptEditorProps) {
         </div>
       </div>
 
-      <div className="flex flex-1 gap-4">
+      <div className="flex flex-1 flex-col gap-4 lg:flex-row">
         {/* Code editor area */}
         <div className="flex flex-1 flex-col">
           {/* Code textarea (Monaco placeholder) */}
@@ -244,7 +246,7 @@ export function ScriptEditor({ scriptId, onSave, onBack }: ScriptEditorProps) {
               value={code}
               onChange={(e) => setCode(e.target.value)}
               className={cn(
-                "h-full min-h-[400px] w-full resize-none bg-transparent p-4",
+                "h-full min-h-[250px] w-full resize-none bg-transparent p-4 lg:min-h-[400px]",
                 "font-mono text-sm leading-6 text-[#d4d4d4]",
                 "focus:outline-none",
                 "placeholder:text-[#555]",
@@ -293,7 +295,7 @@ export function ScriptEditor({ scriptId, onSave, onBack }: ScriptEditorProps) {
         </div>
 
         {/* Metadata panel */}
-        <div className="w-72 shrink-0 space-y-4">
+        <div className="w-full shrink-0 space-y-4 lg:w-72">
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm">{t("metadata")}</CardTitle>

@@ -1,8 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import { Geist, Geist_Mono } from "next/font/google";
 import { TRPCProvider } from "@/shared/components/providers/TRPCProvider";
+import { ServiceWorkerRegistrar } from "@/shared/components/service-worker-registrar";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -18,6 +19,22 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Ordolix",
   description: "Enterprise project and issue tracking platform",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Ordolix",
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#171717",
 };
 
 export default async function RootLayout({
@@ -30,12 +47,16 @@ export default async function RootLayout({
 
   return (
     <html lang={locale} suppressHydrationWarning>
+      <head>
+        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <NextIntlClientProvider messages={messages}>
           <TRPCProvider>{children}</TRPCProvider>
         </NextIntlClientProvider>
+        <ServiceWorkerRegistrar />
       </body>
     </html>
   );

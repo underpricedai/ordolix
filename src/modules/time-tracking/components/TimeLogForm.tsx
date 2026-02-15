@@ -8,14 +8,14 @@ import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { Textarea } from "@/shared/components/ui/textarea";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/shared/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+  ResponsiveDialogTrigger,
+} from "@/shared/components/responsive-dialog";
 import {
   Select,
   SelectContent,
@@ -119,19 +119,19 @@ export function TimeLogForm({ issueId: defaultIssueId, onSuccess }: TimeLogFormP
   }).format(date);
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
+    <ResponsiveDialog open={open} onOpenChange={setOpen}>
+      <ResponsiveDialogTrigger asChild>
         <Button>
           <Clock className="mr-2 size-4" aria-hidden="true" />
           {t("logTime")}
         </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
+      </ResponsiveDialogTrigger>
+      <ResponsiveDialogContent className="sm:max-w-lg">
         <form onSubmit={handleSubmit}>
-          <DialogHeader>
-            <DialogTitle>{t("logTime")}</DialogTitle>
-            <DialogDescription>{t("description")}</DialogDescription>
-          </DialogHeader>
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle>{t("logTime")}</ResponsiveDialogTitle>
+            <ResponsiveDialogDescription>{t("description")}</ResponsiveDialogDescription>
+          </ResponsiveDialogHeader>
 
           <div className="grid gap-4 py-4">
             {/* Issue picker */}
@@ -246,7 +246,7 @@ export function TimeLogForm({ issueId: defaultIssueId, onSuccess }: TimeLogFormP
             </div>
           </div>
 
-          <DialogFooter>
+          <ResponsiveDialogFooter>
             <Button
               type="button"
               variant="outline"
@@ -260,9 +260,9 @@ export function TimeLogForm({ issueId: defaultIssueId, onSuccess }: TimeLogFormP
             >
               {logTimeMutation.isPending ? tc("loading") : t("logTime")}
             </Button>
-          </DialogFooter>
+          </ResponsiveDialogFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }

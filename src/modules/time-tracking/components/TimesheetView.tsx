@@ -15,7 +15,13 @@ import {
   TableFooter,
 } from "@/shared/components/ui/table";
 import { Badge } from "@/shared/components/ui/badge";
+import { Card } from "@/shared/components/ui/card";
 import { Skeleton } from "@/shared/components/ui/skeleton";
+import {
+  ResponsiveTable,
+  type ResponsiveColumnDef,
+} from "@/shared/components/responsive-table";
+import { useIsMobile } from "@/shared/hooks/use-mobile";
 import { trpc } from "@/shared/lib/trpc";
 
 /**
@@ -147,6 +153,72 @@ export function TimesheetView() {
 
   const weekLabel = `${new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(weekStart)} - ${new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(weekEnd)}`;
 
+  const isMobile = useIsMobile();
+
+  // Day-summary data for ResponsiveTable (mobile view)
+  interface DaySummary {
+    dayLabel: string;
+    date: Date;
+    totalMinutes: number;
+    logCount: number;
+    status: "logged" | "empty";
+  }
+
+  const daySummaries: DaySummary[] = useMemo(() => {
+    return weekDays.map((date, i) => {
+      const totalMinutes = columnTotals[i] ?? 0;
+      const logCount = rows.reduce(
+        (count, row) => count + ((row.daily[i] ?? 0) > 0 ? 1 : 0),
+        0,
+      );
+      return {
+        dayLabel: `${DAY_LABELS[i]} ${new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(date)}`,
+        date,
+        totalMinutes,
+        logCount,
+        status: totalMinutes > 0 ? ("logged" as const) : ("empty" as const),
+      };
+    });
+  }, [weekDays, columnTotals, rows]);
+
+  const daySummaryColumns: ResponsiveColumnDef<DaySummary>[] = useMemo(
+    () => [
+      {
+        key: "day",
+        header: "Day",
+        cell: (row) => <span className="font-medium">{row.dayLabel}</span>,
+        priority: 1,
+      },
+      {
+        key: "hours",
+        header: "Hours",
+        cell: (row) => (
+          <span className="font-semibold">
+            {formatHours(row.totalMinutes) || "-"}
+          </span>
+        ),
+        priority: 1,
+      },
+      {
+        key: "logCount",
+        header: "Entries",
+        cell: (row) => <span>{row.logCount}</span>,
+        priority: 2,
+      },
+      {
+        key: "status",
+        header: tc("status"),
+        cell: (row) => (
+          <Badge variant={row.status === "logged" ? "secondary" : "outline"}>
+            {row.status === "logged" ? "Logged" : "Empty"}
+          </Badge>
+        ),
+        priority: 3,
+      },
+    ],
+    [tc],
+  );
+
   if (isLoading) return <TimesheetSkeleton />;
 
   return (
@@ -185,90 +257,115 @@ export function TimesheetView() {
         </div>
       </div>
 
-      {/* Timesheet grid */}
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[100px]">Issue</TableHead>
-              <TableHead className="max-w-[200px]">Summary</TableHead>
-              {DAY_LABELS.map((day, i) => (
-                <TableHead key={day} className="w-[90px] text-center">
-                  <div className="flex flex-col items-center">
-                    <span className="text-xs text-muted-foreground">{day}</span>
-                    <span className="text-xs">
-                      {new Intl.DateTimeFormat("en", {
-                        month: "short",
-                        day: "numeric",
-                      }).format(weekDays[i])}
-                    </span>
-                  </div>
-                </TableHead>
-              ))}
-              <TableHead className="w-[80px] text-center">{t("totalLogged")}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={10}
-                  className="h-24 text-center text-muted-foreground"
-                >
-                  {t("noTimeLogs")}
-                </TableCell>
-              </TableRow>
-            ) : (
-              rows.map((row) => {
-                const rowTotal = row.daily.reduce((a, b) => a + b, 0);
-                return (
-                  <TableRow key={row.issueId}>
-                    <TableCell className="font-medium text-primary">
-                      {row.issueKey}
-                    </TableCell>
-                    <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">
-                      {row.issueSummary}
-                    </TableCell>
-                    {row.daily.map((mins, dayIdx) => (
-                      <TableCell key={dayIdx} className="p-1 text-center">
-                        <Input
-                          type="number"
-                          min={0}
-                          step={0.25}
-                          defaultValue={mins > 0 ? (mins / 60).toFixed(1) : ""}
-                          placeholder="-"
-                          className="h-8 w-full text-center text-sm"
-                          aria-label={`${row.issueKey} ${DAY_LABELS[dayIdx]}`}
-                        />
-                      </TableCell>
-                    ))}
-                    <TableCell className="text-center font-semibold">
-                      {formatHours(rowTotal) || "-"}
-                    </TableCell>
-                  </TableRow>
-                );
-              })
+      {/* Timesheet grid — full grid on desktop, day-summary on mobile */}
+      {isMobile ? (
+        <div className="rounded-md border">
+          <ResponsiveTable
+            columns={daySummaryColumns}
+            data={daySummaries}
+            rowKey={(row) => row.dayLabel}
+            mobileCard={(row) => (
+              <Card className="p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">{row.dayLabel}</span>
+                  <Badge variant={row.status === "logged" ? "secondary" : "outline"}>
+                    {row.status === "logged" ? "Logged" : "Empty"}
+                  </Badge>
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  {formatHours(row.totalMinutes) || "0h"} logged
+                  {row.logCount > 0 && ` across ${row.logCount} entries`}
+                </div>
+              </Card>
             )}
-          </TableBody>
-          {rows.length > 0 && (
-            <TableFooter>
+            emptyMessage={t("noTimeLogs")}
+          />
+        </div>
+      ) : (
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={2} className="font-semibold">
-                  {t("totalLogged")}
-                </TableCell>
-                {columnTotals.map((total, i) => (
-                  <TableCell key={i} className="text-center font-semibold">
-                    {formatHours(total) || "-"}
-                  </TableCell>
+                <TableHead className="w-[100px]">Issue</TableHead>
+                <TableHead className="max-w-[200px]">Summary</TableHead>
+                {DAY_LABELS.map((day, i) => (
+                  <TableHead key={day} className="w-[90px] text-center">
+                    <div className="flex flex-col items-center">
+                      <span className="text-xs text-muted-foreground">{day}</span>
+                      <span className="text-xs">
+                        {new Intl.DateTimeFormat("en", {
+                          month: "short",
+                          day: "numeric",
+                        }).format(weekDays[i])}
+                      </span>
+                    </div>
+                  </TableHead>
                 ))}
-                <TableCell className="text-center font-bold">
-                  {formatHours(grandTotal)}
-                </TableCell>
+                <TableHead className="w-[80px] text-center">{t("totalLogged")}</TableHead>
               </TableRow>
-            </TableFooter>
-          )}
-        </Table>
-      </div>
+            </TableHeader>
+            <TableBody>
+              {rows.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={10}
+                    className="h-24 text-center text-muted-foreground"
+                  >
+                    {t("noTimeLogs")}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                rows.map((row) => {
+                  const rowTotal = row.daily.reduce((a, b) => a + b, 0);
+                  return (
+                    <TableRow key={row.issueId}>
+                      <TableCell className="font-medium text-primary">
+                        {row.issueKey}
+                      </TableCell>
+                      <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">
+                        {row.issueSummary}
+                      </TableCell>
+                      {row.daily.map((mins, dayIdx) => (
+                        <TableCell key={dayIdx} className="p-1 text-center">
+                          <Input
+                            type="number"
+                            min={0}
+                            step={0.25}
+                            defaultValue={mins > 0 ? (mins / 60).toFixed(1) : ""}
+                            placeholder="-"
+                            className="h-8 w-full text-center text-sm"
+                            aria-label={`${row.issueKey} ${DAY_LABELS[dayIdx]}`}
+                          />
+                        </TableCell>
+                      ))}
+                      <TableCell className="text-center font-semibold">
+                        {formatHours(rowTotal) || "-"}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+            {rows.length > 0 && (
+              <TableFooter>
+                <TableRow>
+                  <TableCell colSpan={2} className="font-semibold">
+                    {t("totalLogged")}
+                  </TableCell>
+                  {columnTotals.map((total, i) => (
+                    <TableCell key={i} className="text-center font-semibold">
+                      {formatHours(total) || "-"}
+                    </TableCell>
+                  ))}
+                  <TableCell className="text-center font-bold">
+                    {formatHours(grandTotal)}
+                  </TableCell>
+                </TableRow>
+              </TableFooter>
+            )}
+          </Table>
+        </div>
+      )}
     </div>
   );
 }

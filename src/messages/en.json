@@ -1377,6 +1377,29 @@
     "daily": "Daily",
     "weekly": "Weekly"
   },
+  "pwa": {
+    "installPrompt": "Install Ordolix for a better experience",
+    "install": "Install",
+    "dismiss": "Not now",
+    "offlineTitle": "You're offline",
+    "offlineMessage": "Check your internet connection and try again.",
+    "retry": "Retry"
+  },
+  "mobileNav": {
+    "label": "Main navigation",
+    "home": "Home",
+    "issues": "Issues",
+    "boards": "Boards",
+    "search": "Search",
+    "more": "More"
+  },
+  "responsive": {
+    "showColumns": "Show columns",
+    "cardView": "Card view",
+    "tableView": "Table view",
+    "swipeHint": "Swipe to see more columns",
+    "tapToExpand": "Tap to expand"
+  },
   "signIn": {
     "title": "Sign in to Ordolix",
     "subtitle": "Enterprise Project & Issue Tracking",

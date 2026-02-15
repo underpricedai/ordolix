@@ -3,14 +3,13 @@
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
-  ChevronDown,
-  ChevronRight,
   FlaskConical,
   Play,
   Search,
   UserPlus,
 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
+import { Card } from "@/shared/components/ui/card";
 import { Checkbox } from "@/shared/components/ui/checkbox";
 import { Input } from "@/shared/components/ui/input";
 import { Badge } from "@/shared/components/ui/badge";
@@ -30,6 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/components/ui/select";
+import { ResponsiveTable, type ResponsiveColumnDef } from "@/shared/components/responsive-table";
 import { EmptyState } from "@/shared/components/empty-state";
 import { trpc } from "@/shared/lib/trpc";
 import { cn } from "@/shared/lib/utils";
@@ -53,6 +53,14 @@ interface TestCaseRow {
   status: "draft" | "ready" | "deprecated";
   priority: "low" | "medium" | "high" | "critical";
   lastRunResult?: "passed" | "failed" | "blocked" | "skipped" | null;
+}
+
+/**
+ * Flattened test case row for ResponsiveTable rendering.
+ */
+interface FlatTestCaseRow extends TestCaseRow {
+  suiteName: string;
+  suiteId: string;
 }
 
 const priorityColors: Record<string, string> = {
@@ -106,9 +114,6 @@ export function TestCaseList({
   const [searchQuery, setSearchQuery] = useState("");
   const [filterPriority, setFilterPriority] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
-  const [expandedSuites, setExpandedSuites] = useState<Set<string>>(
-    new Set(),
-  );
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // tRPC query for test cases
@@ -143,22 +148,18 @@ export function TestCaseList({
       .filter((suite) => suite.testCases.length > 0);
   }, [suites, searchQuery]);
 
-  const totalCases = filteredSuites.reduce(
-    (sum, s) => sum + s.testCases.length,
-    0,
-  );
+  // Flatten suites into a flat list for ResponsiveTable
+  const flatRows: FlatTestCaseRow[] = useMemo(() => {
+    return filteredSuites.flatMap((suite) =>
+      suite.testCases.map((tc) => ({
+        ...tc,
+        suiteName: suite.name,
+        suiteId: suite.id,
+      })),
+    );
+  }, [filteredSuites]);
 
-  const toggleSuite = (id: string) => {
-    setExpandedSuites((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  };
+  const totalCases = flatRows.length;
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
@@ -177,10 +178,90 @@ export function TestCaseList({
       setSelectedIds(new Set());
     } else {
       const all = new Set<string>();
-      filteredSuites.forEach((s) => s.testCases.forEach((tc) => all.add(tc.id)));
+      flatRows.forEach((row) => all.add(row.id));
       setSelectedIds(all);
     }
   };
+
+  const columns: ResponsiveColumnDef<FlatTestCaseRow>[] = [
+    {
+      key: "name",
+      header: t("titleColumn"),
+      priority: 1,
+      cell: (row) => (
+        <div className="flex items-center gap-2">
+          <Checkbox
+            checked={selectedIds.has(row.id)}
+            onCheckedChange={() => toggleSelect(row.id)}
+            onClick={(e) => e.stopPropagation()}
+            aria-label={`${t("select")} ${row.key}`}
+          />
+          <span className="font-medium text-primary">{row.key}</span>
+          <span className="max-w-[300px] truncate">{row.title}</span>
+        </div>
+      ),
+    },
+    {
+      key: "status",
+      header: t("status"),
+      priority: 2,
+      className: "w-[100px]",
+      cell: (row) => (
+        <Badge
+          variant="outline"
+          className={cn("text-xs border-transparent", statusColors[row.status])}
+        >
+          {row.status}
+        </Badge>
+      ),
+    },
+    {
+      key: "priority",
+      header: t("priority"),
+      priority: 3,
+      className: "w-[100px]",
+      cell: (row) => (
+        <Badge
+          variant="outline"
+          className={cn("text-xs border-transparent", priorityColors[row.priority])}
+        >
+          {row.priority}
+        </Badge>
+      ),
+    },
+    {
+      key: "suite",
+      header: t("testSuite") ?? "Suite",
+      priority: 4,
+      className: "w-[140px]",
+      cell: (row) => (
+        <div className="flex items-center gap-1.5">
+          <FlaskConical className="size-3.5 text-muted-foreground" aria-hidden="true" />
+          <span className="text-sm">{row.suiteName}</span>
+        </div>
+      ),
+    },
+    {
+      key: "lastRun",
+      header: t("lastRun"),
+      priority: 5,
+      className: "w-[120px]",
+      cell: (row) =>
+        row.lastRunResult ? (
+          <Badge
+            variant="outline"
+            className={cn(
+              "text-xs border-transparent",
+              resultColors[row.lastRunResult],
+            )}
+          >
+            {t(row.lastRunResult)}
+          </Badge>
+        ) : (
+          <span className="text-xs text-muted-foreground">{t("untested")}</span>
+        ),
+    },
+  ];
 
   if (isLoading) {
     return <TestCaseListSkeleton />;
@@ -273,152 +354,56 @@ export function TestCaseList({
         </div>
       )}
 
-      {/* Test case tree */}
+      {/* Test case table */}
       <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-10">
-                <Checkbox
-                  checked={selectedIds.size === totalCases && totalCases > 0}
-                  onCheckedChange={toggleSelectAll}
-                  aria-label={t("selectAll")}
-                />
-              </TableHead>
-              <TableHead className="w-[100px]">{t("id")}</TableHead>
-              <TableHead>{t("titleColumn")}</TableHead>
-              <TableHead className="w-[100px]">{t("status")}</TableHead>
-              <TableHead className="w-[100px]">{t("priority")}</TableHead>
-              <TableHead className="w-[120px]">{t("lastRun")}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredSuites.map((suite) => (
-              <TestSuiteNode
-                key={suite.id}
-                suite={suite}
-                expanded={expandedSuites.has(suite.id)}
-                onToggle={() => toggleSuite(suite.id)}
-                selectedIds={selectedIds}
-                onToggleSelect={toggleSelect}
-                onSelectTestCase={onSelectTestCase}
-              />
-            ))}
-          </TableBody>
-        </Table>
+        <ResponsiveTable<FlatTestCaseRow>
+          columns={columns}
+          data={flatRows}
+          rowKey={(row) => row.id}
+          onRowClick={(row) => onSelectTestCase?.(row.id)}
+          emptyMessage={t("emptyDescription")}
+          mobileCard={(row) => (
+            <Card
+              className="p-3"
+              onClick={() => onSelectTestCase?.(row.id)}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      checked={selectedIds.has(row.id)}
+                      onCheckedChange={() => toggleSelect(row.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      aria-label={`${t("select")} ${row.key}`}
+                    />
+                    <span className="text-sm font-medium text-primary">{row.key}</span>
+                  </div>
+                  <p className="mt-1 truncate text-sm font-medium">{row.title}</p>
+                  <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <FlaskConical className="size-3" aria-hidden="true" />
+                    {row.suiteName}
+                  </div>
+                </div>
+                <div className="flex flex-col items-end gap-1">
+                  <Badge
+                    variant="outline"
+                    className={cn("text-xs border-transparent", statusColors[row.status])}
+                  >
+                    {row.status}
+                  </Badge>
+                  <Badge
+                    variant="outline"
+                    className={cn("text-xs border-transparent", priorityColors[row.priority])}
+                  >
+                    {row.priority}
+                  </Badge>
+                </div>
+              </div>
+            </Card>
+          )}
+        />
       </div>
     </div>
-  );
-}
-
-/**
- * Renders a collapsible test suite node with its child test cases.
- */
-function TestSuiteNode({
-  suite,
-  expanded,
-  onToggle,
-  selectedIds,
-  onToggleSelect,
-  onSelectTestCase,
-}: {
-  suite: TestSuite;
-  expanded: boolean;
-  onToggle: () => void;
-  selectedIds: Set<string>;
-  onToggleSelect: (id: string) => void;
-  onSelectTestCase?: (id: string) => void;
-}) {
-  const t = useTranslations("testManagement");
-
-  return (
-    <>
-      {/* Suite header row */}
-      <TableRow
-        className="cursor-pointer bg-muted/30 hover:bg-muted/50"
-        onClick={onToggle}
-        role="row"
-        aria-expanded={expanded}
-      >
-        <TableCell colSpan={6}>
-          <div className="flex items-center gap-2">
-            {expanded ? (
-              <ChevronDown className="size-4 text-muted-foreground" aria-hidden="true" />
-            ) : (
-              <ChevronRight className="size-4 text-muted-foreground" aria-hidden="true" />
-            )}
-            <FlaskConical className="size-4 text-muted-foreground" aria-hidden="true" />
-            <span className="font-medium">{suite.name}</span>
-            <Badge variant="secondary" className="text-xs">
-              {suite.testCases.length}
-            </Badge>
-          </div>
-        </TableCell>
-      </TableRow>
-
-      {/* Test case rows */}
-      {expanded &&
-        (suite.testCases ?? []).map((tc) => (
-          <TableRow
-            key={tc.id}
-            className="cursor-pointer"
-            onClick={() => onSelectTestCase?.(tc.id)}
-          >
-            <TableCell onClick={(e) => e.stopPropagation()}>
-              <Checkbox
-                checked={selectedIds.has(tc.id)}
-                onCheckedChange={() => onToggleSelect(tc.id)}
-                aria-label={`${t("select")} ${tc.key}`}
-              />
-            </TableCell>
-            <TableCell className="font-medium text-primary">
-              {tc.key}
-            </TableCell>
-            <TableCell className="max-w-[300px] truncate">
-              {tc.title}
-            </TableCell>
-            <TableCell>
-              <Badge
-                variant="outline"
-                className={cn(
-                  "text-xs border-transparent",
-                  statusColors[tc.status],
-                )}
-              >
-                {tc.status}
-              </Badge>
-            </TableCell>
-            <TableCell>
-              <Badge
-                variant="outline"
-                className={cn(
-                  "text-xs border-transparent",
-                  priorityColors[tc.priority],
-                )}
-              >
-                {tc.priority}
-              </Badge>
-            </TableCell>
-            <TableCell>
-              {tc.lastRunResult ? (
-                <Badge
-                  variant="outline"
-                  className={cn(
-                    "text-xs border-transparent",
-                    resultColors[tc.lastRunResult],
-                  )}
-                >
-                  {t(tc.lastRunResult)}
-                </Badge>
-              ) : (
-                <span className="text-xs text-muted-foreground">
-                  {t("untested")}
-                </span>
-              )}
-            </TableCell>
-          </TableRow>
-        ))}
-    </>
   );
 }
 

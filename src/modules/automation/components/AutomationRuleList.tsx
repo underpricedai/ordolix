@@ -11,6 +11,7 @@ import {
   Play,
 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
+import { Card } from "@/shared/components/ui/card";
 import {
   Table,
   TableBody,
@@ -29,6 +30,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
+import { ResponsiveTable, type ResponsiveColumnDef } from "@/shared/components/responsive-table";
 import { EmptyState } from "@/shared/components/empty-state";
 import { trpc } from "@/shared/lib/trpc";
 
@@ -112,6 +114,102 @@ export function AutomationRuleList({
 
   const rules: AutomationRule[] = rulesData ?? [];
 
+  const columns: ResponsiveColumnDef<AutomationRule>[] = [
+    {
+      key: "name",
+      header: t("ruleName"),
+      priority: 1,
+      cell: (rule) => (
+        <div className="flex flex-col">
+          <span className="font-medium">{rule.name}</span>
+          {rule.description && (
+            <span className="text-xs text-muted-foreground">{rule.description}</span>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "status",
+      header: t("enabled"),
+      priority: 2,
+      className: "w-[100px]",
+      cell: (rule) => (
+        <Switch
+          checked={rule.isActive}
+          onCheckedChange={() => handleToggle(rule)}
+          onClick={(e) => e.stopPropagation()}
+          aria-label={`Toggle ${rule.name}`}
+        />
+      ),
+    },
+    {
+      key: "trigger",
+      header: t("trigger"),
+      priority: 3,
+      className: "w-[160px]",
+      cell: (rule) => (
+        <Badge variant="secondary">
+          <Zap className="mr-1 size-3" aria-hidden="true" />
+          {TRIGGER_LABELS[rule.trigger?.type] ?? rule.trigger?.type ?? "-"}
+        </Badge>
+      ),
+    },
+    {
+      key: "lastRun",
+      header: t("lastExecuted"),
+      priority: 4,
+      className: "w-[160px]",
+      cell: (rule) => (
+        <span className="text-sm text-muted-foreground">
+          {rule.lastExecutedAt
+            ? new Intl.DateTimeFormat("en", {
+                dateStyle: "medium",
+                timeStyle: "short",
+              }).format(new Date(rule.lastExecutedAt))
+            : "-"}
+        </span>
+      ),
+    },
+    {
+      key: "actions",
+      header: tc("actions"),
+      priority: 1,
+      className: "w-[60px]",
+      cell: (rule) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              onClick={(e) => e.stopPropagation()}
+              aria-label={`${tc("actions")} for ${rule.name}`}
+            >
+              <MoreHorizontal className="size-4" aria-hidden="true" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => onEditRule?.(rule.id)}>
+              <Pencil className="mr-2 size-4" aria-hidden="true" />
+              {t("editRule")}
+            </DropdownMenuItem>
+            <DropdownMenuItem>
+              <Play className="mr-2 size-4" aria-hidden="true" />
+              Test Run
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-destructive"
+              onClick={() => handleDelete(rule.id)}
+            >
+              <Trash2 className="mr-2 size-4" aria-hidden="true" />
+              {t("deleteRule")}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+    },
+  ];
+
   if (isLoading) return <AutomationRuleListSkeleton />;
 
   if (error) {
@@ -160,71 +258,46 @@ export function AutomationRuleList({
         />
       ) : (
         <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("ruleName")}</TableHead>
-                <TableHead className="w-[160px]">{t("trigger")}</TableHead>
-                <TableHead className="w-[100px]">{t("enabled")}</TableHead>
-                <TableHead className="w-[160px]">{t("lastExecuted")}</TableHead>
-                <TableHead className="w-[100px]">{t("executions")}</TableHead>
-                <TableHead className="w-[60px]">{tc("actions")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rules.map((rule: AutomationRule) => (
-                <TableRow key={rule.id}>
-                  <TableCell>
-                    <div className="flex flex-col">
-                      <span className="font-medium">{rule.name}</span>
-                      {rule.description && (
-                        <span className="text-xs text-muted-foreground">
-                          {rule.description}
-                        </span>
-                      )}
+          <ResponsiveTable<AutomationRule>
+            columns={columns}
+            data={rules}
+            rowKey={(rule) => rule.id}
+            onRowClick={(rule) => onEditRule?.(rule.id)}
+            mobileCard={(rule) => (
+              <Card className="p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium">{rule.name}</p>
+                    {rule.description && (
+                      <p className="mt-0.5 text-xs text-muted-foreground">{rule.description}</p>
+                    )}
+                    <div className="mt-1.5">
+                      <Badge variant="secondary" className="text-xs">
+                        <Zap className="mr-1 size-3" aria-hidden="true" />
+                        {TRIGGER_LABELS[rule.trigger?.type] ?? rule.trigger?.type ?? "-"}
+                      </Badge>
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">
-                      <Zap className="mr-1 size-3" aria-hidden="true" />
-                      {TRIGGER_LABELS[rule.trigger?.type] ?? rule.trigger?.type ?? "-"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
+                  </div>
+                  <div className="flex items-center gap-2">
                     <Switch
                       checked={rule.isActive}
                       onCheckedChange={() => handleToggle(rule)}
+                      onClick={(e) => e.stopPropagation()}
                       aria-label={`Toggle ${rule.name}`}
                     />
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {rule.lastExecutedAt
-                      ? new Intl.DateTimeFormat("en", {
-                          dateStyle: "medium",
-                          timeStyle: "short",
-                        }).format(new Date(rule.lastExecutedAt))
-                      : "-"}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline">
-                      {rule.executionCount ?? 0}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button
                           variant="ghost"
                           size="icon-xs"
+                          onClick={(e) => e.stopPropagation()}
                           aria-label={`${tc("actions")} for ${rule.name}`}
                         >
                           <MoreHorizontal className="size-4" aria-hidden="true" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => onEditRule?.(rule.id)}
-                        >
+                        <DropdownMenuItem onClick={() => onEditRule?.(rule.id)}>
                           <Pencil className="mr-2 size-4" aria-hidden="true" />
                           {t("editRule")}
                         </DropdownMenuItem>
@@ -242,11 +315,11 @@ export function AutomationRuleList({
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                  </div>
+                </div>
+              </Card>
+            )}
+          />
         </div>
       )}
     </div>

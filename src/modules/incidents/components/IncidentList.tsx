@@ -9,6 +9,7 @@ import {
   Search,
 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
+import { Card } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
 import { Badge } from "@/shared/components/ui/badge";
 import { Skeleton } from "@/shared/components/ui/skeleton";
@@ -27,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/components/ui/select";
+import { ResponsiveTable, type ResponsiveColumnDef } from "@/shared/components/responsive-table";
 import { EmptyState } from "@/shared/components/empty-state";
 import { trpc } from "@/shared/lib/trpc";
 import { cn } from "@/shared/lib/utils";
@@ -77,6 +79,99 @@ const statusColors: Record<string, string> = {
   mitigated: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
   resolved: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
 };
+
+/**
+ * Builds responsive column definitions for the incident table.
+ */
+function incidentColumns(
+  t: (key: string) => string,
+  timeToResolve: (createdAt: string, resolvedAt?: string | null) => string,
+): ResponsiveColumnDef<IncidentRow>[] {
+  return [
+    {
+      key: "title",
+      header: t("titleColumn"),
+      priority: 1,
+      cell: (inc) => (
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-primary">{inc.key}</span>
+          <span className="max-w-[300px] truncate">{inc.title}</span>
+        </div>
+      ),
+    },
+    {
+      key: "severity",
+      header: t("severity"),
+      priority: 1,
+      className: "w-[110px]",
+      cell: (inc) => {
+        const sevConfig = severityConfig[inc.severity];
+        return (
+          <Badge
+            variant="outline"
+            className={cn("border-transparent text-xs font-semibold", sevConfig?.bgColor)}
+          >
+            <AlertTriangle className="mr-1 size-3" aria-hidden="true" />
+            {inc.severity}
+          </Badge>
+        );
+      },
+    },
+    {
+      key: "status",
+      header: t("status"),
+      priority: 2,
+      className: "w-[120px]",
+      cell: (inc) => (
+        <Badge
+          variant="outline"
+          className={cn(
+            "border-transparent text-xs",
+            statusColors[inc.status] ?? statusColors.open,
+          )}
+        >
+          {inc.status}
+        </Badge>
+      ),
+    },
+    {
+      key: "assignee",
+      header: t("assignee"),
+      priority: 3,
+      className: "w-[150px]",
+      cell: (inc) => (
+        <span className="text-sm">
+          {inc.assignee?.name ?? <span className="text-muted-foreground">-</span>}
+        </span>
+      ),
+    },
+    {
+      key: "created",
+      header: t("created"),
+      priority: 5,
+      className: "w-[130px]",
+      cell: (inc) => (
+        <span className="text-sm text-muted-foreground">
+          {new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(
+            new Date(inc.createdAt),
+          )}
+        </span>
+      ),
+    },
+    {
+      key: "timeToResolve",
+      header: t("timeToResolve"),
+      priority: 5,
+      className: "w-[120px]",
+      cell: (inc) => (
+        <div className="flex items-center gap-1 text-sm text-muted-foreground">
+          <Clock className="size-3.5" aria-hidden="true" />
+          {timeToResolve(inc.createdAt, inc.resolvedAt)}
+        </div>
+      ),
+    },
+  ];
+}
 
 interface IncidentListProps {
   /** Callback when an incident row is selected */
@@ -220,34 +315,26 @@ export function IncidentList({ onSelectIncident }: IncidentListProps) {
         />
       ) : (
         <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[100px]">{t("id")}</TableHead>
-                <TableHead>{t("titleColumn")}</TableHead>
-                <TableHead className="w-[110px]">{t("severity")}</TableHead>
-                <TableHead className="w-[120px]">{t("status")}</TableHead>
-                <TableHead className="w-[150px]">{t("assignee")}</TableHead>
-                <TableHead className="w-[130px]">{t("created")}</TableHead>
-                <TableHead className="w-[120px]">{t("timeToResolve")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredIncidents.map((incident) => {
-                const sevConfig = severityConfig[incident.severity];
-                return (
-                  <TableRow
-                    key={incident.id}
-                    className="cursor-pointer"
-                    onClick={() => onSelectIncident?.(incident.id)}
-                  >
-                    <TableCell className="font-medium text-primary">
-                      {incident.key}
-                    </TableCell>
-                    <TableCell className="max-w-[300px] truncate">
-                      {incident.title}
-                    </TableCell>
-                    <TableCell>
+          <ResponsiveTable<IncidentRow>
+            columns={incidentColumns(t, timeToResolve)}
+            data={filteredIncidents}
+            rowKey={(row) => row.id}
+            onRowClick={(row) => onSelectIncident?.(row.id)}
+            mobileCard={(incident) => {
+              const sevConfig = severityConfig[incident.severity];
+              return (
+                <Card
+                  className="p-3"
+                  onClick={() => onSelectIncident?.(incident.id)}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-primary">{incident.key}</span>
+                      </div>
+                      <p className="mt-1 truncate text-sm font-medium">{incident.title}</p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
                       <Badge
                         variant="outline"
                         className={cn(
@@ -255,14 +342,9 @@ export function IncidentList({ onSelectIncident }: IncidentListProps) {
                           sevConfig?.bgColor,
                         )}
                       >
-                        <AlertTriangle
-                          className="mr-1 size-3"
-                          aria-hidden="true"
-                        />
+                        <AlertTriangle className="mr-1 size-3" aria-hidden="true" />
                         {incident.severity}
                       </Badge>
-                    </TableCell>
-                    <TableCell>
                       <Badge
                         variant="outline"
                         className={cn(
@@ -272,31 +354,12 @@ export function IncidentList({ onSelectIncident }: IncidentListProps) {
                       >
                         {incident.status}
                       </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {incident.assignee?.name ?? (
-                        <span className="text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {new Intl.DateTimeFormat("en", {
-                        dateStyle: "medium",
-                      }).format(new Date(incident.createdAt))}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                        <Clock className="size-3.5" aria-hidden="true" />
-                        {timeToResolve(
-                          incident.createdAt,
-                          incident.resolvedAt,
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                    </div>
+                  </div>
+                </Card>
+              );
+            }}
+          />
         </div>
       )}
     </div>

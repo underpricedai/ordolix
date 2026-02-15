@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Box, Inbox, Search } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
+import { Card } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
 import { Badge } from "@/shared/components/ui/badge";
 import { Skeleton } from "@/shared/components/ui/skeleton";
@@ -23,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/components/ui/select";
+import { ResponsiveTable, type ResponsiveColumnDef } from "@/shared/components/responsive-table";
 import { EmptyState } from "@/shared/components/empty-state";
 import { trpc } from "@/shared/lib/trpc";
 import { cn } from "@/shared/lib/utils";
@@ -46,6 +48,96 @@ const statusStyles: Record<string, string> = {
   maintenance: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
   retired: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
 };
+
+/**
+ * Builds responsive column definitions for the asset table.
+ */
+function assetColumns(
+  t: (key: string) => string,
+): ResponsiveColumnDef<AssetRow>[] {
+  return [
+    {
+      key: "name",
+      header: t("name"),
+      priority: 1,
+      cell: (asset) => (
+        <div className="flex items-center gap-2">
+          <Box className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <span className="font-medium">{asset.name}</span>
+        </div>
+      ),
+    },
+    {
+      key: "type",
+      header: t("type"),
+      priority: 2,
+      className: "w-[140px]",
+      cell: (asset) => (
+        <Badge variant="secondary" className="text-xs">
+          {asset.assetType.icon && (
+            <span className="mr-1">{asset.assetType.icon}</span>
+          )}
+          {asset.assetType.name}
+        </Badge>
+      ),
+    },
+    {
+      key: "status",
+      header: t("status"),
+      priority: 2,
+      className: "w-[120px]",
+      cell: (asset) => (
+        <Badge
+          variant="outline"
+          className={cn(
+            "text-xs border-transparent",
+            statusStyles[asset.status] ?? statusStyles.active,
+          )}
+        >
+          {asset.status}
+        </Badge>
+      ),
+    },
+    {
+      key: "owner",
+      header: t("owner"),
+      priority: 3,
+      className: "w-[180px]",
+      cell: (asset) =>
+        asset.owner ? (
+          <div className="flex items-center gap-2">
+            <Avatar className="size-6">
+              <AvatarFallback className="text-[10px]">
+                {(asset.owner.name ?? "?")
+                  .split(" ")
+                  .map((n) => n[0])
+                  .filter(Boolean)
+                  .join("")
+                  .toUpperCase()
+                  .slice(0, 2)}
+              </AvatarFallback>
+            </Avatar>
+            <span className="text-sm">{asset.owner.name}</span>
+          </div>
+        ) : (
+          <span className="text-sm text-muted-foreground">-</span>
+        ),
+    },
+    {
+      key: "created",
+      header: t("lastUpdated"),
+      priority: 5,
+      className: "w-[140px]",
+      cell: (asset) => (
+        <span className="text-sm text-muted-foreground">
+          {new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(
+            new Date(asset.updatedAt),
+          )}
+        </span>
+      ),
+    },
+  ];
+}
 
 interface AssetListProps {
   /** Callback when an asset row is clicked */
@@ -170,84 +262,44 @@ export function AssetList({ onSelectAsset }: AssetListProps) {
         />
       ) : (
         <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("name")}</TableHead>
-                <TableHead className="w-[140px]">{t("type")}</TableHead>
-                <TableHead className="w-[120px]">{t("status")}</TableHead>
-                <TableHead className="w-[180px]">{t("owner")}</TableHead>
-                <TableHead className="w-[160px]">{t("location")}</TableHead>
-                <TableHead className="w-[140px]">{t("lastUpdated")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredAssets.map((asset) => (
-                <TableRow
-                  key={asset.id}
-                  className="cursor-pointer"
-                  onClick={() => onSelectAsset?.(asset.id)}
-                >
-                  <TableCell>
+          <ResponsiveTable<AssetRow>
+            columns={assetColumns(t)}
+            data={filteredAssets}
+            rowKey={(row) => row.id}
+            onRowClick={(row) => onSelectAsset?.(row.id)}
+            mobileCard={(asset) => (
+              <Card
+                className="p-3"
+                onClick={() => onSelectAsset?.(asset.id)}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <Box
-                        className="size-4 shrink-0 text-muted-foreground"
-                        aria-hidden="true"
-                      />
+                      <Box className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                       <span className="font-medium">{asset.name}</span>
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className="text-xs">
-                      {asset.assetType.icon && (
-                        <span className="mr-1">{asset.assetType.icon}</span>
-                      )}
-                      {asset.assetType.name}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        "text-xs border-transparent",
-                        statusStyles[asset.status] ?? statusStyles.active,
-                      )}
-                    >
-                      {asset.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {asset.owner ? (
-                      <div className="flex items-center gap-2">
-                        <Avatar className="size-6">
-                          <AvatarFallback className="text-[10px]">
-                            {(asset.owner.name ?? "?")
-                              .split(" ")
-                              .map((n) => n[0])
-                              .filter(Boolean)
-                              .join("")
-                              .toUpperCase()
-                              .slice(0, 2)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="text-sm">{asset.owner.name}</span>
-                      </div>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {asset.location ?? "-"}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {new Intl.DateTimeFormat("en", {
-                      dateStyle: "medium",
-                    }).format(new Date(asset.updatedAt))}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                    <div className="mt-1.5 flex items-center gap-2">
+                      <Badge variant="secondary" className="text-xs">
+                        {asset.assetType.icon && (
+                          <span className="mr-1">{asset.assetType.icon}</span>
+                        )}
+                        {asset.assetType.name}
+                      </Badge>
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "text-xs border-transparent",
+                          statusStyles[asset.status] ?? statusStyles.active,
+                        )}
+                      >
+                        {asset.status}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            )}
+          />
         </div>
       )}
     </div>

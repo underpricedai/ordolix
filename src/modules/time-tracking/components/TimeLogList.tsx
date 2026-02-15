@@ -14,15 +14,20 @@ import {
   TableFooter,
 } from "@/shared/components/ui/table";
 import { Badge } from "@/shared/components/ui/badge";
+import { Card } from "@/shared/components/ui/card";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/shared/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/shared/components/responsive-dialog";
+import {
+  ResponsiveTable,
+  type ResponsiveColumnDef,
+} from "@/shared/components/responsive-table";
 import { EmptyState } from "@/shared/components/empty-state";
 import { trpc } from "@/shared/lib/trpc";
 
@@ -155,6 +160,85 @@ export function TimeLogList({ issueId, userId }: TimeLogListProps) {
             0,
           );
 
+          const timeLogColumns: ResponsiveColumnDef<TimeLogEntry>[] = [
+            {
+              key: "description",
+              header: t("description"),
+              cell: (entry) => (
+                <span className="max-w-[300px] truncate text-muted-foreground">
+                  {entry.description || "-"}
+                </span>
+              ),
+              priority: 1,
+            },
+            {
+              key: "duration",
+              header: t("timeSpent"),
+              cell: (entry) => (
+                <Badge variant="outline">
+                  {formatDuration(entry.duration ?? 0)}
+                </Badge>
+              ),
+              priority: 1,
+              className: "w-[100px]",
+            },
+            {
+              key: "date",
+              header: "Date",
+              cell: (entry) =>
+                new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(
+                  new Date(entry.date),
+                ),
+              priority: 2,
+            },
+            {
+              key: "issue",
+              header: "Issue",
+              cell: (entry) => (
+                <span className="font-medium text-primary">
+                  {entry.issue?.key ?? entry.issueId}
+                </span>
+              ),
+              priority: 3,
+            },
+            {
+              key: "user",
+              header: "User",
+              cell: (entry) => (
+                <span className="text-sm text-muted-foreground">
+                  {entry.user?.name ?? "-"}
+                </span>
+              ),
+              priority: 4,
+              className: "w-[140px]",
+            },
+            {
+              key: "actions",
+              header: tc("actions"),
+              cell: (entry) => (
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    aria-label={tc("edit")}
+                  >
+                    <Pencil className="size-3" aria-hidden="true" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    aria-label={tc("delete")}
+                    onClick={() => setDeleteTarget(entry.id)}
+                  >
+                    <Trash2 className="size-3" aria-hidden="true" />
+                  </Button>
+                </div>
+              ),
+              priority: 1,
+              className: "w-[80px]",
+            },
+          ];
+
           return (
             <div key={dateLabel} className="space-y-2">
               <div className="flex items-center justify-between">
@@ -164,72 +248,48 @@ export function TimeLogList({ issueId, userId }: TimeLogListProps) {
                 <Badge variant="secondary">{formatDuration(dailyTotal)}</Badge>
               </div>
               <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Issue</TableHead>
-                      <TableHead className="w-[100px]">{t("timeSpent")}</TableHead>
-                      <TableHead>{t("description")}</TableHead>
-                      <TableHead className="w-[120px]">Category</TableHead>
-                      <TableHead className="w-[140px]">User</TableHead>
-                      <TableHead className="w-[80px]">{tc("actions")}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {entries.map((entry: TimeLogEntry) => (
-                      <TableRow key={entry.id}>
-                        <TableCell className="font-medium text-primary">
-                          {entry.issue?.key ?? entry.issueId}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">
-                            {formatDuration(entry.duration ?? 0)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="max-w-[300px] truncate text-muted-foreground">
+                <ResponsiveTable
+                  columns={timeLogColumns}
+                  data={entries}
+                  rowKey={(entry) => entry.id}
+                  mobileCard={(entry) => (
+                    <Card className="p-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-muted-foreground">
                           {entry.description || "-"}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="secondary">
-                            {entry.category ?? "development"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {entry.user?.name ?? "-"}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon-xs"
-                              aria-label={tc("edit")}
-                            >
-                              <Pencil className="size-3" aria-hidden="true" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon-xs"
-                              aria-label={tc("delete")}
-                              onClick={() => setDeleteTarget(entry.id)}
-                            >
-                              <Trash2 className="size-3" aria-hidden="true" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                  <TableFooter>
-                    <TableRow>
-                      <TableCell>{t("totalLogged")}</TableCell>
-                      <TableCell colSpan={5}>
-                        <span className="font-semibold">
-                          {formatDuration(dailyTotal)}
                         </span>
-                      </TableCell>
-                    </TableRow>
-                  </TableFooter>
-                </Table>
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="icon-xs" aria-label={tc("edit")}>
+                            <Pencil className="size-3" aria-hidden="true" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon-xs"
+                            aria-label={tc("delete")}
+                            onClick={() => setDeleteTarget(entry.id)}
+                          >
+                            <Trash2 className="size-3" aria-hidden="true" />
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                        <Badge variant="outline" className="text-xs">
+                          {formatDuration(entry.duration ?? 0)}
+                        </Badge>
+                        <span>
+                          {new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(
+                            new Date(entry.date),
+                          )}
+                        </span>
+                      </div>
+                    </Card>
+                  )}
+                />
+                {/* Daily total footer — shown below the responsive table */}
+                <div className="flex items-center justify-between border-t px-4 py-2 text-sm">
+                  <span>{t("totalLogged")}</span>
+                  <span className="font-semibold">{formatDuration(dailyTotal)}</span>
+                </div>
               </div>
             </div>
           );
@@ -237,20 +297,20 @@ export function TimeLogList({ issueId, userId }: TimeLogListProps) {
       </div>
 
       {/* Delete confirmation dialog */}
-      <Dialog
+      <ResponsiveDialog
         open={deleteTarget !== null}
         onOpenChange={(open) => {
           if (!open) setDeleteTarget(null);
         }}
       >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("deleteTimeLog")}</DialogTitle>
-            <DialogDescription>
+        <ResponsiveDialogContent>
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle>{t("deleteTimeLog")}</ResponsiveDialogTitle>
+            <ResponsiveDialogDescription>
               {tc("confirm")}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
+            </ResponsiveDialogDescription>
+          </ResponsiveDialogHeader>
+          <ResponsiveDialogFooter>
             <Button variant="outline" onClick={() => setDeleteTarget(null)}>
               {tc("cancel")}
             </Button>
@@ -261,9 +321,9 @@ export function TimeLogList({ issueId, userId }: TimeLogListProps) {
             >
               {deleteMutation.isPending ? tc("loading") : tc("delete")}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ResponsiveDialogFooter>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
     </>
   );
 }

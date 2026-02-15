@@ -29,6 +29,7 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
 import { cn } from "@/shared/lib/utils";
+import { useIsMobile } from "@/shared/hooks/use-mobile";
 import type { WidgetType } from "@/modules/dashboards/types/schemas";
 import { BarChartWidget, PieChartWidget } from "@/shared/components/charts";
 import { BurndownWidget } from "./BurndownWidget";
@@ -219,6 +220,8 @@ function WidgetContent({
   data: unknown;
 }) {
   const t = useTranslations("dashboards");
+  const isMobile = useIsMobile();
+  const chartHeight = isMobile ? 200 : 300;
 
   switch (type) {
     case "issueCount": {
@@ -297,8 +300,9 @@ function WidgetContent({
             name: item.label,
             value: item.value,
           }))}
-          height={200}
-          showLabels
+          height={chartHeight}
+          showLabels={!isMobile}
+          showLegend={!isMobile}
         />
       );
     }
@@ -321,7 +325,7 @@ function WidgetContent({
           }))}
           xAxisKey="name"
           bars={[{ dataKey: "count", name: "Issues", color: "hsl(var(--chart-1, 220 70% 50%))" }]}
-          height={200}
+          height={chartHeight}
         />
       );
     }

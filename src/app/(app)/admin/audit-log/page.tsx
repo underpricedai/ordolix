@@ -30,6 +30,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/components/ui/table";
+import { ResponsiveTable, type ResponsiveColumnDef } from "@/shared/components/responsive-table";
+import { Card, CardContent } from "@/shared/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -106,6 +108,70 @@ export default function AdminAuditLogPage() {
     });
   }, []);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const auditColumns: ResponsiveColumnDef<any>[] = [
+    {
+      key: "timestamp",
+      header: t("timestamp"),
+      priority: 3,
+      className: "w-[180px]",
+      cell: (entry) => (
+        <span className="text-sm text-muted-foreground">
+          {entry.createdAt
+            ? new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(
+                new Date(entry.createdAt),
+              )
+            : "-"}
+        </span>
+      ),
+    },
+    {
+      key: "user",
+      header: t("user"),
+      priority: 1,
+      className: "w-[160px]",
+      cell: (entry) => {
+        const user = (entry as { user?: { name?: string | null; email?: string | null } }).user;
+        return <span className="font-medium">{user?.name ?? user?.email ?? entry.userId ?? "-"}</span>;
+      },
+    },
+    {
+      key: "action",
+      header: t("action"),
+      priority: 1,
+      className: "w-[120px]",
+      cell: (entry) => (
+        <Badge variant="outline" className={`text-xs ${getActionBadgeClass(entry.action.toLowerCase())}`}>
+          {entry.action}
+        </Badge>
+      ),
+    },
+    {
+      key: "resource",
+      header: t("resource"),
+      priority: 3,
+      cell: (entry) => (
+        <span className="text-sm">
+          <span className="font-medium">{entry.entityType}</span>
+          {entry.entityId && <span className="text-muted-foreground"> ({entry.entityId})</span>}
+        </span>
+      ),
+    },
+    {
+      key: "details",
+      header: tc("details"),
+      priority: 5,
+      cell: (entry) => {
+        const diff = entry.diff as Record<string, unknown> | null;
+        return (
+          <span className="max-w-[300px] truncate text-sm text-muted-foreground">
+            {diff ? JSON.stringify(diff) : "-"}
+          </span>
+        );
+      },
+    },
+  ];
+
   /**
    * Returns a color class for the action badge based on the action type.
    */
@@ -125,7 +191,7 @@ export default function AdminAuditLogPage() {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-4 sm:p-6">
       {/* Page header */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">
@@ -242,58 +308,37 @@ export default function AdminAuditLogPage() {
       ) : entries.length > 0 ? (
         <>
           <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[180px]">{t("timestamp")}</TableHead>
-                  <TableHead className="w-[160px]">{t("user")}</TableHead>
-                  <TableHead className="w-[120px]">{t("action")}</TableHead>
-                  <TableHead>{t("resource")}</TableHead>
-                  <TableHead>{tc("details")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {entries.map((entry) => {
-                  const user = (entry as { user?: { name?: string | null; email?: string | null } }).user;
-                  const diff = entry.diff as Record<string, unknown> | null;
-                  return (
-                    <TableRow key={entry.id}>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {entry.createdAt
-                          ? new Intl.DateTimeFormat("en", {
-                              dateStyle: "medium",
-                              timeStyle: "short",
-                            }).format(new Date(entry.createdAt))
-                          : "-"}
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {user?.name ?? user?.email ?? entry.userId ?? "-"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={`text-xs ${getActionBadgeClass(entry.action.toLowerCase())}`}
-                        >
+            <ResponsiveTable
+              columns={auditColumns}
+              data={entries}
+              rowKey={(entry) => entry.id}
+              mobileCard={(entry) => {
+                const user = (entry as { user?: { name?: string | null; email?: string | null } }).user;
+                return (
+                  <Card>
+                    <CardContent className="p-3 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-sm">
+                          {user?.name ?? user?.email ?? entry.userId ?? "-"}
+                        </span>
+                        <Badge variant="outline" className={`text-xs ${getActionBadgeClass(entry.action.toLowerCase())}`}>
                           {entry.action}
                         </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm">
+                      </div>
+                      <p className="text-xs text-muted-foreground">
                         <span className="font-medium">{entry.entityType}</span>
-                        {entry.entityId && (
-                          <span className="text-muted-foreground">
-                            {" "}
-                            ({entry.entityId})
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="max-w-[300px] truncate text-sm text-muted-foreground">
-                        {diff ? JSON.stringify(diff) : "-"}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                        {entry.entityId && <span> ({entry.entityId})</span>}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {entry.createdAt
+                          ? new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(entry.createdAt))
+                          : "-"}
+                      </p>
+                    </CardContent>
+                  </Card>
+                );
+              }}
+            />
           </div>
 
           {/* Pagination */}

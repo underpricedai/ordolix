@@ -163,7 +163,7 @@ export function BoardColumn({
   return (
     <div
       className={cn(
-        "flex w-72 shrink-0 flex-col rounded-lg transition-colors",
+        "flex w-[85vw] shrink-0 snap-center flex-col rounded-lg transition-colors sm:w-72 sm:snap-align-none",
         isDragOver
           ? "bg-primary/5 ring-2 ring-primary/30 dark:bg-primary/10"
           : "bg-muted/50",

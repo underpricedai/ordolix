@@ -118,7 +118,7 @@ export function IssueDetail({ issueKey, className }: IssueDetailProps) {
 
   return (
     <div className={cn("flex-1 overflow-auto", className)}>
-      <div className="flex flex-col gap-6 p-6 lg:flex-row">
+      <div className="flex flex-col gap-6 p-4 sm:p-6 lg:flex-row">
         {/* Main content panel */}
         <div className="flex-1 space-y-6">
           {/* Issue header */}
@@ -130,6 +130,11 @@ export function IssueDetail({ issueKey, className }: IssueDetailProps) {
             currentStatusId={issue.statusId}
             onTransitioned={() => refetch()}
           />
+
+          {/* Sidebar on mobile (above description) */}
+          <div className="lg:hidden">
+            <IssueSidebar issue={issue} />
+          </div>
 
           <Separator />
 
@@ -165,22 +170,26 @@ export function IssueDetail({ issueKey, className }: IssueDetailProps) {
 
           {/* Activity tabs */}
           <Tabs defaultValue="comments" className="w-full">
-            <TabsList>
+            <TabsList className="w-full overflow-x-auto sm:w-auto">
               <TabsTrigger value="comments" className="gap-1.5">
                 <MessageSquare className="size-3.5" aria-hidden="true" />
-                {t("tabs.comments")}
+                <span className="hidden sm:inline">{t("tabs.comments")}</span>
+                <span className="sm:hidden">{t("tabs.comments")}</span>
               </TabsTrigger>
               <TabsTrigger value="history" className="gap-1.5">
                 <Clock className="size-3.5" aria-hidden="true" />
-                {t("tabs.history")}
+                <span className="hidden sm:inline">{t("tabs.history")}</span>
+                <span className="sm:hidden">{t("tabs.history")}</span>
               </TabsTrigger>
               <TabsTrigger value="attachments" className="gap-1.5">
                 <Paperclip className="size-3.5" aria-hidden="true" />
-                {t("tabs.attachments")}
+                <span className="hidden sm:inline">{t("tabs.attachments")}</span>
+                <span className="sm:hidden">{t("tabs.attachments")}</span>
               </TabsTrigger>
               <TabsTrigger value="development" className="gap-1.5">
                 <GitBranch className="size-3.5" aria-hidden="true" />
-                {t("tabs.development")}
+                <span className="hidden sm:inline">{t("tabs.development")}</span>
+                <span className="sm:hidden">{t("tabs.development")}</span>
               </TabsTrigger>
             </TabsList>
             <TabsContent value="comments" className="mt-4">
@@ -206,8 +215,10 @@ export function IssueDetail({ issueKey, className }: IssueDetailProps) {
           </Tabs>
         </div>
 
-        {/* Right sidebar */}
-        <IssueSidebar issue={issue} />
+        {/* Right sidebar (desktop only — mobile version is rendered inline above) */}
+        <div className="hidden lg:block">
+          <IssueSidebar issue={issue} />
+        </div>
       </div>
     </div>
   );
