@@ -176,7 +176,7 @@ export function IssueList({
       <EmptyState
         icon={<Inbox className="size-12" />}
         title={tc("error")}
-        description={tc("retry")}
+        description={error.message}
         action={
           <Button variant="outline" onClick={() => window.location.reload()}>
             {tc("retry")}

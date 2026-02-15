@@ -14,12 +14,14 @@ These are required for the stakeholder demo at end of Month 3.
 | **Gantt Charts** | Dependencies as GanttDependency records; critical path client-side via topological sort; D3.js rendering |
 | **Search (AQL)** | Custom parser: Lexer → Parser → AST → SQL Generator; parameterized queries only |
 | **Dashboards** | Drag-and-drop widget grid; widgets reference saved filters or inline AQL |
+| **Plans / Advanced Roadmaps** | Cross-project timeline planning with scenarios; Plan module with scope (projects/epics), timeline view, scenario creation/comparison/application; multi-project issue queries with scenario overrides (JSON). Replaces Jira Advanced Roadmaps / BigPicture |
+| **Structure Module** | Hierarchical tree visualization with configurable grouping (by epic, component, assignee, priority, sprint, label); generic grouping engine that groups issues by any field value; tree builder with aggregate computation (sum story points, progress); saved views. Replaces Structure for Jira plugin |
 
 ### Tier 2: Platform Complete
 | Feature | Key Architecture Decision |
 |---------|--------------------------|
-| **Time Tracking** | Timer state in Redis; manual entries in TimeLog table; timesheets via Postgres materialized views |
-| **Advanced SLAs** | Background worker via QStash at 1-min intervals; pause/resume on status change; breach predictions from rolling average |
+| **Time Tracking** | Timer state in Redis; manual entries in TimeLog table; timesheets via Postgres materialized views; timesheet approval workflow (submit/approve/reject); timer/stopwatch hook; time reports with aggregation |
+| **Advanced SLAs** | Background worker via QStash at 1-min intervals; pause/resume on status change; breach predictions from rolling average; business hours calendar with timezone-aware calculation of business milliseconds respecting weekends and holidays; escalation processing that evaluates rules when SLA approaches breach and triggers notifications |
 | **Automation Engine** | Visual rule builder; 21 triggers, 12 conditions, 22 actions; smart values; max 100 exec/issue/hour; circuit break at 10 chains |
 | **Scripting Engine** | isolated-vm sandbox via Trigger.dev; 128MB memory, 5s CPU, 100 SDK calls max |
 | **Checklists** | Ordered items with assignee, due date; workflow-integrated completion requirements |
@@ -27,12 +29,19 @@ These are required for the stakeholder demo at end of Month 3.
 | **Approval Workflows** | Multi-stage, parallel/sequential; Azure AD groups; delegation; expiry |
 | **Report Builder** | Dynamic SQL from dimension/measure configs; results cached in Redis |
 | **Notifications** | 30 events, 6 channels (in-app, email, Teams chat, Teams channel, PWA push, webhook) |
-| **Service Management** | Queues, request types, customer portal, SLA tracking |
+| **Service Management** | Queues, request types, customer portal, SLA tracking; queue auto-assignment with strategies: round_robin, least_busy, manual |
+| **Budget & Cost Management** | CAPEX/OPEX tracking; cost rates (per-user and per-role); budget entries linked to time logs; cost = hours x rate resolved per TimeLog (user-specific, role-based, org default); budget vs actual comparison; forecasting; alert thresholds. Replaces Tempo Cost Tracker |
+| **Capacity Planner** | Team capacity computation; user allocation (percentage-based across projects); time-off tracking; capacity vs load analysis with overallocation warnings; working days x hours/day x allocation% minus time-off. Replaces Tempo Planner |
+| **Priority Management** | CRUD with drag-to-reorder ranking; color picker; SLA multiplier configuration |
+| **Issue Type Management** | CRUD with icon, color, hierarchy level, subtask flag, category |
+| **Component Management** | Project-scoped CRUD (PM self-service) |
+| **Version/Release Management** | Project-scoped CRUD with status lifecycle (unreleased, released, archived) |
+| **Permission System** | Full Jira-style RBAC: ProjectRole, Group, PermissionScheme, PermissionGrant, GlobalPermission, IssueSecurityScheme/Level; Redis-cached permission checker (5min TTL); requirePermission and adminProcedure tRPC middleware |
 
 ### Tier 3: Enterprise Ready
 | Feature | Key Architecture Decision |
 |---------|--------------------------|
-| **Test Management** | Steps as JSONB array; results append-only; coverage matrix as Postgres view |
+| **Test Management** | Steps as JSONB array; results append-only; coverage matrix as Postgres view; test cycles (CRUD); bulk result recording; folder hierarchy (TestSuite parentId); parameterized tests |
 | **CMDB/Assets** | Configurable asset types; attributes JSONB; relationships; Azure AD device sync |
 | **Incident Management** | Severity escalation; communication templates; status page integration |
 | **Retrospectives** | Anonymous mode; voting; auto-create issues from action items |

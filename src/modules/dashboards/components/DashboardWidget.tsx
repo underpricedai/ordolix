@@ -30,6 +30,10 @@ import {
 } from "@/shared/components/ui/dropdown-menu";
 import { cn } from "@/shared/lib/utils";
 import type { WidgetType } from "@/modules/dashboards/types/schemas";
+import { BarChartWidget, PieChartWidget } from "@/shared/components/charts";
+import { BurndownWidget } from "./BurndownWidget";
+import { VelocityTrendWidget } from "./VelocityTrendWidget";
+import { CumulativeFlowWidget } from "./CumulativeFlowWidget";
 
 /**
  * Data shape for a dashboard widget.
@@ -63,6 +67,9 @@ const widgetTypeIcons: Record<string, React.ElementType> = {
   recentActivity: List,
   priorityDistribution: BarChart3,
   sprintBurndown: TrendingUp,
+  burndown: TrendingUp,
+  velocityTrend: BarChart3,
+  cumulativeFlow: BarChart3,
   custom: Settings2,
 };
 
@@ -243,55 +250,6 @@ function WidgetContent({
       );
     }
 
-    case "statusBreakdown":
-    case "priorityDistribution":
-    case "assigneeWorkload": {
-      // Chart placeholder
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const chartData = (data as any)?.items ?? [];
-      return (
-        <div className="space-y-2 py-2">
-          {chartData.length === 0 ? (
-            <div className="flex h-32 items-center justify-center">
-              <p className="text-sm text-muted-foreground">
-                {t("noData")}
-              </p>
-            </div>
-          ) : (
-            chartData.slice(0, 5).map(
-              (
-                item: { label: string; value: number; color?: string },
-                idx: number,
-              ) => {
-                const maxVal = Math.max(
-                  ...chartData.map((i: { value: number }) => i.value),
-                  1,
-                );
-                const widthPercent = (item.value / maxVal) * 100;
-                return (
-                  <div key={idx} className="space-y-1">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-foreground">{item.label}</span>
-                      <span className="font-medium">{item.value}</span>
-                    </div>
-                    <div className="h-2 w-full rounded-full bg-muted">
-                      <div
-                        className="h-2 rounded-full bg-primary transition-all"
-                        style={{
-                          width: `${widthPercent}%`,
-                          backgroundColor: item.color,
-                        }}
-                      />
-                    </div>
-                  </div>
-                );
-              },
-            )
-          )}
-        </div>
-      );
-    }
-
     case "recentActivity": {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const activities = (data as any)?.items ?? [];
@@ -322,21 +280,100 @@ function WidgetContent({
       );
     }
 
-    case "sprintBurndown": {
-      // Burndown chart placeholder
-      return (
-        <div className="flex h-40 items-center justify-center rounded border-2 border-dashed border-muted">
-          <div className="text-center">
-            <BarChart3
-              className="mx-auto size-8 text-muted-foreground"
-              aria-hidden="true"
-            />
-            <p className="mt-2 text-xs text-muted-foreground">
-              {t("chartPlaceholder")}
-            </p>
+    case "statusBreakdown":
+    case "priorityDistribution": {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const pieItems = (data as any)?.items ?? [];
+      if (pieItems.length === 0) {
+        return (
+          <div className="flex h-32 items-center justify-center">
+            <p className="text-sm text-muted-foreground">{t("noData")}</p>
           </div>
-        </div>
+        );
+      }
+      return (
+        <PieChartWidget
+          data={pieItems.map((item: { label: string; value: number }) => ({
+            name: item.label,
+            value: item.value,
+          }))}
+          height={200}
+          showLabels
+        />
       );
+    }
+
+    case "assigneeWorkload": {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const barItems = (data as any)?.items ?? [];
+      if (barItems.length === 0) {
+        return (
+          <div className="flex h-32 items-center justify-center">
+            <p className="text-sm text-muted-foreground">{t("noData")}</p>
+          </div>
+        );
+      }
+      return (
+        <BarChartWidget
+          data={barItems.map((item: { label: string; value: number }) => ({
+            name: item.label,
+            count: item.value,
+          }))}
+          xAxisKey="name"
+          bars={[{ dataKey: "count", name: "Issues", color: "hsl(var(--chart-1, 220 70% 50%))" }]}
+          height={200}
+        />
+      );
+    }
+
+    case "sprintBurndown":
+    case "burndown": {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const burndownData = (data as any)?.days ?? [];
+      if (burndownData.length === 0) {
+        return (
+          <div className="flex h-40 items-center justify-center rounded border-2 border-dashed border-muted">
+            <div className="text-center">
+              <BarChart3
+                className="mx-auto size-8 text-muted-foreground"
+                aria-hidden="true"
+              />
+              <p className="mt-2 text-xs text-muted-foreground">
+                {t("chartPlaceholder")}
+              </p>
+            </div>
+          </div>
+        );
+      }
+      return <BurndownWidget data={burndownData} />;
+    }
+
+    case "velocityTrend": {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const velocityData = (data as any)?.sprints ?? [];
+      if (velocityData.length === 0) {
+        return (
+          <div className="flex h-32 items-center justify-center">
+            <p className="text-sm text-muted-foreground">{t("noData")}</p>
+          </div>
+        );
+      }
+      return <VelocityTrendWidget data={velocityData} />;
+    }
+
+    case "cumulativeFlow": {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cfdData = (data as any)?.days ?? [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cfdStatuses = (data as any)?.statuses ?? [];
+      if (cfdData.length === 0) {
+        return (
+          <div className="flex h-32 items-center justify-center">
+            <p className="text-sm text-muted-foreground">{t("noData")}</p>
+          </div>
+        );
+      }
+      return <CumulativeFlowWidget data={cfdData} statuses={cfdStatuses} />;
     }
 
     default: {

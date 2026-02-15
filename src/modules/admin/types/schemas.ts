@@ -82,3 +82,62 @@ export type DeleteWebhookInput = z.infer<typeof deleteWebhookInput>;
 export const systemHealthInput = z.object({});
 
 export type SystemHealthInput = z.infer<typeof systemHealthInput>;
+
+// ── Priority Schemas ─────────────────────────────────────────────────────────
+
+export const createPriorityInput = z.object({
+  name: z.string().min(1).max(100),
+  rank: z.number().int().positive(),
+  color: z.string().min(1),
+  slaMultiplier: z.number().positive().optional(),
+});
+
+export type CreatePriorityInput = z.infer<typeof createPriorityInput>;
+
+export const updatePriorityInput = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1).max(100).optional(),
+  color: z.string().optional(),
+  slaMultiplier: z.number().positive().optional(),
+});
+
+export type UpdatePriorityInput = z.infer<typeof updatePriorityInput>;
+
+export const deletePriorityInput = z.object({ id: z.string().min(1) });
+
+export type DeletePriorityInput = z.infer<typeof deletePriorityInput>;
+
+export const reorderPrioritiesInput = z.object({
+  orderedIds: z.array(z.string().min(1)),
+});
+
+export type ReorderPrioritiesInput = z.infer<typeof reorderPrioritiesInput>;
+
+// ── Issue Type Schemas ───────────────────────────────────────────────────────
+
+export const createIssueTypeInput = z.object({
+  name: z.string().min(1).max(100),
+  icon: z.string().min(1),
+  color: z.string().min(1),
+  isSubtask: z.boolean().optional(),
+  hierarchyLevel: z.number().int().optional(),
+  category: z.string().optional(),
+});
+
+export type CreateIssueTypeInput = z.infer<typeof createIssueTypeInput>;
+
+export const updateIssueTypeInput = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1).max(100).optional(),
+  icon: z.string().optional(),
+  color: z.string().optional(),
+  isSubtask: z.boolean().optional(),
+  hierarchyLevel: z.number().int().optional(),
+  category: z.string().optional(),
+});
+
+export type UpdateIssueTypeInput = z.infer<typeof updateIssueTypeInput>;
+
+export const deleteIssueTypeInput = z.object({ id: z.string().min(1) });
+
+export type DeleteIssueTypeInput = z.infer<typeof deleteIssueTypeInput>;

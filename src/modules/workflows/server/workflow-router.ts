@@ -1,3 +1,4 @@
+// NOTE: When workflow CRUD mutations are added, use adminProcedure (workflows are org-wide config)
 import { createRouter, protectedProcedure } from "@/server/trpc/init";
 import {
   transitionIssueInput,
@@ -12,6 +13,7 @@ export const workflowRouter = createRouter({
       return workflowEngine.listWorkflows(ctx.db, ctx.organizationId);
     }),
 
+  // TODO: service-level permission check (TRANSITION_ISSUES — projectId resolved from issue)
   transition: protectedProcedure
     .input(transitionIssueInput)
     .mutation(async ({ ctx, input }) => {

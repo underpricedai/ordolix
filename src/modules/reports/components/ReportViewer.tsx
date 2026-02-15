@@ -8,6 +8,11 @@ import {
   RefreshCw,
   Share2,
 } from "lucide-react";
+import {
+  BarChartWidget,
+  LineChartWidget,
+  PieChartWidget,
+} from "@/shared/components/charts";
 import { Button } from "@/shared/components/ui/button";
 import {
   Card,
@@ -152,16 +157,11 @@ export function ReportViewer({ reportId }: ReportViewerProps) {
           <CardTitle className="text-base">Visualization</CardTitle>
         </CardHeader>
         <CardContent>
-          <div
-            className="flex min-h-[300px] items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/20 bg-muted/30"
-            role="img"
-            aria-label="Chart visualization area"
-          >
-            <div className="flex flex-col items-center gap-2 text-muted-foreground">
-              <BarChart3 className="size-12" aria-hidden="true" />
-              <p className="text-sm">Chart renders here</p>
-            </div>
-          </div>
+          <ReportChart
+            visualization={report.visualization as Record<string, unknown> | null}
+            rows={resultRows}
+            columns={resultColumns}
+          />
         </CardContent>
       </Card>
 
@@ -224,6 +224,93 @@ export function ReportViewer({ reportId }: ReportViewerProps) {
         </CardFooter>
       </Card>
     </div>
+  );
+}
+
+/**
+ * Renders the correct chart type based on report visualization config.
+ */
+function ReportChart({
+  visualization,
+  rows,
+  columns,
+}: {
+  visualization: Record<string, unknown> | null;
+  rows: Record<string, unknown>[];
+  columns: string[];
+}) {
+  const vizType = (visualization?.type as string) ?? "bar";
+  const xAxisKey = (visualization?.xAxis as string) ?? columns[0] ?? "name";
+  const yAxisKeys = (visualization?.yAxis as string[]) ?? columns.slice(1);
+
+  if (rows.length === 0) {
+    return (
+      <div
+        className="flex min-h-[300px] items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/20 bg-muted/30"
+        role="img"
+        aria-label="Chart visualization area"
+      >
+        <div className="flex flex-col items-center gap-2 text-muted-foreground">
+          <BarChart3 className="size-12" aria-hidden="true" />
+          <p className="text-sm">No data to chart</p>
+        </div>
+      </div>
+    );
+  }
+
+  const chartData = rows.map((row) => {
+    const entry: Record<string, string | number> = {
+      [xAxisKey]: String(row[xAxisKey] ?? ""),
+    };
+    for (const key of yAxisKeys) {
+      entry[key] = Number(row[key]) || 0;
+    }
+    return entry;
+  });
+
+  if (vizType === "pie" || vizType === "donut") {
+    const pieData = chartData.map((row) => ({
+      name: String(row[xAxisKey]),
+      value: Number(row[yAxisKeys[0] ?? "value"]) || 0,
+    }));
+    return (
+      <PieChartWidget
+        data={pieData}
+        height={300}
+        innerRadius={vizType === "donut" ? 60 : 0}
+        showLabels
+      />
+    );
+  }
+
+  if (vizType === "line") {
+    return (
+      <LineChartWidget
+        data={chartData}
+        xAxisKey={xAxisKey}
+        lines={yAxisKeys.map((key, i) => ({
+          dataKey: key,
+          name: key,
+          color: `hsl(var(--chart-${(i % 5) + 1}, 220 70% 50%))`,
+        }))}
+        height={300}
+        showLegend={yAxisKeys.length > 1}
+      />
+    );
+  }
+
+  return (
+    <BarChartWidget
+      data={chartData}
+      xAxisKey={xAxisKey}
+      bars={yAxisKeys.map((key, i) => ({
+        dataKey: key,
+        name: key,
+        color: `hsl(var(--chart-${(i % 5) + 1}, 220 70% 50%))`,
+      }))}
+      height={300}
+      showLegend={yAxisKeys.length > 1}
+    />
   );
 }
 

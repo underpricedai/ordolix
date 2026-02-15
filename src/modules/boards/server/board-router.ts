@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createRouter, protectedProcedure } from "@/server/trpc/init";
+import { createRouter, protectedProcedure, requirePermission } from "@/server/trpc/init";
 import {
   createBoardInput,
   updateBoardInput,
@@ -8,7 +8,7 @@ import {
 import * as boardService from "./board-service";
 
 export const boardRouter = createRouter({
-  create: protectedProcedure
+  create: requirePermission("ADMINISTER_PROJECTS")
     .input(createBoardInput)
     .mutation(async ({ ctx, input }) => {
       return boardService.createBoard(ctx.db, ctx.organizationId, input);

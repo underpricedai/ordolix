@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createRouter, protectedProcedure } from "@/server/trpc/init";
+import { createRouter, protectedProcedure, adminProcedure } from "@/server/trpc/init";
 import {
   createFormTemplateInput,
   updateFormTemplateInput,
@@ -11,7 +11,7 @@ import {
 import * as formService from "./form-service";
 
 export const formRouter = createRouter({
-  createTemplate: protectedProcedure
+  createTemplate: adminProcedure
     .input(createFormTemplateInput)
     .mutation(async ({ ctx, input }) => {
       return formService.createTemplate(
@@ -41,7 +41,7 @@ export const formRouter = createRouter({
       );
     }),
 
-  updateTemplate: protectedProcedure
+  updateTemplate: adminProcedure
     .input(updateFormTemplateInput)
     .mutation(async ({ ctx, input }) => {
       const { id, ...rest } = input;
@@ -53,7 +53,7 @@ export const formRouter = createRouter({
       );
     }),
 
-  deleteTemplate: protectedProcedure
+  deleteTemplate: adminProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       return formService.deleteTemplate(

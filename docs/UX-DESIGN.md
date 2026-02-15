@@ -102,7 +102,7 @@ Admin pages show live previews of configuration effects.
 - **Sharing**: personal (default), team (project members), global (all users)
 
 ## Admin Experience
-- **Unified admin sidebar**: Users, Projects, Workflows, Fields, Permissions, Automation, Integrations, System
+- **Unified admin sidebar**: Users, Groups, Project Roles, Workflows, Fields, Permissions, Issue Security, Automation, Integrations, Webhooks, Audit Log, System
 - **Visual workflow editor**: canvas-based with drag status nodes, draw transition arrows, inline config per transition, live board column preview
 - **Permission editor**: matrix (roles × permissions) with toggle switches. Impact preview on hover.
 - **Integration wizards**: step-by-step with test-connection buttons

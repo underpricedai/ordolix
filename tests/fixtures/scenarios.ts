@@ -62,6 +62,12 @@ export async function seedDefaults(prisma: PrismaClient, organizationId: string)
   const statusMap = new Map(statuses.map((s) => [s.name, s.id]));
 
   for (const [key, wfDef] of Object.entries(DEFAULT_WORKFLOWS)) {
+    // Check if workflow already exists (idempotent seeding)
+    const existing = await prisma.workflow.findFirst({
+      where: { organizationId, name: wfDef.name },
+    });
+    if (existing) continue;
+
     const workflow = await prisma.workflow.create({
       data: {
         organizationId,

@@ -1,6 +1,14 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { TRPCError } from "@trpc/server";
 
+vi.mock("@/modules/permissions/server/permission-checker", () => ({
+  checkGlobalPermission: vi.fn().mockResolvedValue(true),
+  checkPermission: vi.fn().mockResolvedValue(true),
+  checkIssueSecurityAccess: vi.fn().mockResolvedValue(true),
+  resolveProjectPermissions: vi.fn().mockResolvedValue(new Set(["BROWSE_PROJECTS", "CREATE_ISSUES", "EDIT_ISSUES"])),
+  invalidatePermissionCache: vi.fn().mockResolvedValue(undefined),
+}));
+
 // Mock the user service module
 vi.mock("./user-service", () => ({
   getProfile: vi.fn(),

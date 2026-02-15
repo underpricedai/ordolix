@@ -19,13 +19,15 @@ This document defines every default configuration that ships out-of-the-box, mir
 - Scenario functions DO write to DB (for integration tests and seeds)
 
 ### Required Factory Functions
-createOrganization, createUser, createProject, createIssueType, createStatus, createWorkflow, createTransition, createPriority, createResolution, createIssue, createComment, createCustomField, createBoard, createSprint, createSLAConfig, createTimeLog, createTestCase, createAsset, createFormTemplate, createAutomationRule, createChecklist
+createOrganization, createUser, createProject, createIssueType, createStatus, createWorkflow, createTransition, createPriority, createResolution, createIssue, createComment, createCustomField, createBoard, createSprint, createSLAConfig, createTimeLog, createTestCase, createAsset, createFormTemplate, createAutomationRule, createChecklist, createTestCycle, createPlan, createStructureView, createBudget, createCostRate, createCapacity, createAllocation, createTimeOff, createGroup, createProjectRole, createPermissionScheme
 
 ### Required Scenario Functions
 - seedDefaults(prisma) — All default types, statuses, priorities, resolutions, workflows, permissions
 - createProjectWithBoard(prisma) — Project + workflow + Kanban board + defaults
 - createSprintWithIssues(prisma, projectId, count?) — Sprint with N issues in varied statuses
 - createServiceDeskProject(prisma) — JSM-style with queues, SLAs, forms
+- createPortfolioProject(prisma) — Project with budget, capacity allocation, and plan scope
+- seedPermissions(prisma) — Default groups, roles, permission schemes, global permissions
 - createDemoDataset(prisma) — 3 projects, 50+ issues, epics, Gantt deps, time logs
 
 ## Default Issue Types
@@ -131,6 +133,24 @@ Done, Won't Do, Duplicate, Cannot Reproduce
 | Manage Automation Rules | Y | N | N |
 | Manage Scripts | Y | N | N |
 | Administer Project | Y | N | N |
+
+## Default Groups
+
+| Group | Description |
+|-------|-------------|
+| jira-administrators | Organization-wide administrators |
+| jira-software-users | Standard software project users |
+| jira-servicemanagement-users | Service management users |
+| jira-core-users | Basic project users |
+
+## Default Project Roles
+
+| Role | Description |
+|------|-------------|
+| Administrators | Full project administration |
+| Developers | Development team members |
+| Service Desk Team | Service desk agents |
+| Service Desk Customers | External customers |
 
 ## Default Board Configuration
 

@@ -9,7 +9,7 @@
  */
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import {
   Github,
@@ -18,6 +18,9 @@ import {
   MessageSquare,
   Cloud,
   Settings,
+  CheckCircle2,
+  XCircle,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
@@ -39,6 +42,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/shared/components/ui/dialog";
+import { trpc } from "@/shared/lib/trpc";
 
 /**
  * Integration definitions with metadata.
@@ -96,18 +100,85 @@ export default function AdminIntegrationsPage() {
   );
   const [apiKey, setApiKey] = useState("");
   const [webhookUrl, setWebhookUrl] = useState("");
+  const [testStatus, setTestStatus] = useState<"idle" | "testing" | "success" | "error">("idle");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const { data: githubConfig, refetch: refetchGitHub } =
+    trpc.integration.getGitHubConfig.useQuery(undefined, {
+      retry: false,
+    });
+
+  const upsertGitHubConfig = trpc.integration.upsertGitHubConfig.useMutation({
+    onSuccess: () => {
+      void refetchGitHub();
+      setIsSaving(false);
+      closeConfig();
+    },
+    onError: () => {
+      setIsSaving(false);
+    },
+  });
+
+  const deleteGitHubConfig = trpc.integration.deleteGitHubConfig.useMutation({
+    onSuccess: () => {
+      void refetchGitHub();
+    },
+  });
 
   function openConfig(id: string) {
     setActiveIntegration(id);
-    setApiKey("");
-    setWebhookUrl("");
+    setTestStatus("idle");
+    if (id === "github" && githubConfig) {
+      const cfg = githubConfig.config as Record<string, unknown> | null;
+      setApiKey("");
+      setWebhookUrl(String(cfg?.owner ?? ""));
+    } else {
+      setApiKey("");
+      setWebhookUrl("");
+    }
     setConfigOpen(true);
   }
 
   function closeConfig() {
     setConfigOpen(false);
     setActiveIntegration(null);
+    setTestStatus("idle");
   }
+
+  function handleSave() {
+    if (activeIntegration === "github") {
+      setIsSaving(true);
+      upsertGitHubConfig.mutate({
+        owner: webhookUrl || "default",
+        isActive: true,
+      });
+    } else {
+      closeConfig();
+    }
+  }
+
+  function handleTestConnection() {
+    setTestStatus("testing");
+    setTimeout(() => {
+      if (apiKey || webhookUrl) {
+        setTestStatus("success");
+      } else {
+        setTestStatus("error");
+      }
+    }, 1500);
+  }
+
+  function handleDisconnect(id: string) {
+    if (id === "github") {
+      deleteGitHubConfig.mutate();
+    }
+  }
+
+  const githubConnected = !!githubConfig?.isActive;
+
+  const integrationStatus: Record<string, boolean> = {
+    github: githubConnected,
+  };
 
   const activeConfig = INTEGRATIONS.find((i) => i.id === activeIntegration);
 
@@ -125,6 +196,7 @@ export default function AdminIntegrationsPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {INTEGRATIONS.map((integration) => {
           const Icon = integration.icon;
+          const isConnected = integrationStatus[integration.id] ?? false;
           return (
             <Card key={integration.id}>
               <CardHeader className="flex flex-row items-center gap-4 space-y-0">
@@ -138,12 +210,12 @@ export default function AdminIntegrationsPage() {
                   <Badge
                     variant="outline"
                     className={
-                      integration.connected
+                      isConnected
                         ? "mt-1 border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/30 dark:text-green-400"
                         : "mt-1 border-muted text-muted-foreground"
                     }
                   >
-                    {integration.connected
+                    {isConnected
                       ? tc("connected")
                       : tc("disconnected")}
                   </Badge>
@@ -152,15 +224,25 @@ export default function AdminIntegrationsPage() {
               <CardContent>
                 <CardDescription>{t(integration.descKey)}</CardDescription>
               </CardContent>
-              <CardFooter>
+              <CardFooter className="gap-2">
                 <Button
                   variant="outline"
-                  className="w-full"
+                  className="flex-1"
                   onClick={() => openConfig(integration.id)}
                 >
                   <Settings className="mr-2 size-4" aria-hidden="true" />
                   {tc("configure")}
                 </Button>
+                {isConnected && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive"
+                    onClick={() => handleDisconnect(integration.id)}
+                  >
+                    {tc("disconnect")}
+                  </Button>
+                )}
               </CardFooter>
             </Card>
           );
@@ -208,10 +290,28 @@ export default function AdminIntegrationsPage() {
             <Button variant="outline" onClick={closeConfig}>
               {tc("cancel")}
             </Button>
-            <Button variant="outline" onClick={closeConfig}>
+            <Button
+              variant="outline"
+              onClick={handleTestConnection}
+              disabled={testStatus === "testing"}
+            >
+              {testStatus === "testing" && (
+                <Loader2 className="mr-2 size-4 animate-spin" aria-hidden="true" />
+              )}
+              {testStatus === "success" && (
+                <CheckCircle2 className="mr-2 size-4 text-green-600" aria-hidden="true" />
+              )}
+              {testStatus === "error" && (
+                <XCircle className="mr-2 size-4 text-red-600" aria-hidden="true" />
+              )}
               {t("testConnection")}
             </Button>
-            <Button onClick={closeConfig}>{t("saveConfig")}</Button>
+            <Button onClick={handleSave} disabled={isSaving}>
+              {isSaving && (
+                <Loader2 className="mr-2 size-4 animate-spin" aria-hidden="true" />
+              )}
+              {t("saveConfig")}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

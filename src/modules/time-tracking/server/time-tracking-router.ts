@@ -5,6 +5,13 @@ import {
   updateTimeLogInput,
   listTimeLogsInput,
   deleteTimeLogInput,
+  getTimesheetInput,
+  submitTimesheetInput,
+  approveTimesheetInput,
+  rejectTimesheetInput,
+  listPendingTimesheetsInput,
+  myLoggedHoursInput,
+  teamLoggedHoursInput,
 } from "../types/schemas";
 import * as timeTrackingService from "./time-tracking-service";
 
@@ -71,6 +78,85 @@ export const timeTrackingRouter = createRouter({
         ctx.db,
         ctx.organizationId,
         input.issueId,
+      );
+    }),
+
+  // ── Timesheet Approval ─────────────────────────────────────────────────
+
+  getOrCreateTimesheet: protectedProcedure
+    .input(getTimesheetInput)
+    .query(async ({ ctx, input }) => {
+      return timeTrackingService.getOrCreateTimesheet(
+        ctx.db,
+        ctx.organizationId,
+        ctx.session.user!.id!,
+        input,
+      );
+    }),
+
+  submitTimesheet: protectedProcedure
+    .input(submitTimesheetInput)
+    .mutation(async ({ ctx, input }) => {
+      return timeTrackingService.submitTimesheet(
+        ctx.db,
+        ctx.organizationId,
+        ctx.session.user!.id!,
+        input.id,
+      );
+    }),
+
+  approveTimesheet: protectedProcedure
+    .input(approveTimesheetInput)
+    .mutation(async ({ ctx, input }) => {
+      return timeTrackingService.approveTimesheet(
+        ctx.db,
+        ctx.organizationId,
+        ctx.session.user!.id!,
+        input.id,
+      );
+    }),
+
+  rejectTimesheet: protectedProcedure
+    .input(rejectTimesheetInput)
+    .mutation(async ({ ctx, input }) => {
+      return timeTrackingService.rejectTimesheet(
+        ctx.db,
+        ctx.organizationId,
+        ctx.session.user!.id!,
+        input.id,
+      );
+    }),
+
+  listPendingTimesheets: protectedProcedure
+    .input(listPendingTimesheetsInput)
+    .query(async ({ ctx, input }) => {
+      return timeTrackingService.listPendingTimesheets(
+        ctx.db,
+        ctx.organizationId,
+        input,
+      );
+    }),
+
+  // ── Time Reports ───────────────────────────────────────────────────────
+
+  myLoggedHours: protectedProcedure
+    .input(myLoggedHoursInput)
+    .query(async ({ ctx, input }) => {
+      return timeTrackingService.myLoggedHours(
+        ctx.db,
+        ctx.organizationId,
+        ctx.session.user!.id!,
+        input,
+      );
+    }),
+
+  teamLoggedHours: protectedProcedure
+    .input(teamLoggedHoursInput)
+    .query(async ({ ctx, input }) => {
+      return timeTrackingService.teamLoggedHours(
+        ctx.db,
+        ctx.organizationId,
+        input,
       );
     }),
 });

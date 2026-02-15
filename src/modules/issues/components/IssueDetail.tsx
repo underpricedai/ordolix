@@ -11,6 +11,7 @@ import {
   Pencil,
   Check,
   X,
+  GitBranch,
 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
@@ -29,6 +30,7 @@ import { PriorityIcon, type PriorityLevel } from "@/shared/components/priority-i
 import { EmptyState } from "@/shared/components/empty-state";
 import { IssueComments } from "./IssueComments";
 import { IssueTransitions } from "./IssueTransitions";
+import { DevelopmentPanel } from "./DevelopmentPanel";
 import { trpc } from "@/shared/lib/trpc";
 import { cn } from "@/shared/lib/utils";
 
@@ -176,6 +178,10 @@ export function IssueDetail({ issueKey, className }: IssueDetailProps) {
                 <Paperclip className="size-3.5" aria-hidden="true" />
                 {t("tabs.attachments")}
               </TabsTrigger>
+              <TabsTrigger value="development" className="gap-1.5">
+                <GitBranch className="size-3.5" aria-hidden="true" />
+                {t("tabs.development")}
+              </TabsTrigger>
             </TabsList>
             <TabsContent value="comments" className="mt-4">
               <IssueComments issueId={issue.id} />
@@ -193,6 +199,9 @@ export function IssueDetail({ issueKey, className }: IssueDetailProps) {
                 description={t("noAttachmentsDescription")}
                 className="py-8"
               />
+            </TabsContent>
+            <TabsContent value="development" className="mt-4">
+              <IssueDevelopmentTab issueId={issue.id} />
             </TabsContent>
           </Tabs>
         </div>
@@ -619,6 +628,36 @@ function IssueSidebar({ issue }: { issue: any }) {
         </dl>
       </div>
     </aside>
+  );
+}
+
+/**
+ * Development tab showing GitHub links for the issue.
+ */
+function IssueDevelopmentTab({ issueId }: { issueId: string }) {
+  const { data: links = [] } = trpc.integration.getLinksForIssue.useQuery(
+    { issueId },
+    { enabled: !!issueId },
+  );
+
+  const utils = trpc.useUtils();
+  const deleteLinkMutation = trpc.integration.deleteLink.useMutation({
+    onSuccess: () => {
+      utils.integration.getLinksForIssue.invalidate({ issueId });
+    },
+  });
+
+  const mappedLinks = links.map((link) => ({
+    ...link,
+    resourceType: link.resourceType as "pull_request" | "branch" | "commit",
+    createdAt: link.createdAt instanceof Date ? link.createdAt.toISOString() : String(link.createdAt),
+  }));
+
+  return (
+    <DevelopmentPanel
+      links={mappedLinks}
+      onDeleteLink={(linkId) => deleteLinkMutation.mutate({ linkId })}
+    />
   );
 }
 

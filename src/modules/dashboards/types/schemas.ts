@@ -7,6 +7,9 @@ export const widgetTypeEnum = z.enum([
   "recentActivity",
   "priorityDistribution",
   "sprintBurndown",
+  "burndown",
+  "velocityTrend",
+  "cumulativeFlow",
   "custom",
 ]);
 

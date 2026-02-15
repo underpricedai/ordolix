@@ -4,7 +4,7 @@
  * value management on entities (issues, assets).
  */
 import { z } from "zod";
-import { createRouter, protectedProcedure } from "@/server/trpc/init";
+import { createRouter, protectedProcedure, adminProcedure } from "@/server/trpc/init";
 import {
   createCustomFieldInput,
   updateCustomFieldInput,
@@ -15,7 +15,7 @@ import {
 import * as customFieldService from "./custom-field-service";
 
 export const customFieldRouter = createRouter({
-  create: protectedProcedure
+  create: adminProcedure
     .input(createCustomFieldInput)
     .mutation(async ({ ctx, input }) => {
       return customFieldService.createField(
@@ -26,7 +26,7 @@ export const customFieldRouter = createRouter({
       );
     }),
 
-  update: protectedProcedure
+  update: adminProcedure
     .input(updateCustomFieldInput)
     .mutation(async ({ ctx, input }) => {
       return customFieldService.updateField(
@@ -56,7 +56,7 @@ export const customFieldRouter = createRouter({
       );
     }),
 
-  delete: protectedProcedure
+  delete: adminProcedure
     .input(z.object({ id: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       return customFieldService.deleteField(
@@ -66,7 +66,7 @@ export const customFieldRouter = createRouter({
       );
     }),
 
-  setValue: protectedProcedure
+  setValue: adminProcedure
     .input(setFieldValueInput)
     .mutation(async ({ ctx, input }) => {
       return customFieldService.setFieldValue(

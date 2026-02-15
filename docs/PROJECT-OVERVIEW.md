@@ -60,6 +60,11 @@ It is now possible to build an enterprise issue tracker that is both more powerf
 - MCP Server, ScriptRunner (TypeScript sandbox), Checklists
 - Assets/CMDB, Incident Management, Test Management
 - Approval Workflows, Report Builder, Dynamic Forms, Retrospective Boards
+- Plans / Advanced Roadmaps (cross-project timeline, scenarios)
+- Structure (tree visualization, grouping)
+- Budget & Cost Management (CAPEX/OPEX, cost rates)
+- Capacity Planning (resource allocation, time-off)
+- Permission Management (Jira-style RBAC schemes)
 
 ### In Scope - External Integrations (v1.0)
 - SharePoint (Confluence replacement), GitHub, Salesforce, Power BI

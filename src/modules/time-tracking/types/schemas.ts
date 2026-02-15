@@ -36,3 +36,48 @@ export const deleteTimeLogInput = z.object({
 });
 
 export type DeleteTimeLogInput = z.infer<typeof deleteTimeLogInput>;
+
+// ── Timesheet Schemas ─────────────────────────────────────────────────────
+
+export const getTimesheetInput = z.object({
+  periodStart: z.coerce.date(),
+  periodEnd: z.coerce.date(),
+});
+
+export type GetTimesheetInput = z.infer<typeof getTimesheetInput>;
+
+export const submitTimesheetInput = z.object({
+  id: z.string().min(1),
+});
+
+export const approveTimesheetInput = z.object({
+  id: z.string().min(1),
+});
+
+export const rejectTimesheetInput = z.object({
+  id: z.string().min(1),
+});
+
+export const listPendingTimesheetsInput = z.object({
+  limit: z.number().int().min(1).max(100).default(50),
+  cursor: z.string().optional(),
+});
+
+export type ListPendingTimesheetsInput = z.infer<typeof listPendingTimesheetsInput>;
+
+// ── Time Reports ──────────────────────────────────────────────────────────
+
+export const myLoggedHoursInput = z.object({
+  startDate: z.coerce.date(),
+  endDate: z.coerce.date(),
+});
+
+export type MyLoggedHoursInput = z.infer<typeof myLoggedHoursInput>;
+
+export const teamLoggedHoursInput = z.object({
+  startDate: z.coerce.date(),
+  endDate: z.coerce.date(),
+  projectId: z.string().optional(),
+});
+
+export type TeamLoggedHoursInput = z.infer<typeof teamLoggedHoursInput>;

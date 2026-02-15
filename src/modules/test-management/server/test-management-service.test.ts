@@ -12,6 +12,12 @@ import {
   getTestRun,
   updateTestRunStatus,
   recordTestResult,
+  bulkRecordResults,
+  createTestCycle,
+  getTestCycle,
+  listTestCycles,
+  updateTestCycle,
+  deleteTestCycle,
 } from "./test-management-service";
 import { NotFoundError, ValidationError } from "@/server/lib/errors";
 
@@ -41,6 +47,18 @@ function createMockDb() {
     testResult: {
       upsert: vi.fn(),
     },
+    testCycle: {
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+    },
+    $transaction: vi.fn((args: unknown) => {
+      if (Array.isArray(args)) return Promise.resolve(args);
+      if (typeof args === "function") return (args as (tx: unknown) => unknown)(createMockDb());
+      return Promise.resolve(args);
+    }),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any;
 }
@@ -257,11 +275,18 @@ describe("createTestRun", () => {
 
   beforeEach(() => {
     db = createMockDb();
-    db.testRun.create.mockResolvedValue(mockTestRun);
+    // $transaction calls the callback with tx — set up the inner mock
+    db.$transaction.mockImplementation(async (fn: (tx: ReturnType<typeof createMockDb>) => unknown) => {
+      const tx = createMockDb();
+      tx.testRun.create.mockResolvedValue(mockTestRun);
+      tx.testResult.createMany = vi.fn().mockResolvedValue({ count: 1 });
+      return fn(tx);
+    });
   });
 
-  it("creates a test run", async () => {
-    const result = await createTestRun(db, ORG_ID, USER_ID, {
+  it("creates a test run with placeholder results", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result: any = await createTestRun(db, ORG_ID, USER_ID, {
       name: "Sprint 5",
       testCaseIds: ["tc-1"],
     });
@@ -378,5 +403,161 @@ describe("recordTestResult", () => {
         status: "passed",
       }),
     ).rejects.toThrow(ValidationError);
+  });
+});
+
+// ── Bulk Record Results ─────────────────────────────────────────────────────
+
+describe("bulkRecordResults", () => {
+  let db: ReturnType<typeof createMockDb>;
+
+  beforeEach(() => {
+    db = createMockDb();
+    db.testRun.findFirst.mockResolvedValue(mockTestRun);
+  });
+
+  it("processes multiple results in a transaction", async () => {
+    await bulkRecordResults(db, ORG_ID, {
+      testRunId: "run-1",
+      results: [
+        { testCaseId: "tc-1", status: "passed" },
+        { testCaseId: "tc-2", status: "failed", comment: "Bug found" },
+      ],
+    });
+
+    expect(db.$transaction).toHaveBeenCalled();
+  });
+
+  it("throws NotFoundError if run not found", async () => {
+    db.testRun.findFirst.mockResolvedValue(null);
+    await expect(
+      bulkRecordResults(db, ORG_ID, {
+        testRunId: "nope",
+        results: [{ testCaseId: "tc-1", status: "passed" }],
+      }),
+    ).rejects.toThrow(NotFoundError);
+  });
+
+  it("throws ValidationError if run is finished", async () => {
+    db.testRun.findFirst.mockResolvedValue({ ...mockTestRun, status: "aborted" });
+    await expect(
+      bulkRecordResults(db, ORG_ID, {
+        testRunId: "run-1",
+        results: [{ testCaseId: "tc-1", status: "passed" }],
+      }),
+    ).rejects.toThrow(ValidationError);
+  });
+});
+
+// ── Test Cycle ──────────────────────────────────────────────────────────────
+
+const mockCycle = {
+  id: "cycle-1",
+  organizationId: ORG_ID,
+  name: "Q1 2026 Regression",
+  description: null,
+  status: "active",
+  plannedStart: null,
+  plannedEnd: null,
+};
+
+describe("createTestCycle", () => {
+  let db: ReturnType<typeof createMockDb>;
+
+  beforeEach(() => {
+    db = createMockDb();
+    db.testCycle.create.mockResolvedValue(mockCycle);
+  });
+
+  it("creates a test cycle", async () => {
+    const result = await createTestCycle(db, ORG_ID, { name: "Q1 2026 Regression" });
+    expect(result.id).toBe("cycle-1");
+    expect(db.testCycle.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        organizationId: ORG_ID,
+        name: "Q1 2026 Regression",
+      }),
+    });
+  });
+});
+
+describe("getTestCycle", () => {
+  let db: ReturnType<typeof createMockDb>;
+
+  beforeEach(() => { db = createMockDb(); });
+
+  it("returns cycle with test run count", async () => {
+    db.testCycle.findFirst.mockResolvedValue({
+      ...mockCycle,
+      _count: { testRuns: 2 },
+    });
+    const result = await getTestCycle(db, ORG_ID, "cycle-1");
+    expect(result._count.testRuns).toBe(2);
+  });
+
+  it("throws NotFoundError", async () => {
+    db.testCycle.findFirst.mockResolvedValue(null);
+    await expect(getTestCycle(db, ORG_ID, "nope")).rejects.toThrow(NotFoundError);
+  });
+});
+
+describe("listTestCycles", () => {
+  let db: ReturnType<typeof createMockDb>;
+
+  beforeEach(() => {
+    db = createMockDb();
+    db.testCycle.findMany.mockResolvedValue([mockCycle]);
+  });
+
+  it("returns cycles for org", async () => {
+    const result = await listTestCycles(db, ORG_ID, {});
+    expect(result).toHaveLength(1);
+  });
+
+  it("filters by status", async () => {
+    await listTestCycles(db, ORG_ID, { status: "active" });
+    expect(db.testCycle.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ status: "active" }),
+      }),
+    );
+  });
+});
+
+describe("updateTestCycle", () => {
+  let db: ReturnType<typeof createMockDb>;
+
+  beforeEach(() => {
+    db = createMockDb();
+    db.testCycle.findFirst.mockResolvedValue(mockCycle);
+    db.testCycle.update.mockResolvedValue({ ...mockCycle, name: "Updated" });
+  });
+
+  it("updates cycle", async () => {
+    const result = await updateTestCycle(db, ORG_ID, "cycle-1", { name: "Updated" });
+    expect(result.name).toBe("Updated");
+  });
+
+  it("throws NotFoundError", async () => {
+    db.testCycle.findFirst.mockResolvedValue(null);
+    await expect(updateTestCycle(db, ORG_ID, "nope", { name: "X" })).rejects.toThrow(NotFoundError);
+  });
+});
+
+describe("deleteTestCycle", () => {
+  let db: ReturnType<typeof createMockDb>;
+
+  beforeEach(() => { db = createMockDb(); });
+
+  it("deletes cycle", async () => {
+    db.testCycle.findFirst.mockResolvedValue(mockCycle);
+    db.testCycle.delete.mockResolvedValue(mockCycle);
+    await deleteTestCycle(db, ORG_ID, "cycle-1");
+    expect(db.testCycle.delete).toHaveBeenCalledWith({ where: { id: "cycle-1" } });
+  });
+
+  it("throws NotFoundError", async () => {
+    db.testCycle.findFirst.mockResolvedValue(null);
+    await expect(deleteTestCycle(db, ORG_ID, "nope")).rejects.toThrow(NotFoundError);
   });
 });

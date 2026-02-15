@@ -7,6 +7,10 @@ import type {
   CreateTestRunInput,
   ListTestRunsInput,
   RecordTestResultInput,
+  CreateTestCycleInput,
+  UpdateTestCycleInput,
+  ListTestCyclesInput,
+  BulkRecordResultsInput,
 } from "../types/schemas";
 
 // ── Test Suite ───────────────────────────────────────────────────────────────
@@ -183,12 +187,27 @@ export async function createTestRun(
   userId: string,
   input: CreateTestRunInput,
 ) {
-  return db.testRun.create({
-    data: {
-      organizationId,
-      name: input.name,
-      executedBy: userId,
-    },
+  return db.$transaction(async (tx) => {
+    const run = await tx.testRun.create({
+      data: {
+        organizationId,
+        name: input.name,
+        executedBy: userId,
+      },
+    });
+
+    // Create placeholder results for each test case with not_executed status
+    if (input.testCaseIds && input.testCaseIds.length > 0) {
+      await tx.testResult.createMany({
+        data: input.testCaseIds.map((testCaseId: string) => ({
+          testRunId: run.id,
+          testCaseId,
+          status: "not_executed",
+        })),
+      });
+    }
+
+    return run;
   });
 }
 
@@ -307,4 +326,129 @@ export async function recordTestResult(
       executedAt: new Date(),
     },
   });
+}
+
+export async function bulkRecordResults(
+  db: PrismaClient,
+  organizationId: string,
+  input: BulkRecordResultsInput,
+) {
+  const run = await db.testRun.findFirst({
+    where: { id: input.testRunId, organizationId },
+  });
+  if (!run) {
+    throw new NotFoundError("TestRun", input.testRunId);
+  }
+  if (run.status === "completed" || run.status === "aborted") {
+    throw new ValidationError("Cannot add results to a finished test run", {
+      code: "TEST_RUN_FINISHED",
+      currentStatus: run.status,
+    });
+  }
+
+  return db.$transaction(
+    input.results.map((r) =>
+      db.testResult.upsert({
+        where: {
+          testRunId_testCaseId: {
+            testRunId: input.testRunId,
+            testCaseId: r.testCaseId,
+          },
+        },
+        create: {
+          testRunId: input.testRunId,
+          testCaseId: r.testCaseId,
+          status: r.status,
+          comment: r.comment,
+          duration: r.duration,
+        },
+        update: {
+          status: r.status,
+          comment: r.comment,
+          duration: r.duration,
+          executedAt: new Date(),
+        },
+      }),
+    ),
+  );
+}
+
+// ── Test Cycle ──────────────────────────────────────────────────────────────
+
+export async function createTestCycle(
+  db: PrismaClient,
+  organizationId: string,
+  input: CreateTestCycleInput,
+) {
+  return db.testCycle.create({
+    data: {
+      organizationId,
+      name: input.name,
+      description: input.description,
+      plannedStart: input.plannedStart,
+      plannedEnd: input.plannedEnd,
+    },
+  });
+}
+
+export async function getTestCycle(
+  db: PrismaClient,
+  organizationId: string,
+  id: string,
+) {
+  const cycle = await db.testCycle.findFirst({
+    where: { id, organizationId },
+    include: { _count: { select: { testRuns: true } } },
+  });
+  if (!cycle) {
+    throw new NotFoundError("TestCycle", id);
+  }
+  return cycle;
+}
+
+export async function listTestCycles(
+  db: PrismaClient,
+  organizationId: string,
+  input: ListTestCyclesInput,
+) {
+  return db.testCycle.findMany({
+    where: {
+      organizationId,
+      ...(input.status ? { status: input.status } : {}),
+    },
+    include: { _count: { select: { testRuns: true } } },
+    orderBy: { createdAt: "desc" as const },
+  });
+}
+
+export async function updateTestCycle(
+  db: PrismaClient,
+  organizationId: string,
+  id: string,
+  input: Omit<UpdateTestCycleInput, "id">,
+) {
+  const cycle = await db.testCycle.findFirst({
+    where: { id, organizationId },
+  });
+  if (!cycle) {
+    throw new NotFoundError("TestCycle", id);
+  }
+  return db.testCycle.update({
+    where: { id },
+    data: input,
+  });
+}
+
+export async function deleteTestCycle(
+  db: PrismaClient,
+  organizationId: string,
+  id: string,
+) {
+  const cycle = await db.testCycle.findFirst({
+    where: { id, organizationId },
+  });
+  if (!cycle) {
+    throw new NotFoundError("TestCycle", id);
+  }
+  return db.testCycle.delete({ where: { id } });
 }

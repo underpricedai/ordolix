@@ -51,3 +51,93 @@ export const listIssuesInput = z.object({
 });
 
 export type ListIssuesInput = z.infer<typeof listIssuesInput>;
+
+// ── History ────────────────────────────────────────────────────────────────
+
+export const listHistoryInput = z.object({
+  issueId: z.string().min(1),
+  cursor: z.string().optional(),
+  limit: z.number().int().min(1).max(100).default(50),
+});
+
+export type ListHistoryInput = z.infer<typeof listHistoryInput>;
+
+// ── Watchers ───────────────────────────────────────────────────────────────
+
+export const watcherInput = z.object({
+  issueId: z.string().min(1),
+});
+
+export const addWatcherInput = z.object({
+  issueId: z.string().min(1),
+  userId: z.string().min(1),
+});
+
+// ── Voting ─────────────────────────────────────────────────────────────────
+
+export const voteInput = z.object({
+  issueId: z.string().min(1),
+});
+
+// ── Comments ───────────────────────────────────────────────────────────────
+
+export const listCommentsInput = z.object({
+  issueId: z.string().min(1),
+  cursor: z.string().optional(),
+  limit: z.number().int().min(1).max(100).default(50),
+});
+
+export type ListCommentsInput = z.infer<typeof listCommentsInput>;
+
+export const createCommentInput = z.object({
+  issueId: z.string().min(1),
+  body: z.string().min(1).max(50000),
+  isInternal: z.boolean().optional(),
+});
+
+export type CreateCommentInput = z.infer<typeof createCommentInput>;
+
+export const updateCommentInput = z.object({
+  id: z.string().min(1),
+  body: z.string().min(1).max(50000),
+});
+
+export type UpdateCommentInput = z.infer<typeof updateCommentInput>;
+
+export const deleteCommentInput = z.object({
+  id: z.string().min(1),
+});
+
+// ── Subtasks ───────────────────────────────────────────────────────────────
+
+export const getChildrenInput = z.object({
+  issueId: z.string().min(1),
+});
+
+// ── Issue Linking ──────────────────────────────────────────────────────────
+
+export const createLinkInput = z.object({
+  linkType: z.string().min(1),
+  fromIssueId: z.string().min(1),
+  toIssueId: z.string().min(1),
+});
+
+export type CreateLinkInput = z.infer<typeof createLinkInput>;
+
+export const deleteLinkInput = z.object({
+  id: z.string().min(1),
+});
+
+export const getLinksInput = z.object({
+  issueId: z.string().min(1),
+});
+
+// ── Attachments ────────────────────────────────────────────────────────────
+
+export const listAttachmentsInput = z.object({
+  issueId: z.string().min(1),
+});
+
+export const deleteAttachmentInput = z.object({
+  id: z.string().min(1),
+});

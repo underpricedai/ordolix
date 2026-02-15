@@ -5,7 +5,7 @@
  * API token lifecycle, user listing, invitation, role management, and deactivation.
  */
 
-import { createRouter, protectedProcedure } from "@/server/trpc/init";
+import { createRouter, protectedProcedure, adminProcedure } from "@/server/trpc/init";
 import {
   updateProfileInput,
   updateNotificationPrefsInput,
@@ -79,7 +79,7 @@ export const userRouter = createRouter({
       return userService.listUsers(ctx.db, ctx.organizationId, input);
     }),
 
-  inviteUser: protectedProcedure
+  inviteUser: adminProcedure
     .input(inviteUserInput)
     .mutation(async ({ ctx, input }) => {
       return userService.inviteUser(
@@ -90,7 +90,7 @@ export const userRouter = createRouter({
       );
     }),
 
-  updateUserRole: protectedProcedure
+  updateUserRole: adminProcedure
     .input(updateUserRoleInput)
     .mutation(async ({ ctx, input }) => {
       return userService.updateUserRole(
@@ -100,7 +100,7 @@ export const userRouter = createRouter({
       );
     }),
 
-  deactivateUser: protectedProcedure
+  deactivateUser: adminProcedure
     .input(deactivateUserInput)
     .mutation(async ({ ctx, input }) => {
       return userService.deactivateUser(

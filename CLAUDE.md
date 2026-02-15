@@ -39,12 +39,37 @@ All infrastructure-dependent code is abstracted behind provider interfaces (Stor
 
 ```
 src/app/                    — Next.js App Router pages and layouts
-src/modules/                — Feature modules (self-contained)
-  [module]/components/      — React components
-  [module]/server/          — tRPC routers, business logic, DB operations
-  [module]/types/           — TypeScript types and Zod schemas
-  [module]/tests/           — Unit and integration tests
-  [module]/tooltips.ts      — Tooltip content dictionary
+src/modules/                — Feature modules (self-contained, 30 total)
+  issues/                   — Issue CRUD, history, watchers, voting, links
+  workflows/                — Workflow engine, transitions, validators
+  boards/                   — Kanban/Scrum board views
+  projects/                 — Project management, components, versions
+  sprints/                  — Sprint planning and management
+  time-tracking/            — Time logs, timesheets, approval
+  gantt/                    — Gantt charts, dependencies, critical path
+  sla/                      — SLA configs, instances, business hours, escalation
+  test-management/          — Test suites, cases, runs, cycles, results
+  assets/                   — CMDB, asset types, relationships
+  scripts/                  — ScriptRunner, sandboxed execution
+  forms/                    — Dynamic forms, conditional logic
+  reports/                  — Report builder, saved reports
+  incidents/                — Incident management, severity, timeline
+  retrospectives/           — Retro boards, cards, voting
+  approvals/                — Multi-stage approval workflows
+  checklists/               — Issue checklists with items
+  dashboards/               — Dashboard widgets, layouts
+  notifications/            — Notification preferences, delivery
+  queues/                   — Service desk queues, auto-assignment
+  search/                   — AQL parser, full-text search
+  custom-fields/            — Custom field definitions, values
+  users/                    — User management, profiles
+  admin/                    — Admin services (priorities, issue types)
+  permissions/              — RBAC, permission schemes, security levels
+  plans/                    — Advanced Roadmaps, cross-project planning
+  structure/                — Tree views, grouping, aggregates
+  budgets/                  — Cost tracking, CAPEX/OPEX, rates
+  capacity/                 — Resource planning, allocations, time-off
+  automation/               — Automation rules, execution engine
 src/shared/                 — Shared components, hooks, utilities, types
 src/integrations/           — External integrations (sharepoint/, github/, salesforce/, powerbi/, mcp/)
 src/server/                 — Server config, middleware, auth, DB client
@@ -63,7 +88,7 @@ ordolix-files/              — Source specification documents (.docx)
 
 ## Key Modules
 
-issues, workflows, boards, time-tracking, gantt, sla, test-management, assets, scripts, forms, reports, incidents, retrospectives, approvals, checklists
+issues, workflows, boards, projects, sprints, time-tracking, gantt, sla, test-management, assets, scripts, forms, reports, incidents, retrospectives, approvals, checklists, dashboards, notifications, queues, search, custom-fields, users, admin, permissions, plans, structure, budgets, capacity
 
 ## Naming Conventions
 
@@ -116,10 +141,16 @@ issues, workflows, boards, time-tracking, gantt, sla, test-management, assets, s
 
 ## Data Model Overview
 
-40+ Prisma models in three categories:
-- **Core**: Organization, User, Project, Issue, Workflow, Status, Transition, CustomField, AutomationRule, Board, Dashboard, Queue, AuditLog
-- **Add-On Features**: TimeLog, Timesheet, GanttDependency, SLAConfig, SLAInstance, Checklist, Asset, TestCase, TestRun, Incident, Approval, FormTemplate, Retrospective, Script, SavedReport
-- **Integrations**: SharePointLink, GitHubLink, SalesforceLink, IntegrationConfig, MCPSession
+99 Prisma models in nine categories:
+- **Auth**: User, Account, Session, VerificationToken
+- **Core**: Organization, OrganizationMember, Project, ProjectMember, Component, Version, ReleaseNote, IssueType, Priority, Resolution, Workflow, Status, WorkflowStatus, Transition, ApprovalRequirement, Issue, IssueWatcher, IssueLink, IssueRank, Comment, Attachment, IssueHistory, CustomField, CustomFieldValue, Board, Sprint, Dashboard, DashboardWidget, Queue, AuditLog, AutomationRule, AutomationExecution, AutomationTemplate
+- **Add-On Features**: TimeLog, Timesheet, GanttDependency, SLAConfig, SLAInstance, Checklist, ChecklistItem, AssetType, Asset, AssetRelationship, TestSuite, TestCase, TestCaseIssueLink, TestRun, TestResult, TestCycle, Incident, Approval, FormTemplate, FormSubmission, Retrospective, RetroCard, Script, ScriptExecution, SavedReport
+- **Integrations**: IntegrationConfig, SharePointLink, GitHubLink, SalesforceLink, MCPSession, TeamsChannelMapping, TeamsNotification, OutlookSubscription, EmailThread, Filter, IssueTemplate, NotificationPreference, NotificationRecord, Vote, ApiToken, BillingSubscription, UsageMetric, WebhookEndpoint
+- **Permissions & Security**: ProjectRole, Group, GroupMember, PermissionScheme, PermissionGrant, GlobalPermission, IssueSecurityScheme, IssueSecurityLevel, IssueSecurityLevelMember
+- **Plans & Roadmaps**: Plan, PlanIssueScope, PlanScenario
+- **Structure**: StructureView
+- **Budgets**: Budget, CostRate, BudgetEntry
+- **Capacity**: TeamCapacity, UserAllocation, TimeOff
 
 ## Multi-Tenancy
 

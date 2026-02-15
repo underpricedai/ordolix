@@ -73,3 +73,66 @@ export const removeProjectMemberInput = z.object({
 });
 
 export type RemoveProjectMemberInput = z.infer<typeof removeProjectMemberInput>;
+
+// ── Component Schemas ────────────────────────────────────────────────────────
+
+export const listComponentsInput = z.object({ projectId: z.string().min(1) });
+
+export type ListComponentsInput = z.infer<typeof listComponentsInput>;
+
+export const createComponentInput = z.object({
+  projectId: z.string().min(1),
+  name: z.string().min(1).max(100),
+  description: z.string().max(1000).optional(),
+  lead: z.string().optional(),
+});
+
+export type CreateComponentInput = z.infer<typeof createComponentInput>;
+
+export const updateComponentInput = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1).max(100).optional(),
+  description: z.string().max(1000).nullable().optional(),
+  lead: z.string().nullable().optional(),
+});
+
+export type UpdateComponentInput = z.infer<typeof updateComponentInput>;
+
+export const deleteComponentInput = z.object({ id: z.string().min(1) });
+
+export type DeleteComponentInput = z.infer<typeof deleteComponentInput>;
+
+// ── Version Schemas ──────────────────────────────────────────────────────────
+
+export const listVersionsInput = z.object({ projectId: z.string().min(1) });
+
+export type ListVersionsInput = z.infer<typeof listVersionsInput>;
+
+export const createVersionInput = z.object({
+  projectId: z.string().min(1),
+  name: z.string().min(1).max(100),
+  description: z.string().max(1000).optional(),
+  startDate: z.coerce.date().optional(),
+  releaseDate: z.coerce.date().optional(),
+});
+
+export type CreateVersionInput = z.infer<typeof createVersionInput>;
+
+export const updateVersionInput = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1).max(100).optional(),
+  description: z.string().max(1000).nullable().optional(),
+  startDate: z.coerce.date().nullable().optional(),
+  releaseDate: z.coerce.date().nullable().optional(),
+  status: z.string().optional(),
+});
+
+export type UpdateVersionInput = z.infer<typeof updateVersionInput>;
+
+export const deleteVersionInput = z.object({ id: z.string().min(1) });
+
+export type DeleteVersionInput = z.infer<typeof deleteVersionInput>;
+
+export const releaseVersionInput = z.object({ id: z.string().min(1) });
+
+export type ReleaseVersionInput = z.infer<typeof releaseVersionInput>;

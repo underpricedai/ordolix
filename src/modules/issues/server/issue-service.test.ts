@@ -1,6 +1,29 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { createIssue, getIssueByKey, listIssues, updateIssue, deleteIssue } from "./issue-service";
-import { NotFoundError } from "@/server/lib/errors";
+import {
+  createIssue,
+  getIssueByKey,
+  listIssues,
+  updateIssue,
+  deleteIssue,
+  getIssueHistory,
+  toggleWatch,
+  addWatcher,
+  removeWatcher,
+  listWatchers,
+  toggleVote,
+  getVoteStatus,
+  listComments,
+  addComment,
+  editComment,
+  deleteComment,
+  getChildren,
+  createLink,
+  deleteLink,
+  getLinks,
+  listAttachments,
+  deleteAttachment,
+} from "./issue-service";
+import { NotFoundError, PermissionError, ValidationError } from "@/server/lib/errors";
 
 // ── Mock Helpers ─────────────────────────────────────────────────────────────
 
@@ -30,7 +53,38 @@ function createMockDb(overrides: Record<string, unknown> = {}) {
       update: vi.fn(),
       count: vi.fn(),
     },
-    issueHistory: { createMany: vi.fn() },
+    issueHistory: { createMany: vi.fn(), findMany: vi.fn() },
+    issueWatcher: {
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+      create: vi.fn(),
+      delete: vi.fn(),
+      upsert: vi.fn(),
+    },
+    vote: {
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      delete: vi.fn(),
+      count: vi.fn(),
+    },
+    comment: {
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+    },
+    issueLink: {
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+      create: vi.fn(),
+      delete: vi.fn(),
+    },
+    attachment: {
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+      delete: vi.fn(),
+    },
     auditLog: { create: vi.fn() },
     $transaction: vi.fn(async (fn: (tx: typeof mockTx) => Promise<unknown>) => fn(mockTx)),
     _tx: mockTx,
@@ -600,5 +654,443 @@ describe("deleteIssue", () => {
     await expect(
       deleteIssue(db, ORG_ID, USER_ID, "issue-1"),
     ).rejects.toThrow(NotFoundError);
+  });
+});
+
+// ── getIssueHistory ────────────────────────────────────────────────────────
+
+describe("getIssueHistory", () => {
+  let db: ReturnType<typeof createMockDb>;
+
+  beforeEach(() => {
+    db = createMockDb();
+    db.issue.findFirst.mockResolvedValue({ id: "issue-1" });
+  });
+
+  it("returns paginated history with user info", async () => {
+    const mockHistory = [
+      { id: "h1", field: "summary", oldValue: "Old", newValue: "New", user: { id: "u1", name: "User", image: null } },
+    ];
+    db.issueHistory.findMany.mockResolvedValue(mockHistory);
+
+    const result = await getIssueHistory(db, ORG_ID, "issue-1", { issueId: "issue-1", limit: 50 });
+    expect(result.items).toEqual(mockHistory);
+  });
+
+  it("returns nextCursor when at limit", async () => {
+    const items = Array.from({ length: 10 }, (_, i) => ({ id: `h${i}` }));
+    db.issueHistory.findMany.mockResolvedValue(items);
+
+    const result = await getIssueHistory(db, ORG_ID, "issue-1", { issueId: "issue-1", limit: 10 });
+    expect(result.nextCursor).toBe("h9");
+  });
+
+  it("returns no nextCursor when under limit", async () => {
+    db.issueHistory.findMany.mockResolvedValue([{ id: "h1" }]);
+
+    const result = await getIssueHistory(db, ORG_ID, "issue-1", { issueId: "issue-1", limit: 50 });
+    expect(result.nextCursor).toBeUndefined();
+  });
+
+  it("throws NotFoundError for invalid issue", async () => {
+    db.issue.findFirst.mockResolvedValue(null);
+
+    await expect(
+      getIssueHistory(db, ORG_ID, "bad-id", { issueId: "bad-id", limit: 50 }),
+    ).rejects.toThrow(NotFoundError);
+  });
+});
+
+// ── toggleWatch ────────────────────────────────────────────────────────────
+
+describe("toggleWatch", () => {
+  let db: ReturnType<typeof createMockDb>;
+
+  beforeEach(() => {
+    db = createMockDb();
+    db.issue.findFirst.mockResolvedValue({ id: "issue-1" });
+  });
+
+  it("creates watch when not watching", async () => {
+    db.issueWatcher.findUnique.mockResolvedValue(null);
+    db.issueWatcher.create.mockResolvedValue({ id: "w1" });
+
+    const result = await toggleWatch(db, ORG_ID, USER_ID, "issue-1");
+    expect(result.watching).toBe(true);
+    expect(db.issueWatcher.create).toHaveBeenCalled();
+  });
+
+  it("deletes watch when already watching", async () => {
+    db.issueWatcher.findUnique.mockResolvedValue({ id: "w1", issueId: "issue-1", userId: USER_ID });
+
+    const result = await toggleWatch(db, ORG_ID, USER_ID, "issue-1");
+    expect(result.watching).toBe(false);
+    expect(db.issueWatcher.delete).toHaveBeenCalledWith({ where: { id: "w1" } });
+  });
+
+  it("throws NotFoundError for invalid issue", async () => {
+    db.issue.findFirst.mockResolvedValue(null);
+    await expect(toggleWatch(db, ORG_ID, USER_ID, "bad")).rejects.toThrow(NotFoundError);
+  });
+});
+
+// ── addWatcher / removeWatcher / listWatchers ──────────────────────────────
+
+describe("addWatcher", () => {
+  let db: ReturnType<typeof createMockDb>;
+
+  beforeEach(() => {
+    db = createMockDb();
+    db.issue.findFirst.mockResolvedValue({ id: "issue-1" });
+  });
+
+  it("upserts a watcher", async () => {
+    db.issueWatcher.upsert.mockResolvedValue({ id: "w1" });
+
+    await addWatcher(db, ORG_ID, "issue-1", "user-2");
+    expect(db.issueWatcher.upsert).toHaveBeenCalledWith({
+      where: { issueId_userId: { issueId: "issue-1", userId: "user-2" } },
+      create: { issueId: "issue-1", userId: "user-2" },
+      update: {},
+    });
+  });
+});
+
+describe("removeWatcher", () => {
+  let db: ReturnType<typeof createMockDb>;
+
+  beforeEach(() => {
+    db = createMockDb();
+    db.issue.findFirst.mockResolvedValue({ id: "issue-1" });
+  });
+
+  it("removes an existing watcher", async () => {
+    db.issueWatcher.findUnique.mockResolvedValue({ id: "w1" });
+
+    await removeWatcher(db, ORG_ID, "issue-1", "user-2");
+    expect(db.issueWatcher.delete).toHaveBeenCalledWith({ where: { id: "w1" } });
+  });
+
+  it("throws NotFoundError for non-existent watcher", async () => {
+    db.issueWatcher.findUnique.mockResolvedValue(null);
+    await expect(removeWatcher(db, ORG_ID, "issue-1", "user-2")).rejects.toThrow(NotFoundError);
+  });
+});
+
+describe("listWatchers", () => {
+  let db: ReturnType<typeof createMockDb>;
+
+  beforeEach(() => {
+    db = createMockDb();
+    db.issue.findFirst.mockResolvedValue({ id: "issue-1" });
+  });
+
+  it("returns watchers with user info", async () => {
+    const watchers = [{ id: "w1", user: { id: "u1", name: "User", image: null } }];
+    db.issueWatcher.findMany.mockResolvedValue(watchers);
+
+    const result = await listWatchers(db, ORG_ID, "issue-1");
+    expect(result).toEqual(watchers);
+  });
+});
+
+// ── toggleVote / getVoteStatus ─────────────────────────────────────────────
+
+describe("toggleVote", () => {
+  let db: ReturnType<typeof createMockDb>;
+
+  beforeEach(() => {
+    db = createMockDb();
+    db.issue.findFirst.mockResolvedValue({ id: "issue-1" });
+  });
+
+  it("creates vote when not voted and returns count", async () => {
+    db.vote.findUnique.mockResolvedValue(null);
+    db.vote.create.mockResolvedValue({ id: "v1" });
+    db.vote.count.mockResolvedValue(1);
+
+    const result = await toggleVote(db, ORG_ID, USER_ID, "issue-1");
+    expect(result.voted).toBe(true);
+    expect(result.count).toBe(1);
+  });
+
+  it("removes vote when already voted", async () => {
+    db.vote.findUnique.mockResolvedValue({ id: "v1" });
+    db.vote.count.mockResolvedValue(0);
+
+    const result = await toggleVote(db, ORG_ID, USER_ID, "issue-1");
+    expect(result.voted).toBe(false);
+    expect(result.count).toBe(0);
+    expect(db.vote.delete).toHaveBeenCalledWith({ where: { id: "v1" } });
+  });
+});
+
+describe("getVoteStatus", () => {
+  let db: ReturnType<typeof createMockDb>;
+
+  beforeEach(() => {
+    db = createMockDb();
+    db.issue.findFirst.mockResolvedValue({ id: "issue-1" });
+  });
+
+  it("returns voted=true and count when voted", async () => {
+    db.vote.findUnique.mockResolvedValue({ id: "v1" });
+    db.vote.count.mockResolvedValue(3);
+
+    const result = await getVoteStatus(db, ORG_ID, USER_ID, "issue-1");
+    expect(result).toEqual({ voted: true, count: 3 });
+  });
+
+  it("returns voted=false when not voted", async () => {
+    db.vote.findUnique.mockResolvedValue(null);
+    db.vote.count.mockResolvedValue(2);
+
+    const result = await getVoteStatus(db, ORG_ID, USER_ID, "issue-1");
+    expect(result).toEqual({ voted: false, count: 2 });
+  });
+});
+
+// ── Comments ───────────────────────────────────────────────────────────────
+
+describe("listComments", () => {
+  let db: ReturnType<typeof createMockDb>;
+
+  beforeEach(() => {
+    db = createMockDb();
+  });
+
+  it("returns comments with author info", async () => {
+    const comments = [{ id: "c1", body: "Test", author: { id: "u1", name: "User", image: null } }];
+    db.comment.findMany.mockResolvedValue(comments);
+
+    const result = await listComments(db, ORG_ID, { issueId: "issue-1", limit: 50 });
+    expect(result.items).toEqual(comments);
+  });
+});
+
+describe("addComment", () => {
+  let db: ReturnType<typeof createMockDb>;
+
+  beforeEach(() => {
+    db = createMockDb();
+    db.issue.findFirst.mockResolvedValue({ id: "issue-1" });
+  });
+
+  it("creates a comment", async () => {
+    const created = { id: "c1", body: "Hello", authorId: USER_ID, author: { id: USER_ID, name: "User", image: null } };
+    db.comment.create.mockResolvedValue(created);
+
+    const result = await addComment(db, ORG_ID, USER_ID, { issueId: "issue-1", body: "Hello" });
+    expect(result.body).toBe("Hello");
+  });
+
+  it("throws NotFoundError for invalid issue", async () => {
+    db.issue.findFirst.mockResolvedValue(null);
+    await expect(addComment(db, ORG_ID, USER_ID, { issueId: "bad", body: "Hello" })).rejects.toThrow(NotFoundError);
+  });
+});
+
+describe("editComment", () => {
+  let db: ReturnType<typeof createMockDb>;
+
+  beforeEach(() => {
+    db = createMockDb();
+  });
+
+  it("updates own comment", async () => {
+    db.comment.findFirst.mockResolvedValue({ id: "c1", authorId: USER_ID });
+    db.comment.update.mockResolvedValue({ id: "c1", body: "Updated", author: { id: USER_ID } });
+
+    const result = await editComment(db, ORG_ID, USER_ID, { id: "c1", body: "Updated" });
+    expect(result.body).toBe("Updated");
+  });
+
+  it("throws PermissionError for other user's comment", async () => {
+    db.comment.findFirst.mockResolvedValue({ id: "c1", authorId: "other-user" });
+    await expect(editComment(db, ORG_ID, USER_ID, { id: "c1", body: "Nope" })).rejects.toThrow(PermissionError);
+  });
+
+  it("throws NotFoundError for missing comment", async () => {
+    db.comment.findFirst.mockResolvedValue(null);
+    await expect(editComment(db, ORG_ID, USER_ID, { id: "bad", body: "x" })).rejects.toThrow(NotFoundError);
+  });
+});
+
+describe("deleteComment", () => {
+  let db: ReturnType<typeof createMockDb>;
+
+  beforeEach(() => {
+    db = createMockDb();
+  });
+
+  it("deletes own comment", async () => {
+    db.comment.findFirst.mockResolvedValue({ id: "c1", authorId: USER_ID });
+
+    await deleteComment(db, ORG_ID, USER_ID, "c1");
+    expect(db.comment.delete).toHaveBeenCalledWith({ where: { id: "c1" } });
+  });
+
+  it("throws PermissionError for other user's comment", async () => {
+    db.comment.findFirst.mockResolvedValue({ id: "c1", authorId: "other-user" });
+    await expect(deleteComment(db, ORG_ID, USER_ID, "c1")).rejects.toThrow(PermissionError);
+  });
+});
+
+// ── getChildren ────────────────────────────────────────────────────────────
+
+describe("getChildren", () => {
+  let db: ReturnType<typeof createMockDb>;
+
+  beforeEach(() => {
+    db = createMockDb();
+    db.issue.findFirst.mockResolvedValue({ id: "issue-1" });
+  });
+
+  it("returns child issues", async () => {
+    const children = [{ id: "child-1", key: "TEST-2", summary: "Child task" }];
+    db.issue.findMany.mockResolvedValue(children);
+
+    const result = await getChildren(db, ORG_ID, "issue-1");
+    expect(result).toEqual(children);
+  });
+
+  it("returns empty array when no children", async () => {
+    db.issue.findMany.mockResolvedValue([]);
+
+    const result = await getChildren(db, ORG_ID, "issue-1");
+    expect(result).toEqual([]);
+  });
+
+  it("throws NotFoundError for invalid issue", async () => {
+    db.issue.findFirst.mockResolvedValue(null);
+    await expect(getChildren(db, ORG_ID, "bad")).rejects.toThrow(NotFoundError);
+  });
+});
+
+// ── Issue Linking ──────────────────────────────────────────────────────────
+
+describe("createLink", () => {
+  let db: ReturnType<typeof createMockDb>;
+
+  beforeEach(() => {
+    db = createMockDb();
+    db.issue.findFirst
+      .mockResolvedValueOnce({ id: "issue-1" })
+      .mockResolvedValueOnce({ id: "issue-2" });
+  });
+
+  it("creates a link between two issues", async () => {
+    const link = { id: "l1", linkType: "blocks", fromIssue: { id: "issue-1" }, toIssue: { id: "issue-2" } };
+    db.issueLink.create.mockResolvedValue(link);
+
+    const result = await createLink(db, ORG_ID, { linkType: "blocks", fromIssueId: "issue-1", toIssueId: "issue-2" });
+    expect(result.linkType).toBe("blocks");
+  });
+
+  it("rejects self-linking", async () => {
+    await expect(
+      createLink(db, ORG_ID, { linkType: "blocks", fromIssueId: "issue-1", toIssueId: "issue-1" }),
+    ).rejects.toThrow(ValidationError);
+  });
+
+  it("rejects invalid link type", async () => {
+    await expect(
+      createLink(db, ORG_ID, { linkType: "invalid-type", fromIssueId: "issue-1", toIssueId: "issue-2" }),
+    ).rejects.toThrow(ValidationError);
+  });
+
+  it("throws NotFoundError if from issue not found", async () => {
+    db.issue.findFirst.mockReset();
+    db.issue.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: "issue-2" });
+
+    await expect(
+      createLink(db, ORG_ID, { linkType: "blocks", fromIssueId: "bad", toIssueId: "issue-2" }),
+    ).rejects.toThrow(NotFoundError);
+  });
+});
+
+describe("deleteLink", () => {
+  let db: ReturnType<typeof createMockDb>;
+
+  beforeEach(() => {
+    db = createMockDb();
+  });
+
+  it("deletes an existing link", async () => {
+    db.issueLink.findFirst.mockResolvedValue({ id: "l1", fromIssue: { organizationId: ORG_ID } });
+
+    await deleteLink(db, ORG_ID, "l1");
+    expect(db.issueLink.delete).toHaveBeenCalledWith({ where: { id: "l1" } });
+  });
+
+  it("throws NotFoundError for missing link", async () => {
+    db.issueLink.findFirst.mockResolvedValue(null);
+    await expect(deleteLink(db, ORG_ID, "bad")).rejects.toThrow(NotFoundError);
+  });
+});
+
+describe("getLinks", () => {
+  let db: ReturnType<typeof createMockDb>;
+
+  beforeEach(() => {
+    db = createMockDb();
+    db.issue.findFirst.mockResolvedValue({ id: "issue-1" });
+  });
+
+  it("returns outbound and inbound links", async () => {
+    db.issueLink.findMany
+      .mockResolvedValueOnce([{ id: "l1", linkType: "blocks" }])
+      .mockResolvedValueOnce([{ id: "l2", linkType: "relates-to" }]);
+
+    const result = await getLinks(db, ORG_ID, "issue-1");
+    expect(result.outbound).toHaveLength(1);
+    expect(result.inbound).toHaveLength(1);
+  });
+});
+
+// ── Attachments ────────────────────────────────────────────────────────────
+
+describe("listAttachments", () => {
+  let db: ReturnType<typeof createMockDb>;
+
+  beforeEach(() => {
+    db = createMockDb();
+    db.issue.findFirst.mockResolvedValue({ id: "issue-1" });
+  });
+
+  it("returns attachments with uploader info", async () => {
+    const attachments = [{ id: "a1", filename: "doc.pdf", uploader: { id: "u1", name: "User", image: null } }];
+    db.attachment.findMany.mockResolvedValue(attachments);
+
+    const result = await listAttachments(db, ORG_ID, "issue-1");
+    expect(result).toEqual(attachments);
+  });
+});
+
+describe("deleteAttachment", () => {
+  let db: ReturnType<typeof createMockDb>;
+
+  beforeEach(() => {
+    db = createMockDb();
+  });
+
+  it("deletes own attachment", async () => {
+    db.attachment.findFirst.mockResolvedValue({ id: "a1", uploaderId: USER_ID, storageKey: "key" });
+
+    const result = await deleteAttachment(db, ORG_ID, USER_ID, "a1");
+    expect(result.id).toBe("a1");
+    expect(db.attachment.delete).toHaveBeenCalledWith({ where: { id: "a1" } });
+  });
+
+  it("throws PermissionError for other user's attachment", async () => {
+    db.attachment.findFirst.mockResolvedValue({ id: "a1", uploaderId: "other-user" });
+    await expect(deleteAttachment(db, ORG_ID, USER_ID, "a1")).rejects.toThrow(PermissionError);
+  });
+
+  it("throws NotFoundError for missing attachment", async () => {
+    db.attachment.findFirst.mockResolvedValue(null);
+    await expect(deleteAttachment(db, ORG_ID, USER_ID, "bad")).rejects.toThrow(NotFoundError);
   });
 });

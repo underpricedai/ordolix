@@ -10,6 +10,11 @@ import {
   updateTestRunStatusInput,
   listTestRunsInput,
   recordTestResultInput,
+  bulkRecordResultsInput,
+  createTestCycleInput,
+  updateTestCycleInput,
+  listTestCyclesInput,
+  deleteTestCycleInput,
 } from "../types/schemas";
 import * as tmService from "./test-management-service";
 
@@ -122,5 +127,43 @@ export const testManagementRouter = createRouter({
     .input(recordTestResultInput)
     .mutation(async ({ ctx, input }) => {
       return tmService.recordTestResult(ctx.db, ctx.organizationId, input);
+    }),
+
+  bulkRecordResults: protectedProcedure
+    .input(bulkRecordResultsInput)
+    .mutation(async ({ ctx, input }) => {
+      return tmService.bulkRecordResults(ctx.db, ctx.organizationId, input);
+    }),
+
+  // ── Test Cycles ────────────────────────────────────────────────────────
+  createCycle: protectedProcedure
+    .input(createTestCycleInput)
+    .mutation(async ({ ctx, input }) => {
+      return tmService.createTestCycle(ctx.db, ctx.organizationId, input);
+    }),
+
+  getCycle: protectedProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      return tmService.getTestCycle(ctx.db, ctx.organizationId, input.id);
+    }),
+
+  listCycles: protectedProcedure
+    .input(listTestCyclesInput)
+    .query(async ({ ctx, input }) => {
+      return tmService.listTestCycles(ctx.db, ctx.organizationId, input);
+    }),
+
+  updateCycle: protectedProcedure
+    .input(updateTestCycleInput)
+    .mutation(async ({ ctx, input }) => {
+      const { id, ...updates } = input;
+      return tmService.updateTestCycle(ctx.db, ctx.organizationId, id, updates);
+    }),
+
+  deleteCycle: protectedProcedure
+    .input(deleteTestCycleInput)
+    .mutation(async ({ ctx, input }) => {
+      return tmService.deleteTestCycle(ctx.db, ctx.organizationId, input.id);
     }),
 });

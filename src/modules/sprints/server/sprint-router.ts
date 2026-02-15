@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createRouter, protectedProcedure } from "@/server/trpc/init";
+import { createRouter, protectedProcedure, requirePermission } from "@/server/trpc/init";
 import {
   createSprintInput,
   updateSprintInput,
@@ -13,7 +13,7 @@ import {
 import * as sprintService from "./sprint-service";
 
 export const sprintRouter = createRouter({
-  create: protectedProcedure
+  create: requirePermission("MANAGE_SPRINTS")
     .input(createSprintInput)
     .mutation(async ({ ctx, input }) => {
       return sprintService.createSprint(

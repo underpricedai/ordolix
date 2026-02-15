@@ -80,20 +80,34 @@ src/
       types/                    — TypeScript types and Zod schemas
       tests/                    — Unit and integration tests
       tooltips.ts               — Tooltip content dictionary
-    workflows/
-    boards/
-    time-tracking/
-    gantt/
-    sla/
-    test-management/
-    assets/
-    scripts/
-    forms/
-    reports/
-    incidents/
-    retrospectives/
+    admin/
     approvals/
+    assets/
+    boards/
+    budgets/
+    capacity/
     checklists/
+    custom-fields/
+    dashboards/
+    forms/
+    gantt/
+    incidents/
+    notifications/
+    permissions/
+    plans/
+    projects/
+    queues/
+    reports/
+    retrospectives/
+    scripts/
+    search/
+    sla/
+    sprints/
+    structure/
+    test-management/
+    time-tracking/
+    users/
+    workflows/
   shared/                       — Shared components, hooks, utilities, types
   integrations/                 — External integrations
     sharepoint/
@@ -141,6 +155,22 @@ ordolix-files/                  — Source specification documents
 - Neon DB branch per PR (auto-deleted on close)
 - Vercel preview deployment per PR
 
+## Test Infrastructure
+
+- **Vitest** with **1,716+ unit/integration tests** across **116 test files**
+- Mock-based testing pattern using `vi.fn()` (no real DB connections in tests)
+- Factory pattern in `tests/fixtures/` for test data generation (`createTestIssue()`, `createTestWorkflow()`, etc.)
+- Co-located test files adjacent to source code (`*.test.ts`)
+- TDD methodology: write failing tests first, implement minimum code to pass, then refactor
+
+## tRPC Router Architecture
+
+The appRouter composes **31 domain-specific routers**, each owning its own slice of the API surface:
+
+`project`, `issue`, `workflow`, `board`, `timeTracking`, `checklist`, `epicRollup`, `gantt`, `dashboard`, `approval`, `script`, `notification`, `retro`, `testManagement`, `sla`, `automation`, `form`, `report`, `asset`, `incident`, `queue`, `sprint`, `customField`, `search`, `user`, `admin`, `permission`, `plan`, `structure`, `budget`, `capacity`
+
+Routers are defined in their respective `src/modules/[module]/server/` directories and merged into the root router in `src/server/trpc/router.ts`.
+
 ## Caching Strategy
 
 | Layer | Technology | Purpose | TTL |
@@ -150,6 +180,7 @@ ordolix-files/                  — Source specification documents
 | User session | Upstash Redis | Permissions, role memberships | 5 min |
 | Rollup values | Upstash Redis | Epic Sum Up computed values | Until invalidated |
 | Search results | Upstash Redis | AQL query results for common filters | 1 min |
+| Permission cache | Upstash Redis | RBAC permission checks per user/project | 5 min |
 | SLA state | Upstash Redis | Elapsed time, breach predictions | 30 sec |
 | Board state | Client React Query | Card positions and statuses | Real-time invalidation |
 

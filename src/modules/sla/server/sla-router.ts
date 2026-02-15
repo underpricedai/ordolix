@@ -1,4 +1,4 @@
-import { createRouter, protectedProcedure } from "@/server/trpc/init";
+import { createRouter, protectedProcedure, adminProcedure } from "@/server/trpc/init";
 import {
   createSLAConfigInput,
   updateSLAConfigInput,
@@ -13,13 +13,13 @@ import { z } from "zod";
 import * as slaService from "./sla-service";
 
 export const slaRouter = createRouter({
-  createConfig: protectedProcedure
+  createConfig: adminProcedure
     .input(createSLAConfigInput)
     .mutation(async ({ ctx, input }) => {
       return slaService.createSLAConfig(ctx.db, ctx.organizationId, input);
     }),
 
-  updateConfig: protectedProcedure
+  updateConfig: adminProcedure
     .input(updateSLAConfigInput)
     .mutation(async ({ ctx, input }) => {
       const { id, ...rest } = input;
@@ -38,7 +38,7 @@ export const slaRouter = createRouter({
       return slaService.getSLAConfig(ctx.db, ctx.organizationId, input.id);
     }),
 
-  deleteConfig: protectedProcedure
+  deleteConfig: adminProcedure
     .input(z.object({ id: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       return slaService.deleteSLAConfig(ctx.db, ctx.organizationId, input.id);

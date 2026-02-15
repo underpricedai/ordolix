@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createRouter, protectedProcedure } from "@/server/trpc/init";
+import { createRouter, protectedProcedure, adminProcedure } from "@/server/trpc/init";
 import {
   createScriptInput,
   updateScriptInput,
@@ -10,7 +10,7 @@ import {
 import * as scriptService from "./script-service";
 
 export const scriptRouter = createRouter({
-  create: protectedProcedure
+  create: adminProcedure
     .input(createScriptInput)
     .mutation(async ({ ctx, input }) => {
       return scriptService.createScript(ctx.db, ctx.organizationId, input);
@@ -28,7 +28,7 @@ export const scriptRouter = createRouter({
       return scriptService.listScripts(ctx.db, ctx.organizationId, input);
     }),
 
-  update: protectedProcedure
+  update: adminProcedure
     .input(updateScriptInput)
     .mutation(async ({ ctx, input }) => {
       const { id, ...updates } = input;
@@ -40,13 +40,13 @@ export const scriptRouter = createRouter({
       );
     }),
 
-  delete: protectedProcedure
+  delete: adminProcedure
     .input(z.object({ id: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       return scriptService.deleteScript(ctx.db, ctx.organizationId, input.id);
     }),
 
-  execute: protectedProcedure
+  execute: adminProcedure
     .input(executeScriptInput)
     .mutation(async ({ ctx, input }) => {
       return scriptService.executeScript(

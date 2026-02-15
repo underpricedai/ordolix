@@ -82,7 +82,7 @@ export default function ReportsPage() {
           <EmptyState
             icon={<BarChart3 className="size-12" />}
             title={tc("error")}
-            description={tc("retry")}
+            description={error.message}
             action={
               <Button variant="outline" onClick={() => window.location.reload()}>
                 {tc("retry")}

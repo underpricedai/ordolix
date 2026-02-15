@@ -31,9 +31,32 @@ vi.mock("@/server/trpc/dev-auth", () => ({
   getOrganizationId: vi.fn().mockResolvedValue(null),
 }));
 
+vi.mock("@/modules/permissions/server/permission-checker", () => ({
+  checkGlobalPermission: vi.fn().mockResolvedValue(true),
+  checkPermission: vi.fn().mockResolvedValue(true),
+  checkIssueSecurityAccess: vi.fn().mockResolvedValue(true),
+  resolveProjectPermissions: vi.fn().mockResolvedValue(new Set(["BROWSE_PROJECTS", "CREATE_ISSUES", "EDIT_ISSUES"])),
+  invalidatePermissionCache: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("@/server/trpc/init", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/server/trpc/init")>();
+  return {
+    ...actual,
+    requirePermission: vi.fn(() => actual.protectedProcedure),
+    requireGlobalPermission: vi.fn(() => actual.protectedProcedure),
+    adminProcedure: actual.protectedProcedure,
+  };
+});
+
 import * as boardService from "./board-service";
-import { appRouter } from "@/server/trpc/router";
+import { createRouter } from "@/server/trpc/init";
+import { boardRouter } from "./board-router";
 import type { TRPCContext } from "@/server/trpc/init";
+
+const appRouter = createRouter({
+  board: boardRouter,
+});
 
 function createAuthenticatedContext(
   overrides: Partial<TRPCContext> = {},

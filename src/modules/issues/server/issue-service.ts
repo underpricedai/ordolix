@@ -1,6 +1,15 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { NotFoundError } from "@/server/lib/errors";
-import type { CreateIssueInput, UpdateIssueInput, ListIssuesInput } from "../types/schemas";
+import { NotFoundError, PermissionError, ValidationError } from "@/server/lib/errors";
+import type {
+  CreateIssueInput,
+  UpdateIssueInput,
+  ListIssuesInput,
+  ListHistoryInput,
+  CreateLinkInput,
+  CreateCommentInput,
+  UpdateCommentInput,
+  ListCommentsInput,
+} from "../types/schemas";
 
 const ISSUE_INCLUDE = {
   issueType: true,
@@ -334,4 +343,428 @@ export async function deleteIssue(
       },
     });
   });
+}
+
+// ── History ────────────────────────────────────────────────────────────────
+
+export async function getIssueHistory(
+  db: PrismaClient,
+  organizationId: string,
+  issueId: string,
+  input: ListHistoryInput,
+) {
+  const issue = await db.issue.findFirst({
+    where: { id: issueId, organizationId, deletedAt: null },
+    select: { id: true },
+  });
+  if (!issue) {
+    throw new NotFoundError("Issue", issueId);
+  }
+
+  const items = await db.issueHistory.findMany({
+    where: { issueId, organizationId },
+    include: { user: { select: { id: true, name: true, image: true } } },
+    orderBy: { createdAt: "desc" },
+    take: input.limit,
+    ...(input.cursor ? { skip: 1, cursor: { id: input.cursor } } : {}),
+  });
+
+  return {
+    items,
+    nextCursor: items.length === input.limit ? items[items.length - 1]?.id : undefined,
+  };
+}
+
+// ── Watchers ───────────────────────────────────────────────────────────────
+
+export async function toggleWatch(
+  db: PrismaClient,
+  organizationId: string,
+  userId: string,
+  issueId: string,
+) {
+  const issue = await db.issue.findFirst({
+    where: { id: issueId, organizationId, deletedAt: null },
+    select: { id: true },
+  });
+  if (!issue) {
+    throw new NotFoundError("Issue", issueId);
+  }
+
+  const existing = await db.issueWatcher.findUnique({
+    where: { issueId_userId: { issueId, userId } },
+  });
+
+  if (existing) {
+    await db.issueWatcher.delete({ where: { id: existing.id } });
+    return { watching: false };
+  }
+
+  await db.issueWatcher.create({ data: { issueId, userId } });
+  return { watching: true };
+}
+
+export async function addWatcher(
+  db: PrismaClient,
+  organizationId: string,
+  issueId: string,
+  userId: string,
+) {
+  const issue = await db.issue.findFirst({
+    where: { id: issueId, organizationId, deletedAt: null },
+    select: { id: true },
+  });
+  if (!issue) {
+    throw new NotFoundError("Issue", issueId);
+  }
+
+  return db.issueWatcher.upsert({
+    where: { issueId_userId: { issueId, userId } },
+    create: { issueId, userId },
+    update: {},
+  });
+}
+
+export async function removeWatcher(
+  db: PrismaClient,
+  organizationId: string,
+  issueId: string,
+  userId: string,
+) {
+  const issue = await db.issue.findFirst({
+    where: { id: issueId, organizationId, deletedAt: null },
+    select: { id: true },
+  });
+  if (!issue) {
+    throw new NotFoundError("Issue", issueId);
+  }
+
+  const existing = await db.issueWatcher.findUnique({
+    where: { issueId_userId: { issueId, userId } },
+  });
+  if (!existing) {
+    throw new NotFoundError("IssueWatcher", `${issueId}:${userId}`);
+  }
+
+  await db.issueWatcher.delete({ where: { id: existing.id } });
+}
+
+export async function listWatchers(
+  db: PrismaClient,
+  organizationId: string,
+  issueId: string,
+) {
+  const issue = await db.issue.findFirst({
+    where: { id: issueId, organizationId, deletedAt: null },
+    select: { id: true },
+  });
+  if (!issue) {
+    throw new NotFoundError("Issue", issueId);
+  }
+
+  return db.issueWatcher.findMany({
+    where: { issueId },
+    include: { user: { select: { id: true, name: true, image: true } } },
+  });
+}
+
+// ── Voting ─────────────────────────────────────────────────────────────────
+
+export async function toggleVote(
+  db: PrismaClient,
+  organizationId: string,
+  userId: string,
+  issueId: string,
+) {
+  const issue = await db.issue.findFirst({
+    where: { id: issueId, organizationId, deletedAt: null },
+    select: { id: true },
+  });
+  if (!issue) {
+    throw new NotFoundError("Issue", issueId);
+  }
+
+  const existing = await db.vote.findUnique({
+    where: { issueId_userId: { issueId, userId } },
+  });
+
+  if (existing) {
+    await db.vote.delete({ where: { id: existing.id } });
+  } else {
+    await db.vote.create({ data: { issueId, userId } });
+  }
+
+  const count = await db.vote.count({ where: { issueId } });
+  return { voted: !existing, count };
+}
+
+export async function getVoteStatus(
+  db: PrismaClient,
+  organizationId: string,
+  userId: string,
+  issueId: string,
+) {
+  const issue = await db.issue.findFirst({
+    where: { id: issueId, organizationId, deletedAt: null },
+    select: { id: true },
+  });
+  if (!issue) {
+    throw new NotFoundError("Issue", issueId);
+  }
+
+  const [existing, count] = await Promise.all([
+    db.vote.findUnique({ where: { issueId_userId: { issueId, userId } } }),
+    db.vote.count({ where: { issueId } }),
+  ]);
+
+  return { voted: !!existing, count };
+}
+
+// ── Comments ───────────────────────────────────────────────────────────────
+
+export async function listComments(
+  db: PrismaClient,
+  organizationId: string,
+  input: ListCommentsInput,
+) {
+  const items = await db.comment.findMany({
+    where: { issueId: input.issueId, organizationId },
+    include: { author: { select: { id: true, name: true, image: true } } },
+    orderBy: { createdAt: "asc" },
+    take: input.limit,
+    ...(input.cursor ? { skip: 1, cursor: { id: input.cursor } } : {}),
+  });
+
+  return {
+    items,
+    nextCursor: items.length === input.limit ? items[items.length - 1]?.id : undefined,
+  };
+}
+
+export async function addComment(
+  db: PrismaClient,
+  organizationId: string,
+  userId: string,
+  input: CreateCommentInput,
+) {
+  const issue = await db.issue.findFirst({
+    where: { id: input.issueId, organizationId, deletedAt: null },
+    select: { id: true },
+  });
+  if (!issue) {
+    throw new NotFoundError("Issue", input.issueId);
+  }
+
+  return db.comment.create({
+    data: {
+      organizationId,
+      issueId: input.issueId,
+      authorId: userId,
+      body: input.body,
+      isInternal: input.isInternal ?? false,
+    },
+    include: { author: { select: { id: true, name: true, image: true } } },
+  });
+}
+
+export async function editComment(
+  db: PrismaClient,
+  organizationId: string,
+  userId: string,
+  input: UpdateCommentInput,
+) {
+  const comment = await db.comment.findFirst({
+    where: { id: input.id, organizationId },
+  });
+  if (!comment) {
+    throw new NotFoundError("Comment", input.id);
+  }
+  if (comment.authorId !== userId) {
+    throw new PermissionError("You can only edit your own comments");
+  }
+
+  return db.comment.update({
+    where: { id: input.id },
+    data: { body: input.body },
+    include: { author: { select: { id: true, name: true, image: true } } },
+  });
+}
+
+export async function deleteComment(
+  db: PrismaClient,
+  organizationId: string,
+  userId: string,
+  id: string,
+) {
+  const comment = await db.comment.findFirst({
+    where: { id, organizationId },
+  });
+  if (!comment) {
+    throw new NotFoundError("Comment", id);
+  }
+  if (comment.authorId !== userId) {
+    throw new PermissionError("You can only delete your own comments");
+  }
+
+  await db.comment.delete({ where: { id } });
+}
+
+// ── Subtasks (Children) ────────────────────────────────────────────────────
+
+export async function getChildren(
+  db: PrismaClient,
+  organizationId: string,
+  issueId: string,
+) {
+  const issue = await db.issue.findFirst({
+    where: { id: issueId, organizationId, deletedAt: null },
+    select: { id: true },
+  });
+  if (!issue) {
+    throw new NotFoundError("Issue", issueId);
+  }
+
+  return db.issue.findMany({
+    where: { parentId: issueId, organizationId, deletedAt: null },
+    include: {
+      issueType: true,
+      status: true,
+      priority: true,
+      assignee: { select: { id: true, name: true, image: true } },
+    },
+    orderBy: { createdAt: "asc" },
+  });
+}
+
+// ── Issue Linking ──────────────────────────────────────────────────────────
+
+const VALID_LINK_TYPES = [
+  "blocks",
+  "is-blocked-by",
+  "duplicates",
+  "is-duplicated-by",
+  "relates-to",
+  "clones",
+  "is-cloned-by",
+] as const;
+
+export async function createLink(
+  db: PrismaClient,
+  organizationId: string,
+  input: CreateLinkInput,
+) {
+  if (input.fromIssueId === input.toIssueId) {
+    throw new ValidationError("Cannot link an issue to itself");
+  }
+
+  if (!VALID_LINK_TYPES.includes(input.linkType as (typeof VALID_LINK_TYPES)[number])) {
+    throw new ValidationError(`Invalid link type: ${input.linkType}`);
+  }
+
+  // Verify both issues exist in the org
+  const [from, to] = await Promise.all([
+    db.issue.findFirst({ where: { id: input.fromIssueId, organizationId, deletedAt: null }, select: { id: true } }),
+    db.issue.findFirst({ where: { id: input.toIssueId, organizationId, deletedAt: null }, select: { id: true } }),
+  ]);
+  if (!from) throw new NotFoundError("Issue", input.fromIssueId);
+  if (!to) throw new NotFoundError("Issue", input.toIssueId);
+
+  return db.issueLink.create({
+    data: {
+      linkType: input.linkType,
+      fromIssueId: input.fromIssueId,
+      toIssueId: input.toIssueId,
+    },
+    include: {
+      fromIssue: { select: { id: true, key: true, summary: true } },
+      toIssue: { select: { id: true, key: true, summary: true } },
+    },
+  });
+}
+
+export async function deleteLink(
+  db: PrismaClient,
+  organizationId: string,
+  id: string,
+) {
+  const link = await db.issueLink.findFirst({
+    where: { id },
+    include: { fromIssue: { select: { organizationId: true } } },
+  });
+  if (!link || link.fromIssue.organizationId !== organizationId) {
+    throw new NotFoundError("IssueLink", id);
+  }
+
+  await db.issueLink.delete({ where: { id } });
+}
+
+export async function getLinks(
+  db: PrismaClient,
+  organizationId: string,
+  issueId: string,
+) {
+  const issue = await db.issue.findFirst({
+    where: { id: issueId, organizationId, deletedAt: null },
+    select: { id: true },
+  });
+  if (!issue) {
+    throw new NotFoundError("Issue", issueId);
+  }
+
+  const issueSelect = { id: true, key: true, summary: true, status: { select: { name: true, category: true } } };
+
+  const [outbound, inbound] = await Promise.all([
+    db.issueLink.findMany({
+      where: { fromIssueId: issueId },
+      include: { toIssue: { select: issueSelect } },
+    }),
+    db.issueLink.findMany({
+      where: { toIssueId: issueId },
+      include: { fromIssue: { select: issueSelect } },
+    }),
+  ]);
+
+  return { outbound, inbound };
+}
+
+// ── Attachments ────────────────────────────────────────────────────────────
+
+export async function listAttachments(
+  db: PrismaClient,
+  organizationId: string,
+  issueId: string,
+) {
+  const issue = await db.issue.findFirst({
+    where: { id: issueId, organizationId, deletedAt: null },
+    select: { id: true },
+  });
+  if (!issue) {
+    throw new NotFoundError("Issue", issueId);
+  }
+
+  return db.attachment.findMany({
+    where: { issueId, organizationId },
+    include: { uploader: { select: { id: true, name: true, image: true } } },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+export async function deleteAttachment(
+  db: PrismaClient,
+  organizationId: string,
+  userId: string,
+  id: string,
+) {
+  const attachment = await db.attachment.findFirst({
+    where: { id, organizationId },
+  });
+  if (!attachment) {
+    throw new NotFoundError("Attachment", id);
+  }
+  if (attachment.uploaderId !== userId) {
+    throw new PermissionError("You can only delete your own attachments");
+  }
+
+  await db.attachment.delete({ where: { id } });
+  return attachment;
 }

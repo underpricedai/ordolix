@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createRouter, protectedProcedure } from "@/server/trpc/init";
+import { createRouter, protectedProcedure, adminProcedure } from "@/server/trpc/init";
 import {
   createAutomationRuleInput,
   updateAutomationRuleInput,
@@ -9,7 +9,7 @@ import {
 import * as automationService from "./automation-service";
 
 export const automationRouter = createRouter({
-  create: protectedProcedure
+  create: adminProcedure
     .input(createAutomationRuleInput)
     .mutation(async ({ ctx, input }) => {
       return automationService.createRule(
@@ -40,7 +40,7 @@ export const automationRouter = createRouter({
       );
     }),
 
-  update: protectedProcedure
+  update: adminProcedure
     .input(updateAutomationRuleInput)
     .mutation(async ({ ctx, input }) => {
       return automationService.updateRule(
@@ -51,7 +51,7 @@ export const automationRouter = createRouter({
       );
     }),
 
-  delete: protectedProcedure
+  delete: adminProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       return automationService.deleteRule(
@@ -61,7 +61,7 @@ export const automationRouter = createRouter({
       );
     }),
 
-  execute: protectedProcedure
+  execute: adminProcedure
     .input(executeRuleInput)
     .mutation(async ({ ctx, input }) => {
       return automationService.executeRule(

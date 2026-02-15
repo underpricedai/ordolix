@@ -23,6 +23,9 @@ import {
   ShieldAlert,
   ScrollText,
   Webhook,
+  UsersRound,
+  UserCog,
+  Lock,
 } from "lucide-react";
 import { AppHeader } from "@/shared/components/app-header";
 import { Skeleton } from "@/shared/components/ui/skeleton";
@@ -34,9 +37,12 @@ import { cn } from "@/shared/lib/utils";
  */
 const adminNavItems = [
   { key: "users", href: "/admin/users", icon: Users },
+  { key: "groups", href: "/admin/groups", icon: UsersRound },
+  { key: "projectRoles", href: "/admin/project-roles", icon: UserCog },
   { key: "workflows", href: "/admin/workflows", icon: GitBranch },
   { key: "customFields", href: "/admin/fields", icon: Columns3 },
   { key: "permissions", href: "/admin/permissions", icon: Shield },
+  { key: "issueSecurity", href: "/admin/issue-security", icon: Lock },
   { key: "automation", href: "/admin/automation", icon: Zap },
   { key: "integrations", href: "/admin/integrations", icon: Plug },
   { key: "system", href: "/admin/system", icon: Settings },

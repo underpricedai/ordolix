@@ -6,8 +6,15 @@ import {
   updateTimeLog,
   deleteTimeLog,
   getIssueTotalTime,
+  getOrCreateTimesheet,
+  submitTimesheet,
+  approveTimesheet,
+  rejectTimesheet,
+  listPendingTimesheets,
+  myLoggedHours,
+  teamLoggedHours,
 } from "./time-tracking-service";
-import { NotFoundError, PermissionError } from "@/server/lib/errors";
+import { NotFoundError, PermissionError, ValidationError } from "@/server/lib/errors";
 
 // ── Mock Helpers ─────────────────────────────────────────────────────────────
 
@@ -21,6 +28,13 @@ function createMockDb() {
       update: vi.fn(),
       delete: vi.fn(),
       aggregate: vi.fn(),
+    },
+    timesheet: {
+      findFirst: vi.fn(),
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
     },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any;
@@ -289,5 +303,196 @@ describe("getIssueTotalTime", () => {
 
     const result = await getIssueTotalTime(db, ORG_ID, "issue-1");
     expect(result).toBe(0);
+  });
+});
+
+// ── Timesheet Approval Workflow ────────────────────────────────────────────
+
+const mockTimesheet = {
+  id: "ts-1",
+  organizationId: ORG_ID,
+  userId: USER_ID,
+  periodStart: new Date("2026-02-10"),
+  periodEnd: new Date("2026-02-16"),
+  status: "draft",
+  submittedAt: null,
+  approvedAt: null,
+  approvedBy: null,
+  timeLogs: [],
+};
+
+describe("getOrCreateTimesheet", () => {
+  let db: ReturnType<typeof createMockDb>;
+
+  beforeEach(() => {
+    db = createMockDb();
+  });
+
+  it("returns existing timesheet", async () => {
+    db.timesheet.findUnique.mockResolvedValue(mockTimesheet);
+
+    const result = await getOrCreateTimesheet(db, ORG_ID, USER_ID, {
+      periodStart: mockTimesheet.periodStart,
+      periodEnd: mockTimesheet.periodEnd,
+    });
+    expect(result.id).toBe("ts-1");
+    expect(db.timesheet.create).not.toHaveBeenCalled();
+  });
+
+  it("creates new timesheet when none exists", async () => {
+    db.timesheet.findUnique.mockResolvedValue(null);
+    db.timesheet.create.mockResolvedValue(mockTimesheet);
+
+    const result = await getOrCreateTimesheet(db, ORG_ID, USER_ID, {
+      periodStart: mockTimesheet.periodStart,
+      periodEnd: mockTimesheet.periodEnd,
+    });
+    expect(result.id).toBe("ts-1");
+    expect(db.timesheet.create).toHaveBeenCalled();
+  });
+});
+
+describe("submitTimesheet", () => {
+  let db: ReturnType<typeof createMockDb>;
+
+  beforeEach(() => {
+    db = createMockDb();
+  });
+
+  it("transitions draft to submitted", async () => {
+    db.timesheet.findFirst.mockResolvedValue({ ...mockTimesheet, status: "draft" });
+    db.timesheet.update.mockResolvedValue({ ...mockTimesheet, status: "submitted" });
+
+    const result = await submitTimesheet(db, ORG_ID, USER_ID, "ts-1");
+    expect(result.status).toBe("submitted");
+  });
+
+  it("throws ValidationError if not draft", async () => {
+    db.timesheet.findFirst.mockResolvedValue({ ...mockTimesheet, status: "submitted" });
+
+    await expect(submitTimesheet(db, ORG_ID, USER_ID, "ts-1")).rejects.toThrow(ValidationError);
+  });
+
+  it("throws PermissionError if not owner", async () => {
+    db.timesheet.findFirst.mockResolvedValue({ ...mockTimesheet, userId: "other-user" });
+
+    await expect(submitTimesheet(db, ORG_ID, USER_ID, "ts-1")).rejects.toThrow(PermissionError);
+  });
+
+  it("throws NotFoundError if missing", async () => {
+    db.timesheet.findFirst.mockResolvedValue(null);
+
+    await expect(submitTimesheet(db, ORG_ID, USER_ID, "bad")).rejects.toThrow(NotFoundError);
+  });
+});
+
+describe("approveTimesheet", () => {
+  let db: ReturnType<typeof createMockDb>;
+
+  beforeEach(() => {
+    db = createMockDb();
+  });
+
+  it("transitions submitted to approved", async () => {
+    db.timesheet.findFirst.mockResolvedValue({ ...mockTimesheet, status: "submitted" });
+    db.timesheet.update.mockResolvedValue({ ...mockTimesheet, status: "approved" });
+
+    const result = await approveTimesheet(db, ORG_ID, "manager-1", "ts-1");
+    expect(result.status).toBe("approved");
+  });
+
+  it("throws ValidationError if not submitted", async () => {
+    db.timesheet.findFirst.mockResolvedValue({ ...mockTimesheet, status: "draft" });
+
+    await expect(approveTimesheet(db, ORG_ID, "manager-1", "ts-1")).rejects.toThrow(ValidationError);
+  });
+});
+
+describe("rejectTimesheet", () => {
+  let db: ReturnType<typeof createMockDb>;
+
+  beforeEach(() => {
+    db = createMockDb();
+  });
+
+  it("transitions submitted back to draft", async () => {
+    db.timesheet.findFirst.mockResolvedValue({ ...mockTimesheet, status: "submitted" });
+    db.timesheet.update.mockResolvedValue({ ...mockTimesheet, status: "draft" });
+
+    const result = await rejectTimesheet(db, ORG_ID, "manager-1", "ts-1");
+    expect(result.status).toBe("draft");
+  });
+
+  it("throws ValidationError if not submitted", async () => {
+    db.timesheet.findFirst.mockResolvedValue({ ...mockTimesheet, status: "draft" });
+
+    await expect(rejectTimesheet(db, ORG_ID, "manager-1", "ts-1")).rejects.toThrow(ValidationError);
+  });
+});
+
+describe("listPendingTimesheets", () => {
+  let db: ReturnType<typeof createMockDb>;
+
+  beforeEach(() => {
+    db = createMockDb();
+  });
+
+  it("returns submitted timesheets", async () => {
+    const items = [{ ...mockTimesheet, status: "submitted", user: { id: USER_ID, name: "User" } }];
+    db.timesheet.findMany.mockResolvedValue(items);
+
+    const result = await listPendingTimesheets(db, ORG_ID, { limit: 50 });
+    expect(result.items).toHaveLength(1);
+  });
+});
+
+// ── Time Reports ──────────────────────────────────────────────────────────
+
+describe("myLoggedHours", () => {
+  let db: ReturnType<typeof createMockDb>;
+
+  beforeEach(() => {
+    db = createMockDb();
+  });
+
+  it("returns time logs grouped by date", async () => {
+    const timeLogs = [
+      { ...mockTimeLog, date: new Date("2026-02-14"), duration: 3600, issue: { key: "T-1", summary: "S", projectId: "p1" } },
+      { ...mockTimeLog, id: "tl-2", date: new Date("2026-02-14"), duration: 1800, issue: { key: "T-2", summary: "S2", projectId: "p1" } },
+    ];
+    db.timeLog.findMany.mockResolvedValue(timeLogs);
+
+    const result = await myLoggedHours(db, ORG_ID, USER_ID, {
+      startDate: new Date("2026-02-10"),
+      endDate: new Date("2026-02-16"),
+    });
+
+    expect(result.totalSeconds).toBe(5400);
+    expect(result.byDate["2026-02-14"]).toBe(5400);
+  });
+});
+
+describe("teamLoggedHours", () => {
+  let db: ReturnType<typeof createMockDb>;
+
+  beforeEach(() => {
+    db = createMockDb();
+  });
+
+  it("returns time logs grouped by user", async () => {
+    const timeLogs = [
+      { ...mockTimeLog, userId: "u1", duration: 3600, user: { id: "u1", name: "Alice" }, issue: { key: "T-1", summary: "S", projectId: "p1" } },
+      { ...mockTimeLog, id: "tl-2", userId: "u2", duration: 1800, user: { id: "u2", name: "Bob" }, issue: { key: "T-2", summary: "S2", projectId: "p1" } },
+    ];
+    db.timeLog.findMany.mockResolvedValue(timeLogs);
+
+    const result = await teamLoggedHours(db, ORG_ID, {
+      startDate: new Date("2026-02-10"),
+      endDate: new Date("2026-02-16"),
+    });
+
+    expect(result.totalSeconds).toBe(5400);
+    expect(result.byUser["u1"]?.totalSeconds).toBe(3600);
+    expect(result.byUser["u2"]?.totalSeconds).toBe(1800);
   });
 });

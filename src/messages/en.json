@@ -46,7 +46,11 @@
     "copied": "Copied!",
     "showMore": "Show more",
     "showLess": "Show less",
-    "itemCount": "{count, plural, =0 {No items} =1 {1 item} other {# items}}"
+    "itemCount": "{count, plural, =0 {No items} =1 {1 item} other {# items}}",
+    "connected": "Connected",
+    "disconnected": "Disconnected",
+    "configure": "Configure",
+    "disconnect": "Disconnect"
   },
   "auth": {
     "signIn": "Sign in",
@@ -211,7 +215,8 @@
     "tabs": {
       "comments": "Comments",
       "history": "History",
-      "attachments": "Attachments"
+      "attachments": "Attachments",
+      "development": "Development"
     }
   },
   "priorities": {
@@ -845,6 +850,10 @@
     "tokenNoExpiry": "No expiry"
   },
   "errors": {
+    "title": "Something Went Wrong",
+    "description": "An unexpected error occurred. Please try again or contact support.",
+    "tryAgain": "Try Again",
+    "goHome": "Go Home",
     "notFound": "{resource} not found",
     "permissionDenied": "You don't have permission to perform this action",
     "validationError": "Please check your input and try again",
@@ -875,9 +884,12 @@
     "unauthorizedDescription": "You do not have permission to access the admin panel. Contact your organization administrator.",
     "sidebar": {
       "users": "Users",
+      "groups": "Groups",
+      "projectRoles": "Project Roles",
       "workflows": "Workflows",
       "customFields": "Custom Fields",
       "permissions": "Permissions",
+      "issueSecurity": "Issue Security",
       "automation": "Automation",
       "integrations": "Integrations",
       "system": "System",
@@ -1048,6 +1060,69 @@
         "user.created": "User Created",
         "user.deactivated": "User Deactivated"
       }
+    },
+    "groups": {
+      "title": "Groups",
+      "description": "Manage user groups for permission assignments.",
+      "createGroup": "Create Group",
+      "createGroupDescription": "Create a new user group for your organization.",
+      "namePlaceholder": "e.g., developers",
+      "descriptionPlaceholder": "Describe this group's purpose...",
+      "members": "Members",
+      "membersDescription": "Manage members of the selected group.",
+      "selectGroupPrompt": "Select a group to manage its members.",
+      "noGroups": "No groups created yet.",
+      "noMembers": "No members in this group.",
+      "addMember": "Add Member",
+      "removeMember": "Remove Member",
+      "userIdPlaceholder": "Enter user ID"
+    },
+    "projectRoles": {
+      "title": "Project Roles",
+      "description": "Define roles that can be assigned to users within projects.",
+      "createRole": "Create Role",
+      "createRoleDescription": "Create a new project role for your organization.",
+      "editRole": "Edit Role",
+      "namePlaceholder": "e.g., QA Engineer",
+      "descriptionPlaceholder": "Describe what this role does...",
+      "noRoles": "No project roles defined yet.",
+      "default": "Default"
+    },
+    "permissions": {
+      "title": "Permission Schemes",
+      "description": "Configure which roles have which permissions in your projects.",
+      "createScheme": "Create Scheme",
+      "createSchemeDescription": "Create a new permission scheme.",
+      "selectScheme": "Select Scheme",
+      "defaultScheme": "Default Permission Scheme",
+      "noSchemes": "No permission schemes created yet.",
+      "permissionKey": "Permission",
+      "createIssues": "Create Issues",
+      "editIssues": "Edit Issues",
+      "deleteIssues": "Delete Issues",
+      "transitionIssues": "Transition Issues",
+      "assignIssues": "Assign Issues",
+      "manageProject": "Manage Project",
+      "adminAccess": "Admin Access",
+      "roleAdmin": "Admin",
+      "roleLead": "Lead",
+      "roleMember": "Member",
+      "roleViewer": "Viewer"
+    },
+    "issueSecurity": {
+      "title": "Issue Security Schemes",
+      "description": "Control who can see specific issues using security levels.",
+      "createScheme": "Create Scheme",
+      "createSchemeDescription": "Create a new issue security scheme.",
+      "namePlaceholder": "e.g., Default Security",
+      "descriptionPlaceholder": "Describe this security scheme...",
+      "noSchemes": "No issue security schemes yet.",
+      "addLevel": "Add Level",
+      "levelNamePlaceholder": "e.g., Internal",
+      "levelDescPlaceholder": "Describe this security level...",
+      "noLevels": "No security levels defined.",
+      "levelCount": "{count, plural, =0 {No levels} =1 {1 level} other {# levels}}",
+      "projectCount": "{count, plural, =0 {No projects} =1 {1 project} other {# projects}}"
     }
   },
   "projectPages": {
@@ -1300,5 +1375,15 @@
     "none": "None",
     "daily": "Daily",
     "weekly": "Weekly"
+  },
+  "signIn": {
+    "title": "Sign in to Ordolix",
+    "subtitle": "Enterprise Project & Issue Tracking",
+    "authError": "Authentication failed. Please try again.",
+    "ssoButton": "Sign in with Azure AD",
+    "signingIn": "Signing in...",
+    "noAccount": "Contact your administrator for access.",
+    "devSignIn": "Sign in as Dev User",
+    "devPickUser": "Select a user to sign in as:"
   }
 }

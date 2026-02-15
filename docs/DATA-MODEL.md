@@ -2,77 +2,168 @@
 
 ## Overview
 
-40+ Prisma models organized into three categories: Core, Add-On Features, and Integrations. All tables include `organizationId` for multi-tenant row-level isolation.
+99 Prisma models organized into ten sections: Auth, Core, Add-On Features, Integrations, Permissions & Security, Plans, Structure, Budgets, Capacity, and Test Cycles. All tables include `organizationId` for multi-tenant row-level isolation.
 
-## Core Entities
+## Section 1: Auth (4 models)
 
-| Entity | Description | Key Relationships |
-|--------|-------------|-------------------|
-| Organization | Top-level tenant | Has Projects, Users, Roles. Fields: slug, name, logo, accentColor, favicon, plan, trialEndsAt, ssoConfig (JSONB), settings (JSONB) |
-| User | Azure AD synced user | Roles, assigned Issues, TimeLogs, Approvals |
-| Project | Issue container | Workflow, IssueTypes, Permissions, Components, Versions, Boards |
-| Issue | Core work item | Comments, Attachments, CustomFieldValues, History, TimeLogs, Checklists, TestLinks, GanttDependencies |
-| Workflow | State machine definition | Statuses, Transitions (with Validators, Conditions, PostFunctions, ApprovalGates) |
-| Status | Workflow state | Category (TO_DO / IN_PROGRESS / DONE) |
-| Transition | Directed edge between statuses | Validators, Conditions, PostFunctions, ApprovalRequirements |
-| CustomField | Field definition with rollup config | Type, options, context, aggregation function |
-| AutomationRule | Trigger-condition-action rule | Scoped to Project or Global, execution history. Fields: trigger (JSONB), conditions (JSONB), actions (JSONB), priority, enabled |
-| Board | Kanban/Scrum view | Columns, filters, swimlanes |
-| Dashboard | Widget collection | DashboardWidgets with saved queries |
-| Queue | Service request queue | SLA configs, assignment rules |
-| AuditLog | Immutable change record | Entity, action, user, timestamp, diff |
+| Entity | Description | Key Fields/Relationships |
+|--------|-------------|--------------------------|
+| User | Azure AD synced user | email (unique), name, locale, timezone. Has Roles, Issues, TimeLogs, Approvals, GroupMembers, ApiTokens |
+| Account | OAuth provider account | userId, provider, providerAccountId, access_token, refresh_token. Belongs to User |
+| Session | Active user session | sessionToken (unique), userId, expires. Belongs to User |
+| VerificationToken | Email verification token | identifier, token, expires. Composite unique on [identifier, token] |
 
-## Add-On Feature Entities
+## Section 2: Core Entities (33 models)
 
-| Entity | Description | Key Relationships |
-|--------|-------------|-------------------|
-| TimeLog | Time entry on an issue | Issue, User, duration, billable flag, approval status |
-| Timesheet | Aggregated time per user/period | TimeLogs, User, approval workflow |
-| GanttDependency | Issue dependency for timeline | Source/target Issues, type (FS/SS/FF/SF), lag |
-| SLAConfig | SLA metric definition | Queue/Project, targets, calendar, escalation rules, pause conditions |
-| SLAInstance | Active SLA on an issue | Issue, SLAConfig, elapsed/remaining, breach status |
-| Checklist | Checklist on an issue | Ordered ChecklistItems with assignee, due date, completion |
-| Asset | CMDB configuration item | AssetType, attributes (JSONB), relationships, linked Issues |
-| TestCase | Test case definition | TestSuite, steps (JSONB array), expected results, linked requirements |
-| TestRun | Test plan execution | TestResults linking TestCases to pass/fail/skip (append-only) |
-| Incident | Incident record | Issues, severity, timeline, communications, status page updates |
-| Approval | Approval request | Issue/Transition, approvers, status, delegation, expiry |
-| FormTemplate | Dynamic form definition | Conditional fields, validation rules, issue field mappings (JSONB config) |
-| Retrospective | Sprint retro board | Categories, cards, votes, linked Issues |
-| Script | Custom ScriptRunner script | Trigger type, TS/JS code, execution history |
-| SavedReport | Report configuration | Dimensions, measures, chart type, schedule, recipients |
+| Entity | Description | Key Fields/Relationships |
+|--------|-------------|--------------------------|
+| Organization | Top-level tenant | slug (unique), name, logo, accentColor, favicon, plan, trialEndsAt, ssoConfig (JSONB), settings (JSONB). Has Projects, Users, Roles, Groups, PermissionSchemes |
+| OrganizationMember | User membership in org | organizationId, userId, role (default "member"). Unique on [organizationId, userId] |
+| Project | Issue container | organizationId, name, key, projectType, templateKey, issueCounter, isArchived, permissionSchemeId, issueSecuritySchemeId. Has Workflow, IssueTypes, Components, Versions, Boards, Sprints |
+| ProjectMember | User membership in project | projectId, userId, role, projectRoleId. Unique on [projectId, userId] |
+| Component | Project sub-area | projectId, name, description, lead. Unique on [projectId, name] |
+| Version | Release/version | projectId, name, startDate, releaseDate, status. Has ReleaseNotes, Issues |
+| ReleaseNote | Auto-generated release notes | versionId, content (Text), generatedAt |
+| IssueType | Issue classification | name, icon, color, isSubtask, hierarchyLevel, category. Has Issues, IssueTemplates |
+| Priority | Issue priority level | name, rank, color, slaMultiplier. Unique on [organizationId, rank] |
+| Resolution | Issue resolution reason | name, description. Unique on [organizationId, name] |
+| Workflow | State machine definition | name, description, isDefault, isActive. Has WorkflowStatuses, Transitions, Projects |
+| Status | Workflow state | name, category (TO_DO/IN_PROGRESS/DONE), color. Has WorkflowStatuses, Issues, Transitions |
+| WorkflowStatus | Status assignment to workflow | workflowId, statusId, position. Unique on [workflowId, statusId] |
+| Transition | Directed edge between statuses | workflowId, name, fromStatusId, toStatusId, validators (JSON), conditions (JSON), postFunctions (JSON). Has ApprovalRequirements |
+| ApprovalRequirement | Approval gate on transition | transitionId, approverRole, minApprovals |
+| Issue | Core work item | key (unique), summary, description, issueTypeId, statusId, priorityId, resolutionId, assigneeId, reporterId, parentId, sprintId, fixVersionId, labels[], storyPoints, originalEstimate, remainingEstimate, timeSpent, dueDate, startDate, rank, securityLevelId, isArchived, deletedAt. Has Comments, Attachments, History, Watchers, Links, TimeLogs, Checklists, SLAInstances, GanttDeps, TestCaseLinks, Incidents, Approvals, Votes |
+| IssueWatcher | User watching an issue | issueId, userId. Unique on [issueId, userId] |
+| IssueLink | Typed link between issues | linkType, fromIssueId, toIssueId. Unique on [linkType, fromIssueId, toIssueId] |
+| IssueRank | Backlog ordering | issueId, rank (lexorank string), contextId. Unique on [issueId, contextId] |
+| Comment | Issue comment | issueId, authorId, body (Text), isInternal |
+| Attachment | File attached to issue | issueId, uploaderId, filename, mimeType, size, storageKey |
+| IssueHistory | Field change audit trail | issueId, userId, field, oldValue (Text), newValue (Text) |
+| CustomField | Field definition with rollup | name, fieldType, description, options (JSON), defaultValue (JSON), context (JSON), isRequired, aggregation (sum/min/max/avg) |
+| CustomFieldValue | Custom field value on entity | fieldId, entityId, entityType ("issue"/"asset"), value (JSON). Unique on [fieldId, entityId, entityType] |
+| Board | Kanban/Scrum view | projectId, name, boardType, columns (JSON), swimlanes (JSON), cardFields (JSON), cardColor, quickFilters (JSON), filterQuery |
+| Sprint | Time-boxed iteration | projectId, name, goal (Text), startDate, endDate, status (future/active/completed). Has Issues |
+| Dashboard | Widget collection | name, ownerId, isShared, layout (JSON). Has DashboardWidgets |
+| DashboardWidget | Single dashboard widget | dashboardId, widgetType, title, config (JSON), position (JSON) |
+| Queue | Service request queue | projectId, name, filterQuery, sortBy, assignmentRule (JSON) |
+| AuditLog | Immutable change record | entityType, entityId, action, diff (JSON), ipAddress, userAgent, userId |
+| AutomationRule | Trigger-condition-action rule | projectId (nullable), name, trigger (JSON), conditions (JSON), actions (JSON), priority, enabled, executionCount. Has AutomationExecutions |
+| AutomationExecution | Single rule execution record | ruleId, triggerId, conditionResults (JSON), actionsExecuted (JSON), duration, status, error |
+| AutomationTemplate | Reusable rule template | name, description, trigger (JSON), conditions (JSON), actions (JSON), category, isBuiltIn |
 
-## Integration Entities
+## Section 3: Add-On Feature Entities (24 models)
 
-| Entity | Description | Key Relationships |
-|--------|-------------|-------------------|
-| SharePointLink | Issue → SharePoint resource | Graph API resource ID, preview metadata |
-| GitHubLink | Issue → GitHub resource | PR/branch/commit, state, review/merge status |
-| SalesforceLink | Issue → Salesforce record | Case/Account/Contact, sync status, field mapping |
-| IntegrationConfig | External service config | OAuth tokens (encrypted), webhooks, field mappings, sync rules |
-| MCPSession | Active MCP client session | Connected clients, permissions, audit log |
+| Entity | Description | Key Fields/Relationships |
+|--------|-------------|--------------------------|
+| TimeLog | Time entry on an issue | issueId, userId, date, duration, description, billable, approvalStatus, timesheetId |
+| Timesheet | Aggregated time per user/period | userId, periodStart, periodEnd, status (draft/submitted/approved), submittedAt, approvedAt, approvedBy. Has TimeLogs |
+| GanttDependency | Issue dependency for timeline | sourceIssueId, targetIssueId, dependencyType (FS/SS/FF/SF), lag |
+| SLAConfig | SLA metric definition | projectId (nullable), name, metric, targetDuration, startCondition (JSON), stopCondition (JSON), pauseConditions (JSON), calendar (JSON), escalationRules (JSON), isActive. Has SLAInstances |
+| SLAInstance | Active SLA on an issue | issueId, slaConfigId, status, elapsedMs, remainingMs, breachTime, startedAt, pausedAt, completedAt |
+| Checklist | Checklist on an issue | issueId, title, position. Has ChecklistItems |
+| ChecklistItem | Individual checklist item | checklistId, text, isChecked, assigneeId, dueDate, position |
+| AssetType | CMDB object type definition | name, icon, schema (JSON attribute definitions). Has Assets |
+| Asset | CMDB configuration item | assetTypeId, name, status, attributes (JSON). Has AssetRelationships |
+| AssetRelationship | Link between two assets | fromAssetId, toAssetId, relationshipType. Unique on [fromAssetId, toAssetId, relationshipType] |
+| TestSuite | Test case folder/grouping | name, description, parentId (self-referential hierarchy). Has TestCases, child TestSuites |
+| TestCase | Test case definition | testSuiteId, title, description, preconditions, steps (JSON), expectedResult, parameters (JSON), priority, status. Has TestResults, TestCaseIssueLinks |
+| TestCaseIssueLink | Link between test case and issue | testCaseId, issueId, linkType (default "tests"). Unique on [testCaseId, issueId] |
+| TestRun | Test plan execution | name, status, executedBy, testCycleId. Has TestResults |
+| TestResult | Individual test execution result | testRunId, testCaseId, status (pass/fail/skip), comment, duration, executedAt. Unique on [testRunId, testCaseId] |
+| Incident | Incident record | issueId, severity, timeline (JSON), communications (JSON), statusPageUpdate (Text), startedAt, resolvedAt |
+| Approval | Approval request | issueId, approverId, status, decision, comment, delegatedTo, expiresAt, decidedAt |
+| FormTemplate | Dynamic form definition | name, description, config (JSON), isActive. Has FormSubmissions |
+| FormSubmission | Submitted form data | templateId, issueId (nullable), submittedBy, data (JSON), status |
+| Retrospective | Sprint retro board | projectId, name, sprintId, status, categories (JSON). Has RetroCards |
+| RetroCard | Individual retro card | retrospectiveId, authorId, category, text (Text), votes, linkedIssueId |
+| Script | Custom ScriptRunner script | name, description, triggerType, code (Text), isEnabled. Has ScriptExecutions |
+| ScriptExecution | Script execution record | scriptId, executedBy, status, output (Text), error (Text), duration |
+| SavedReport | Report configuration | name, reportType, query (JSON), dimensions (JSON), measures (JSON), chartType, filters (JSON), visualization (JSON), isShared, schedule (JSON), recipients (JSON), createdBy |
 
-## Additional Entities (Feature Parity)
+## Section 4: Integration Entities (18 models)
 
-| Entity | Description | Key Fields |
-|--------|-------------|------------|
-| TeamsChannelMapping | Links project to Teams channel | projectId, channelId, tenantId, events (JSONB), quietHours |
+| Entity | Description | Key Fields/Relationships |
+|--------|-------------|--------------------------|
+| IntegrationConfig | External service config | provider, config (JSON), encryptedTokens (Text), webhookSecret, isActive. Unique on [organizationId, provider] |
+| SharePointLink | Issue to SharePoint resource | issueId, resourceId, resourceType, url, title, preview (JSON) |
+| GitHubLink | Issue to GitHub resource | issueId, resourceType, owner, repo, number, sha, branch, state, url |
+| SalesforceLink | Issue to Salesforce record | issueId, recordType, recordId, displayName, syncStatus, fieldMapping (JSON) |
+| MCPSession | Active MCP client session | clientName, permissions (JSON), lastActiveAt |
+| TeamsChannelMapping | Links project to Teams channel | projectId, channelId, tenantId, events (JSON), quietHours (JSON). Unique on [projectId, channelId] |
 | TeamsNotification | Tracks sent Teams notifications | issueId, channelId, messageId, cardVersion, sentAt |
-| OutlookSubscription | Email-to-issue Graph subscription | projectId, subscriptionId, emailAddress, expiresAt |
-| EmailThread | Maps email threads to issues | issueId, messageId, threadId, subject |
-| AutomationExecution | Single rule execution record | ruleId, triggerId, conditionResults, actionsExecuted, duration, status, error |
-| AutomationTemplate | Reusable rule template | name, description, trigger, conditions, actions, category, isBuiltIn |
-| Filter | Saved AQL query | name, aql, ownerId, sharedWith (JSONB), isStarred, subscriptionEnabled |
-| IssueTemplate | Pre-filled issue template | name, projectId, issueTypeId, fields (JSONB), description template |
-| IssueRank | Backlog ordering | issueId, rank (lexorank string), contextId |
-| IssueArchive | Archived issue marker | issueId, archivedAt, archivedBy, originalStatus |
-| Vote | User vote on issue | issueId, userId, createdAt |
-| NotificationPreference | User notification settings | userId, projectId (nullable), event, channels (JSONB), digestFrequency |
-| NotificationRecord | Sent notification log | userId, event, issueId, channel, sentAt, readAt |
-| Version | Release/version | projectId, name, startDate, releaseDate, status, description |
-| ReleaseNote | Auto-generated release notes | versionId, content, generatedAt |
-| BillingSubscription | Stripe subscription link | organizationId, stripeCustomerId, plan, status, currentPeriodEnd |
-| UsageMetric | Track usage per tenant | organizationId, metric (users/issues/storage), value, measuredAt |
+| OutlookSubscription | Email-to-issue Graph subscription | projectId, subscriptionId (unique), emailAddress, expiresAt |
+| EmailThread | Maps email threads to issues | issueId, messageId (unique), threadId, subject |
+| Filter | Saved AQL query | projectId (nullable), ownerId, name, aql (Text), sharedWith (JSON), isStarred, subscriptionEnabled |
+| IssueTemplate | Pre-filled issue template | projectId, issueTypeId, name, fields (JSON), description (Text) |
+| NotificationPreference | User notification settings | userId, projectId (nullable), event, channels (JSON), digestFrequency. Unique on [userId, projectId, event] |
+| NotificationRecord | Sent notification log | userId, event, issueId, channel, title, body (Text), metadata (JSON), isRead, sentAt, readAt |
+| Vote | User vote on issue | issueId, userId. Unique on [issueId, userId] |
+| ApiToken | Personal API access token | userId, name, tokenHash (unique), lastUsedAt, expiresAt |
+| BillingSubscription | Stripe subscription link | organizationId (unique), stripeCustomerId (unique), plan, status, currentPeriodEnd |
+| UsageMetric | Track usage per tenant | metric, value, measuredAt. Indexed on [organizationId, metric, measuredAt] |
+| WebhookEndpoint | Outbound webhook config | url, events (JSON), secretHash, isActive, lastTriggeredAt |
+
+## Section 5: Permissions & Security (9 models)
+
+Jira-style RBAC with project roles, groups, permission schemes, and issue-level security. Replaces Jira's built-in permission system.
+
+| Entity | Description | Key Fields/Relationships |
+|--------|-------------|--------------------------|
+| ProjectRole | Named role within projects | name, description, isDefault. Has ProjectMembers, PermissionGrants. Unique on [organizationId, name] |
+| Group | Named group of users | name, description. Has GroupMembers, PermissionGrants, IssueSecurityLevelMembers. Unique on [organizationId, name] |
+| GroupMember | User membership in group | groupId, userId. Unique on [groupId, userId] |
+| PermissionScheme | Collection of permission grants | name, description, isDefault. Has PermissionGrants, Projects. Unique on [organizationId, name]. Assigned to projects via Project.permissionSchemeId |
+| PermissionGrant | Single permission rule in a scheme | permissionSchemeId, permissionKey, holderType (project_role/group/user/reporter/assignee/anyone), projectRoleId, groupId, userId. Indexed on [permissionSchemeId, permissionKey] |
+| GlobalPermission | Org-wide permission grant | permissionKey, holderType, groupId, userId. Indexed on [organizationId, permissionKey] |
+| IssueSecurityScheme | Collection of security levels | name, description. Has IssueSecurityLevels, Projects. Assigned to projects via Project.issueSecuritySchemeId |
+| IssueSecurityLevel | Visibility level for issues | issueSecuritySchemeId, name, description, orderIndex. Has IssueSecurityLevelMembers, Issues. Issues reference via Issue.securityLevelId |
+| IssueSecurityLevelMember | Who can see issues at a level | issueSecurityLevelId, holderType, projectRoleId, groupId, userId |
+
+## Section 6: Plans / Advanced Roadmaps (3 models)
+
+Cross-project roadmaps with what-if scenarios. Replaces Jira Advanced Roadmaps (formerly Portfolio for Jira).
+
+| Entity | Description | Key Fields/Relationships |
+|--------|-------------|--------------------------|
+| Plan | Cross-project roadmap | name, description (Text), ownerId, isShared, status. Has PlanIssueScopes, PlanScenarios |
+| PlanIssueScope | Project/issue included in a plan | planId, projectId, issueId (nullable for whole-project scope), position. Unique on [planId, projectId, issueId] |
+| PlanScenario | What-if scenario on a plan | planId, name, isDraft, isBaseline, overrides (JSON array of field changes) |
+
+## Section 7: Structure Views (1 model)
+
+Hierarchical tree views for issues. Replaces the Structure for Jira add-on.
+
+| Entity | Description | Key Fields/Relationships |
+|--------|-------------|--------------------------|
+| StructureView | Configurable tree visualization | projectId (nullable for cross-project), ownerId, name, groupBy (default "epic"), columns (JSON), sortBy (default "rank"), filterQuery (Text), isShared |
+
+## Section 8: Budgets & Cost Management (3 models)
+
+Project cost tracking and budget management. Replaces Tempo Cost Tracker.
+
+| Entity | Description | Key Fields/Relationships |
+|--------|-------------|--------------------------|
+| Budget | Cost budget for a project period | projectId, name, amount, currency (default "USD"), costType (opex/capex), periodStart, periodEnd, alertThreshold (default 80%). Has BudgetEntries |
+| CostRate | Hourly cost rate definition | userId (nullable), projectRoleId (nullable), ratePerHour, currency, effectiveFrom, effectiveTo. Supports per-user or per-role rates |
+| BudgetEntry | Individual cost line item | budgetId, timeLogId (unique, links to TimeLog), userId, hours, ratePerHour, cost, costType, currency, date |
+
+## Section 9: Capacity Planning (3 models)
+
+Resource planning and allocation. Replaces Tempo Planner.
+
+| Entity | Description | Key Fields/Relationships |
+|--------|-------------|--------------------------|
+| TeamCapacity | Aggregate capacity for a team/sprint | projectId, sprintId (nullable), periodStart, periodEnd, totalHours, allocatedHours. Unique on [projectId, periodStart, periodEnd] |
+| UserAllocation | User allocation to a project | userId, projectId, percentage (default 100%), hoursPerDay (default 8), startDate, endDate |
+| TimeOff | User time off / leave | userId, date, hours (default 8), type (vacation/sick/etc), description. Unique on [userId, date] |
+
+## Section 10: Test Cycles (1 model)
+
+Groups test runs into release cycles for organized test management.
+
+| Entity | Description | Key Fields/Relationships |
+|--------|-------------|--------------------------|
+| TestCycle | Container for test runs in a release | name, description (Text), plannedStart, plannedEnd, status (default "not_started"). Has TestRuns (via TestRun.testCycleId) |
 
 ## Default System Fields (on Issue table)
 

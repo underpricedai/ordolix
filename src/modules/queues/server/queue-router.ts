@@ -3,7 +3,7 @@
  * Exposes queue CRUD, issue listing, and assignment procedures.
  */
 import { z } from "zod";
-import { createRouter, protectedProcedure } from "@/server/trpc/init";
+import { createRouter, protectedProcedure, adminProcedure } from "@/server/trpc/init";
 import {
   createQueueInput,
   updateQueueInput,
@@ -14,7 +14,7 @@ import {
 import * as queueService from "./queue-service";
 
 export const queueRouter = createRouter({
-  create: protectedProcedure
+  create: adminProcedure
     .input(createQueueInput)
     .mutation(async ({ ctx, input }) => {
       return queueService.createQueue(
@@ -25,7 +25,7 @@ export const queueRouter = createRouter({
       );
     }),
 
-  update: protectedProcedure
+  update: adminProcedure
     .input(updateQueueInput)
     .mutation(async ({ ctx, input }) => {
       return queueService.updateQueue(ctx.db, ctx.organizationId, input);
@@ -49,7 +49,7 @@ export const queueRouter = createRouter({
       return queueService.getQueueIssues(ctx.db, ctx.organizationId, input);
     }),
 
-  delete: protectedProcedure
+  delete: adminProcedure
     .input(z.object({ id: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       return queueService.deleteQueue(ctx.db, ctx.organizationId, input.id);

@@ -1,4 +1,4 @@
-import { createRouter, protectedProcedure } from "@/server/trpc/init";
+import { createRouter, protectedProcedure, adminProcedure } from "@/server/trpc/init";
 import {
   createAssetTypeInput,
   updateAssetTypeInput,
@@ -12,7 +12,7 @@ import { z } from "zod";
 import * as assetService from "./asset-service";
 
 export const assetRouter = createRouter({
-  createAssetType: protectedProcedure
+  createAssetType: adminProcedure
     .input(createAssetTypeInput)
     .mutation(async ({ ctx, input }) => {
       return assetService.createAssetType(
@@ -27,7 +27,7 @@ export const assetRouter = createRouter({
       return assetService.listAssetTypes(ctx.db, ctx.organizationId);
     }),
 
-  updateAssetType: protectedProcedure
+  updateAssetType: adminProcedure
     .input(updateAssetTypeInput)
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
@@ -39,7 +39,7 @@ export const assetRouter = createRouter({
       );
     }),
 
-  deleteAssetType: protectedProcedure
+  deleteAssetType: adminProcedure
     .input(z.object({ id: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       return assetService.deleteAssetType(
@@ -49,7 +49,7 @@ export const assetRouter = createRouter({
       );
     }),
 
-  createAsset: protectedProcedure
+  createAsset: adminProcedure
     .input(createAssetInput)
     .mutation(async ({ ctx, input }) => {
       return assetService.createAsset(
@@ -79,7 +79,7 @@ export const assetRouter = createRouter({
       );
     }),
 
-  updateAsset: protectedProcedure
+  updateAsset: adminProcedure
     .input(updateAssetInput)
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
@@ -91,7 +91,7 @@ export const assetRouter = createRouter({
       );
     }),
 
-  deleteAsset: protectedProcedure
+  deleteAsset: adminProcedure
     .input(z.object({ id: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       return assetService.deleteAsset(
@@ -101,7 +101,7 @@ export const assetRouter = createRouter({
       );
     }),
 
-  addRelationship: protectedProcedure
+  addRelationship: adminProcedure
     .input(addRelationshipInput)
     .mutation(async ({ ctx, input }) => {
       return assetService.addRelationship(
@@ -111,7 +111,7 @@ export const assetRouter = createRouter({
       );
     }),
 
-  removeRelationship: protectedProcedure
+  removeRelationship: adminProcedure
     .input(removeRelationshipInput)
     .mutation(async ({ ctx, input }) => {
       return assetService.removeRelationship(

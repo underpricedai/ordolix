@@ -31,7 +31,7 @@ These standards apply to EVERY module. Reference before beginning any new module
 
 | Risk | Mitigation |
 |------|-----------|
-| Broken Access Control | RBAC at tRPC middleware; row-level security by project membership |
+| Broken Access Control | Full Jira-style RBAC: ProjectRole + Group + PermissionScheme + PermissionGrant; permission checker with Redis caching (5min TTL); requirePermission/adminProcedure middleware; IssueSecurityScheme for issue-level visibility |
 | Cryptographic Failures | TLS everywhere; field-level encryption; hashed tokens; no PII in logs |
 | Injection | Prisma ORM (no SQL injection); Zod validation; proper AQL parser; React (no XSS) |
 | Insecure Design | Threat modeling; isolated-vm sandbox; least privilege |

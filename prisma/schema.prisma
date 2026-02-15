@@ -42,6 +42,9 @@ model User {
   scriptExecutions      ScriptExecution[]
   retroCards            RetroCard[]
   apiTokens             ApiToken[]
+  groupMembers          GroupMember[]
+  permissionGrants      PermissionGrant[]
+  issueHistory          IssueHistory[]
 }
 
 model Account {
@@ -127,6 +130,11 @@ model Organization {
   outlookSubscriptions OutlookSubscription[]
   mcpSessions          MCPSession[]
   webhookEndpoints     WebhookEndpoint[]
+  projectRoles         ProjectRole[]
+  groups               Group[]
+  permissionSchemes    PermissionScheme[]
+  globalPermissions    GlobalPermission[]
+  issueSecuritySchemes IssueSecurityScheme[]
 }
 
 model OrganizationMember {
@@ -158,7 +166,12 @@ model Project {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  permissionSchemeId    String?
+  issueSecuritySchemeId String?
+
+  organization          Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  permissionScheme      PermissionScheme?    @relation(fields: [permissionSchemeId], references: [id])
+  issueSecurityScheme   IssueSecurityScheme? @relation(fields: [issueSecuritySchemeId], references: [id])
 
   members              ProjectMember[]
   issues               Issue[]
@@ -183,14 +196,16 @@ model Project {
 }
 
 model ProjectMember {
-  id        String   @id @default(cuid())
-  projectId String
-  userId    String
-  role      String   @default("member")
-  joinedAt  DateTime @default(now())
+  id            String   @id @default(cuid())
+  projectId     String
+  userId        String
+  role          String   @default("member")
+  projectRoleId String?
+  joinedAt      DateTime @default(now())
 
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectRole ProjectRole? @relation(fields: [projectRoleId], references: [id])
 
   @@unique([projectId, userId])
 }
@@ -388,22 +403,24 @@ model Issue {
   startDate          DateTime?
   customFieldValues  Json      @default("{}")
   rank               String?
+  securityLevelId    String?
   isArchived         Boolean   @default(false)
   deletedAt          DateTime?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
-  project    Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  issueType  IssueType   @relation(fields: [issueTypeId], references: [id])
-  status     Status      @relation(fields: [statusId], references: [id])
-  priority   Priority    @relation(fields: [priorityId], references: [id])
-  resolution Resolution? @relation(fields: [resolutionId], references: [id])
-  assignee   User?       @relation("AssignedIssues", fields: [assigneeId], references: [id])
-  reporter   User        @relation("ReportedIssues", fields: [reporterId], references: [id])
-  parent     Issue?      @relation("IssueHierarchy", fields: [parentId], references: [id])
-  children   Issue[]     @relation("IssueHierarchy")
-  sprint     Sprint?     @relation(fields: [sprintId], references: [id])
-  fixVersion Version?    @relation("IssueFixVersion", fields: [fixVersionId], references: [id])
+  project       Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  issueType     IssueType            @relation(fields: [issueTypeId], references: [id])
+  status        Status               @relation(fields: [statusId], references: [id])
+  priority      Priority             @relation(fields: [priorityId], references: [id])
+  resolution    Resolution?          @relation(fields: [resolutionId], references: [id])
+  assignee      User?                @relation("AssignedIssues", fields: [assigneeId], references: [id])
+  reporter      User                 @relation("ReportedIssues", fields: [reporterId], references: [id])
+  parent        Issue?               @relation("IssueHierarchy", fields: [parentId], references: [id])
+  children      Issue[]              @relation("IssueHierarchy")
+  sprint        Sprint?              @relation(fields: [sprintId], references: [id])
+  fixVersion    Version?             @relation("IssueFixVersion", fields: [fixVersionId], references: [id])
+  securityLevel IssueSecurityLevel?  @relation(fields: [securityLevelId], references: [id])
 
   comments          Comment[]
   attachments       Attachment[]
@@ -518,6 +535,7 @@ model IssueHistory {
   createdAt      DateTime @default(now())
 
   issue Issue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id])
 
   @@index([issueId, createdAt])
   @@index([organizationId])
@@ -908,12 +926,16 @@ model TestSuite {
   organizationId String
   name           String
   description    String?  @db.Text
+  parentId       String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
+  parent   TestSuite?  @relation("TestSuiteHierarchy", fields: [parentId], references: [id])
+  children TestSuite[] @relation("TestSuiteHierarchy")
   testCases TestCase[]
 
   @@index([organizationId])
+  @@index([parentId])
 }
 
 model TestCase {
@@ -925,6 +947,7 @@ model TestCase {
   preconditions  String?  @db.Text
   steps          Json     @default("[]")
   expectedResult String?  @db.Text
+  parameters     Json     @default("[]")
   priority       String   @default("medium")
   status         String   @default("draft")
   createdAt      DateTime @default(now())
@@ -955,13 +978,16 @@ model TestRun {
   name           String
   status         String    @default("not_started")
   executedBy     String?
+  testCycleId    String?
   startedAt      DateTime?
   completedAt    DateTime?
   createdAt      DateTime  @default(now())
 
-  results TestResult[]
+  testCycle TestCycle?   @relation(fields: [testCycleId], references: [id])
+  results   TestResult[]
 
   @@index([organizationId])
+  @@index([testCycleId])
 }
 
 model TestResult {
@@ -1406,6 +1432,345 @@ model WebhookEndpoint {
   updatedAt       DateTime  @updatedAt
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
+// ============================================================================
+// Section 5: Permissions & Security
+// ============================================================================
+
+model ProjectRole {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  isDefault      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members      ProjectMember[]
+  grants       PermissionGrant[]
+
+  @@unique([organizationId, name])
+}
+
+model Group {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization   Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members        GroupMember[]
+  grants         PermissionGrant[]
+  securityLevels IssueSecurityLevelMember[]
+
+  @@unique([organizationId, name])
+}
+
+model GroupMember {
+  id      String @id @default(cuid())
+  groupId String
+  userId  String
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+}
+
+model PermissionScheme {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  isDefault      Boolean  @default(false)
+  parentId       String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  parent       PermissionScheme?    @relation("SchemeInheritance", fields: [parentId], references: [id], onDelete: SetNull)
+  children     PermissionScheme[]   @relation("SchemeInheritance")
+  grants       PermissionGrant[]
+  projects     Project[]
+
+  @@unique([organizationId, name])
+}
+
+model PermissionGrant {
+  id                 String  @id @default(cuid())
+  permissionSchemeId String
+  permissionKey      String
+  holderType         String
+  projectRoleId      String?
+  groupId            String?
+  userId             String?
+
+  permissionScheme PermissionScheme @relation(fields: [permissionSchemeId], references: [id], onDelete: Cascade)
+  projectRole      ProjectRole?     @relation(fields: [projectRoleId], references: [id])
+  group            Group?           @relation(fields: [groupId], references: [id])
+  user             User?            @relation(fields: [userId], references: [id])
+
+  @@index([permissionSchemeId, permissionKey])
+}
+
+model GlobalPermission {
+  id             String @id @default(cuid())
+  organizationId String
+  permissionKey  String
+  holderType     String
+  groupId        String?
+  userId         String?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, permissionKey])
+}
+
+model IssueSecurityScheme {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  levels       IssueSecurityLevel[]
+  projects     Project[]
+
+  @@unique([organizationId, name])
+}
+
+model IssueSecurityLevel {
+  id                    String   @id @default(cuid())
+  issueSecuritySchemeId String
+  name                  String
+  description           String?
+  orderIndex            Int      @default(0)
+
+  scheme  IssueSecurityScheme        @relation(fields: [issueSecuritySchemeId], references: [id], onDelete: Cascade)
+  members IssueSecurityLevelMember[]
+  issues  Issue[]
+
+  @@unique([issueSecuritySchemeId, name])
+}
+
+model IssueSecurityLevelMember {
+  id                   String  @id @default(cuid())
+  issueSecurityLevelId String
+  holderType           String
+  projectRoleId        String?
+  groupId              String?
+  userId               String?
+
+  level IssueSecurityLevel @relation(fields: [issueSecurityLevelId], references: [id], onDelete: Cascade)
+  group Group?             @relation(fields: [groupId], references: [id])
+}
+
+// ============================================================================
+// Section 6: Plans / Advanced Roadmaps
+// ============================================================================
+
+model Plan {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?  @db.Text
+  ownerId        String
+  isShared       Boolean  @default(false)
+  status         String   @default("active")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  scopes    PlanIssueScope[]
+  scenarios PlanScenario[]
+
+  @@index([organizationId])
+}
+
+model PlanIssueScope {
+  id        String  @id @default(cuid())
+  planId    String
+  projectId String
+  issueId   String?
+  position  Int     @default(0)
+
+  plan Plan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, projectId, issueId])
+  @@index([planId])
+}
+
+model PlanScenario {
+  id         String  @id @default(cuid())
+  planId     String
+  name       String
+  isDraft    Boolean @default(true)
+  isBaseline Boolean @default(false)
+  overrides  Json    @default("[]")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  plan Plan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@index([planId])
+}
+
+// ============================================================================
+// Section 7: Structure Views
+// ============================================================================
+
+model StructureView {
+  id             String   @id @default(cuid())
+  organizationId String
+  projectId      String?
+  ownerId        String
+  name           String
+  groupBy        String   @default("epic")
+  columns        Json     @default("[]")
+  sortBy         String   @default("rank")
+  filterQuery    String?  @db.Text
+  isShared       Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([ownerId])
+}
+
+// ============================================================================
+// Section 8: Budgets & Cost Management
+// ============================================================================
+
+model Budget {
+  id             String   @id @default(cuid())
+  organizationId String
+  projectId      String
+  name           String
+  amount         Float
+  currency       String   @default("USD")
+  costType       String   @default("opex")
+  periodStart    DateTime @db.Date
+  periodEnd      DateTime @db.Date
+  alertThreshold Float    @default(80)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  entries BudgetEntry[]
+
+  @@index([organizationId])
+  @@index([projectId])
+}
+
+model CostRate {
+  id             String    @id @default(cuid())
+  organizationId String
+  userId         String?
+  projectRoleId  String?
+  ratePerHour    Float
+  currency       String    @default("USD")
+  effectiveFrom  DateTime  @db.Date
+  effectiveTo    DateTime? @db.Date
+  createdAt      DateTime  @default(now())
+
+  @@index([organizationId])
+  @@index([userId, effectiveFrom])
+}
+
+model BudgetEntry {
+  id             String   @id @default(cuid())
+  organizationId String
+  budgetId       String
+  timeLogId      String   @unique
+  userId         String
+  hours          Float
+  ratePerHour    Float
+  cost           Float
+  costType       String   @default("opex")
+  currency       String   @default("USD")
+  date           DateTime @db.Date
+  createdAt      DateTime @default(now())
+
+  budget Budget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([budgetId, date])
+}
+
+// ============================================================================
+// Section 9: Capacity Planning
+// ============================================================================
+
+model TeamCapacity {
+  id             String   @id @default(cuid())
+  organizationId String
+  projectId      String
+  sprintId       String?
+  periodStart    DateTime @db.Date
+  periodEnd      DateTime @db.Date
+  totalHours     Float    @default(0)
+  allocatedHours Float    @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([projectId, periodStart, periodEnd])
+  @@index([organizationId])
+}
+
+model UserAllocation {
+  id             String    @id @default(cuid())
+  organizationId String
+  userId         String
+  projectId      String
+  percentage     Int       @default(100)
+  hoursPerDay    Float     @default(8)
+  startDate      DateTime  @db.Date
+  endDate        DateTime? @db.Date
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([organizationId])
+  @@index([userId, startDate])
+  @@index([projectId])
+}
+
+model TimeOff {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String
+  date           DateTime @db.Date
+  hours          Float    @default(8)
+  type           String   @default("vacation")
+  description    String?
+  createdAt      DateTime @default(now())
+
+  @@unique([userId, date])
+  @@index([organizationId])
+  @@index([userId, date])
+}
+
+// ============================================================================
+// Section 10: Test Cycles
+// ============================================================================
+
+model TestCycle {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?   @db.Text
+  plannedStart   DateTime?
+  plannedEnd     DateTime?
+  status         String    @default("not_started")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  testRuns TestRun[]
 
   @@index([organizationId])
 }

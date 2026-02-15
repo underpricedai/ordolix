@@ -24,6 +24,14 @@ vi.mock("@/server/trpc/dev-auth", () => ({
   getOrganizationId: vi.fn().mockResolvedValue(null),
 }));
 
+vi.mock("@/modules/permissions/server/permission-checker", () => ({
+  checkGlobalPermission: vi.fn().mockResolvedValue(true),
+  checkPermission: vi.fn().mockResolvedValue(true),
+  checkIssueSecurityAccess: vi.fn().mockResolvedValue(true),
+  resolveProjectPermissions: vi.fn().mockResolvedValue(new Set(["BROWSE_PROJECTS", "CREATE_ISSUES", "EDIT_ISSUES"])),
+  invalidatePermissionCache: vi.fn().mockResolvedValue(undefined),
+}));
+
 import * as automationService from "./automation-service";
 import { createRouter } from "@/server/trpc/init";
 import { automationRouter } from "./automation-router";

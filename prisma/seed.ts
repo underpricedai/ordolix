@@ -47,32 +47,297 @@ async function main() {
 
   await seedDefaults(prisma, org.id);
 
-  // Create dev user for local development auth bypass
+  // ── Users (5) ───────────────────────────────────────────────────────────────
+  const userDefs = [
+    { name: "Frank Admin", email: "frank@ordolix.local", orgRole: "administrator" },
+    { name: "Sarah PM", email: "sarah@ordolix.local", orgRole: "member" },
+    { name: "Mike Developer", email: "mike@ordolix.local", orgRole: "member" },
+    { name: "Lisa Viewer", email: "lisa@ordolix.local", orgRole: "member" },
+    { name: "External User", email: "external@ordolix.local", orgRole: "member" },
+  ] as const;
+
+  const users: Record<string, string> = {};
+
+  for (const def of userDefs) {
+    const user = await prisma.user.upsert({
+      where: { email: def.email },
+      update: { name: def.name },
+      create: { name: def.name, email: def.email },
+    });
+    users[def.email] = user.id;
+
+    await prisma.organizationMember.upsert({
+      where: {
+        organizationId_userId: { organizationId: org.id, userId: user.id },
+      },
+      update: { role: def.orgRole },
+      create: { organizationId: org.id, userId: user.id, role: def.orgRole },
+    });
+
+    console.log(`  User: ${def.name} (${def.orgRole})`);
+  }
+
+  // Keep the old dev user as an alias for frank
   const devUser = await prisma.user.upsert({
     where: { email: "dev@ordolix.local" },
     update: {},
-    create: {
-      name: "Dev User",
-      email: "dev@ordolix.local",
-    },
+    create: { name: "Dev User", email: "dev@ordolix.local" },
   });
-
   await prisma.organizationMember.upsert({
     where: {
-      organizationId_userId: {
-        organizationId: org.id,
-        userId: devUser.id,
-      },
+      organizationId_userId: { organizationId: org.id, userId: devUser.id },
     },
+    update: {},
+    create: { organizationId: org.id, userId: devUser.id, role: "administrator" },
+  });
+
+  const frankId = users["frank@ordolix.local"]!;
+  const sarahId = users["sarah@ordolix.local"]!;
+  const mikeId = users["mike@ordolix.local"]!;
+  const lisaId = users["lisa@ordolix.local"]!;
+
+  // ── Project Roles (4) ──────────────────────────────────────────────────────
+  const roleDefs = [
+    { name: "Administrator", description: "Full project access", isDefault: false },
+    { name: "Project Manager", description: "Manage project settings and team", isDefault: false },
+    { name: "Developer", description: "Create and work on issues", isDefault: true },
+    { name: "Viewer", description: "Read-only project access", isDefault: false },
+  ] as const;
+
+  const roles: Record<string, string> = {};
+
+  for (const def of roleDefs) {
+    const role = await prisma.projectRole.upsert({
+      where: { organizationId_name: { organizationId: org.id, name: def.name } },
+      update: { description: def.description, isDefault: def.isDefault },
+      create: { organizationId: org.id, ...def },
+    });
+    roles[def.name] = role.id;
+  }
+
+  console.log("  Created 4 project roles");
+
+  // ── Groups (4) ─────────────────────────────────────────────────────────────
+  const groupDefs = [
+    { name: "jira-administrators", description: "Organization administrators", memberIds: [frankId] },
+    { name: "project-managers", description: "Project management team", memberIds: [frankId, sarahId] },
+    { name: "developers", description: "Development team", memberIds: [frankId, sarahId, mikeId] },
+    { name: "viewers", description: "Read-only access", memberIds: [frankId, sarahId, mikeId, lisaId] },
+  ] as const;
+
+  const groups: Record<string, string> = {};
+
+  for (const def of groupDefs) {
+    const group = await prisma.group.upsert({
+      where: { organizationId_name: { organizationId: org.id, name: def.name } },
+      update: { description: def.description },
+      create: { organizationId: org.id, name: def.name, description: def.description },
+    });
+    groups[def.name] = group.id;
+
+    for (const userId of def.memberIds) {
+      await prisma.groupMember.upsert({
+        where: { groupId_userId: { groupId: group.id, userId } },
+        update: {},
+        create: { groupId: group.id, userId },
+      });
+    }
+  }
+
+  console.log("  Created 4 groups with members");
+
+  // ── Permission Schemes ─────────────────────────────────────────────────────
+  const defaultScheme = await prisma.permissionScheme.upsert({
+    where: { organizationId_name: { organizationId: org.id, name: "Default Permission Scheme" } },
     update: {},
     create: {
       organizationId: org.id,
-      userId: devUser.id,
-      role: "administrator",
+      name: "Default Permission Scheme",
+      description: "Standard permissions for most projects",
+      isDefault: true,
     },
   });
 
-  console.log(`Dev user: ${devUser.email} (${devUser.id})`);
+  const restrictedScheme = await prisma.permissionScheme.upsert({
+    where: { organizationId_name: { organizationId: org.id, name: "Restricted Permission Scheme" } },
+    update: {},
+    create: {
+      organizationId: org.id,
+      name: "Restricted Permission Scheme",
+      description: "Tighter permissions for sensitive projects",
+      isDefault: false,
+    },
+  });
+
+  // Clear existing grants for idempotency
+  await prisma.permissionGrant.deleteMany({
+    where: { permissionSchemeId: { in: [defaultScheme.id, restrictedScheme.id] } },
+  });
+
+  // Default scheme grants
+  const defaultGrants: Array<{ key: string; roleNames: string[] }> = [
+    { key: "BROWSE_PROJECTS", roleNames: ["Administrator", "Project Manager", "Developer", "Viewer"] },
+    { key: "CREATE_ISSUES", roleNames: ["Administrator", "Project Manager", "Developer"] },
+    { key: "EDIT_ISSUES", roleNames: ["Administrator", "Project Manager", "Developer"] },
+    { key: "DELETE_ISSUES", roleNames: ["Administrator"] },
+    { key: "ASSIGN_ISSUES", roleNames: ["Administrator", "Project Manager"] },
+    { key: "ASSIGNABLE_USER", roleNames: ["Administrator", "Project Manager", "Developer"] },
+    { key: "CLOSE_ISSUES", roleNames: ["Administrator", "Project Manager", "Developer"] },
+    { key: "TRANSITION_ISSUES", roleNames: ["Administrator", "Project Manager", "Developer"] },
+    { key: "SCHEDULE_ISSUES", roleNames: ["Administrator", "Project Manager"] },
+    { key: "MOVE_ISSUES", roleNames: ["Administrator", "Project Manager"] },
+    { key: "SET_ISSUE_SECURITY", roleNames: ["Administrator", "Project Manager"] },
+    { key: "LINK_ISSUES", roleNames: ["Administrator", "Project Manager", "Developer"] },
+    { key: "CREATE_ATTACHMENTS", roleNames: ["Administrator", "Project Manager", "Developer"] },
+    { key: "DELETE_ATTACHMENTS", roleNames: ["Administrator", "Project Manager"] },
+    { key: "ADD_COMMENTS", roleNames: ["Administrator", "Project Manager", "Developer", "Viewer"] },
+    { key: "EDIT_ALL_COMMENTS", roleNames: ["Administrator"] },
+    { key: "DELETE_ALL_COMMENTS", roleNames: ["Administrator"] },
+    { key: "EDIT_OWN_COMMENTS", roleNames: ["Administrator", "Project Manager", "Developer", "Viewer"] },
+    { key: "DELETE_OWN_COMMENTS", roleNames: ["Administrator", "Project Manager", "Developer"] },
+    { key: "MANAGE_WATCHERS", roleNames: ["Administrator", "Project Manager"] },
+    { key: "VIEW_WATCHERS", roleNames: ["Administrator", "Project Manager", "Developer", "Viewer"] },
+    { key: "VIEW_VOTERS", roleNames: ["Administrator", "Project Manager", "Developer", "Viewer"] },
+    { key: "LOG_WORK", roleNames: ["Administrator", "Project Manager", "Developer"] },
+    { key: "EDIT_ALL_WORKLOGS", roleNames: ["Administrator"] },
+    { key: "DELETE_ALL_WORKLOGS", roleNames: ["Administrator"] },
+    { key: "EDIT_OWN_WORKLOGS", roleNames: ["Administrator", "Project Manager", "Developer"] },
+    { key: "DELETE_OWN_WORKLOGS", roleNames: ["Administrator", "Project Manager", "Developer"] },
+    { key: "ADMINISTER_PROJECTS", roleNames: ["Administrator"] },
+    { key: "MANAGE_SPRINTS", roleNames: ["Administrator", "Project Manager"] },
+  ];
+
+  for (const grant of defaultGrants) {
+    for (const roleName of grant.roleNames) {
+      const roleId = roles[roleName];
+      if (!roleId) continue;
+      await prisma.permissionGrant.create({
+        data: {
+          permissionSchemeId: defaultScheme.id,
+          permissionKey: grant.key,
+          holderType: "projectRole",
+          projectRoleId: roleId,
+        },
+      });
+    }
+  }
+
+  // Restricted scheme grants (admin-only for destructive actions)
+  const restrictedGrants: Array<{ key: string; roleNames: string[] }> = [
+    { key: "BROWSE_PROJECTS", roleNames: ["Administrator", "Project Manager", "Developer", "Viewer"] },
+    { key: "CREATE_ISSUES", roleNames: ["Administrator", "Project Manager"] },
+    { key: "EDIT_ISSUES", roleNames: ["Administrator", "Project Manager"] },
+    { key: "DELETE_ISSUES", roleNames: ["Administrator"] },
+    { key: "ASSIGN_ISSUES", roleNames: ["Administrator"] },
+    { key: "TRANSITION_ISSUES", roleNames: ["Administrator", "Project Manager"] },
+    { key: "ADD_COMMENTS", roleNames: ["Administrator", "Project Manager", "Developer"] },
+    { key: "LOG_WORK", roleNames: ["Administrator", "Project Manager"] },
+    { key: "ADMINISTER_PROJECTS", roleNames: ["Administrator"] },
+  ];
+
+  for (const grant of restrictedGrants) {
+    for (const roleName of grant.roleNames) {
+      const roleId = roles[roleName];
+      if (!roleId) continue;
+      await prisma.permissionGrant.create({
+        data: {
+          permissionSchemeId: restrictedScheme.id,
+          permissionKey: grant.key,
+          holderType: "projectRole",
+          projectRoleId: roleId,
+        },
+      });
+    }
+  }
+
+  console.log("  Created 2 permission schemes with grants");
+
+  // ── Global Permissions ─────────────────────────────────────────────────────
+  await prisma.globalPermission.deleteMany({
+    where: { organizationId: org.id },
+  });
+
+  const globalPerms = [
+    { key: "ADMINISTER", holderType: "group" as const, groupId: groups["jira-administrators"]! },
+    { key: "CREATE_PROJECT", holderType: "group" as const, groupId: groups["jira-administrators"]! },
+    { key: "CREATE_PROJECT", holderType: "group" as const, groupId: groups["project-managers"]! },
+    { key: "BULK_CHANGE", holderType: "group" as const, groupId: groups["developers"]! },
+    { key: "MANAGE_GROUP_MEMBERSHIP", holderType: "group" as const, groupId: groups["jira-administrators"]! },
+  ];
+
+  for (const perm of globalPerms) {
+    await prisma.globalPermission.create({
+      data: {
+        organizationId: org.id,
+        permissionKey: perm.key,
+        holderType: perm.holderType,
+        groupId: perm.groupId,
+      },
+    });
+  }
+
+  console.log("  Created 5 global permissions");
+
+  // ── Issue Security Scheme ──────────────────────────────────────────────────
+  const securityScheme = await prisma.issueSecurityScheme.upsert({
+    where: { organizationId_name: { organizationId: org.id, name: "Default Security Scheme" } },
+    update: {},
+    create: {
+      organizationId: org.id,
+      name: "Default Security Scheme",
+      description: "Standard issue security levels",
+    },
+  });
+
+  // Clear existing levels for idempotency
+  await prisma.issueSecurityLevel.deleteMany({
+    where: { issueSecuritySchemeId: securityScheme.id },
+  });
+
+  const internalLevel = await prisma.issueSecurityLevel.create({
+    data: {
+      issueSecuritySchemeId: securityScheme.id,
+      name: "Internal",
+      description: "Visible to developers and project managers",
+      orderIndex: 0,
+    },
+  });
+
+  const confidentialLevel = await prisma.issueSecurityLevel.create({
+    data: {
+      issueSecuritySchemeId: securityScheme.id,
+      name: "Confidential",
+      description: "Visible to administrators only",
+      orderIndex: 1,
+    },
+  });
+
+  // Internal level members: developers group + PM role
+  await prisma.issueSecurityLevelMember.create({
+    data: {
+      issueSecurityLevelId: internalLevel.id,
+      holderType: "group",
+      groupId: groups["developers"]!,
+    },
+  });
+  await prisma.issueSecurityLevelMember.create({
+    data: {
+      issueSecurityLevelId: internalLevel.id,
+      holderType: "projectRole",
+      projectRoleId: roles["Project Manager"]!,
+    },
+  });
+
+  // Confidential level members: administrators group only
+  await prisma.issueSecurityLevelMember.create({
+    data: {
+      issueSecurityLevelId: confidentialLevel.id,
+      holderType: "group",
+      groupId: groups["jira-administrators"]!,
+    },
+  });
+
+  console.log("  Created security scheme with 2 levels");
 
   // ── Demo Projects ──────────────────────────────────────────────────────────
   const defaultWorkflow = await prisma.workflow.findFirst({
@@ -92,7 +357,10 @@ async function main() {
       where: {
         organizationId_key: { organizationId: org.id, key: def.key },
       },
-      update: {},
+      update: {
+        permissionSchemeId: defaultScheme.id,
+        issueSecuritySchemeId: def.key === "DEMO" ? securityScheme.id : null,
+      },
       create: {
         organizationId: org.id,
         name: def.name,
@@ -100,6 +368,8 @@ async function main() {
         projectType: def.type,
         templateKey: def.template,
         defaultWorkflowId: defaultWorkflow?.id,
+        permissionSchemeId: defaultScheme.id,
+        issueSecuritySchemeId: def.key === "DEMO" ? securityScheme.id : null,
       },
     });
     projects.push(project);
@@ -130,22 +400,45 @@ async function main() {
       });
     }
 
-    // Add dev user as project member
-    const existingMember = await prisma.projectMember.findFirst({
-      where: { projectId: project.id, userId: devUser.id },
-    });
-    if (!existingMember) {
-      await prisma.projectMember.create({
-        data: {
-          projectId: project.id,
-          userId: devUser.id,
-          role: "administrator",
-        },
-      });
-    }
-
     console.log(`Project: ${def.name} (${def.key})`);
   }
+
+  // ── Project Members with Roles ─────────────────────────────────────────────
+  const projectMemberDefs = [
+    // DEMO project: all 4 users
+    { projectKey: "DEMO", userId: frankId, role: "administrator", roleName: "Administrator" },
+    { projectKey: "DEMO", userId: sarahId, role: "member", roleName: "Project Manager" },
+    { projectKey: "DEMO", userId: mikeId, role: "member", roleName: "Developer" },
+    { projectKey: "DEMO", userId: lisaId, role: "member", roleName: "Viewer" },
+    // ENG project
+    { projectKey: "ENG", userId: frankId, role: "administrator", roleName: "Administrator" },
+    { projectKey: "ENG", userId: mikeId, role: "member", roleName: "Developer" },
+    // IT project
+    { projectKey: "IT", userId: frankId, role: "administrator", roleName: "Administrator" },
+    { projectKey: "IT", userId: sarahId, role: "member", roleName: "Project Manager" },
+    // Dev user for backwards compat
+    { projectKey: "DEMO", userId: devUser.id, role: "administrator", roleName: "Administrator" },
+    { projectKey: "ENG", userId: devUser.id, role: "administrator", roleName: "Administrator" },
+    { projectKey: "IT", userId: devUser.id, role: "administrator", roleName: "Administrator" },
+  ];
+
+  for (const def of projectMemberDefs) {
+    const project = projects.find((p) => p.key === def.projectKey);
+    if (!project) continue;
+    const roleId = roles[def.roleName];
+    await prisma.projectMember.upsert({
+      where: { projectId_userId: { projectId: project.id, userId: def.userId } },
+      update: { role: def.role, projectRoleId: roleId },
+      create: {
+        projectId: project.id,
+        userId: def.userId,
+        role: def.role,
+        projectRoleId: roleId,
+      },
+    });
+  }
+
+  console.log("  Assigned project members with roles");
 
   // ── Lookup reference data ─────────────────────────────────────────────────
   const statuses = await prisma.status.findMany({
@@ -171,7 +464,6 @@ async function main() {
     const demoIssues = DEMO_ISSUES[project.key as keyof typeof DEMO_ISSUES];
     if (!demoIssues) continue;
 
-    // Check if issues already exist for this project
     const existingCount = await prisma.issue.count({
       where: { organizationId: org.id, projectId: project.id },
     });
@@ -192,6 +484,13 @@ async function main() {
 
       if (!issueTypeId || !statusId || !priorityId) continue;
 
+      // Assign security levels to some DEMO issues
+      let securityLevelId: string | null = null;
+      if (project.key === "DEMO") {
+        if (i === 2) securityLevelId = internalLevel.id; // "Implement user authentication flow" → Internal
+        if (i === 4) securityLevelId = confidentialLevel.id; // "Write API documentation" → Confidential
+      }
+
       await prisma.issue.create({
         data: {
           organizationId: org.id,
@@ -201,13 +500,14 @@ async function main() {
           issueTypeId,
           statusId,
           priorityId,
-          reporterId: devUser.id,
+          reporterId: frankId,
+          assigneeId: i % 2 === 0 ? mikeId : sarahId,
           storyPoints: issue.storyPoints,
+          securityLevelId,
         },
       });
     }
 
-    // Update the project issue counter
     await prisma.project.update({
       where: { id: project.id },
       data: { issueCounter: project.issueCounter + demoIssues.length },
@@ -251,7 +551,6 @@ async function main() {
         },
       });
 
-      // Assign first 3 ENG issues to Sprint 1
       const engIssues = await prisma.issue.findMany({
         where: { organizationId: org.id, projectId: engProject.id },
         take: 3,
@@ -279,7 +578,7 @@ async function main() {
     });
 
     const existingLogs = await prisma.timeLog.count({
-      where: { organizationId: org.id, userId: devUser.id },
+      where: { organizationId: org.id, userId: frankId },
     });
 
     if (existingLogs === 0 && demoIssues.length > 0) {
@@ -297,7 +596,7 @@ async function main() {
           data: {
             organizationId: org.id,
             issueId: entry.issueId,
-            userId: devUser.id,
+            userId: frankId,
             date: entry.date,
             duration: entry.duration,
             description: entry.description,

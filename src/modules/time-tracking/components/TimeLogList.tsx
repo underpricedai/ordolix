@@ -126,7 +126,7 @@ export function TimeLogList({ issueId, userId }: TimeLogListProps) {
       <EmptyState
         icon={<Clock className="size-12" />}
         title={tc("error")}
-        description={tc("retry")}
+        description={error.message}
         action={
           <Button variant="outline" onClick={() => window.location.reload()}>
             {tc("retry")}

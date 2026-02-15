@@ -7,9 +7,9 @@ Feature-based modular structure. Each module is self-contained with its own rout
 ## Key Directories
 
 - `app/` — Next.js App Router pages and layouts
-- `modules/` — Feature modules (issues, workflows, boards, time-tracking, gantt, sla, test-management, assets, scripts, forms, reports, incidents, retrospectives, approvals, checklists)
+- `modules/` — Feature modules (30 modules including issues, workflows, boards, projects, sprints, time-tracking, gantt, sla, test-management, assets, scripts, forms, reports, incidents, retrospectives, approvals, checklists, dashboards, notifications, queues, search, custom-fields, users, admin, permissions, plans, structure, budgets, capacity)
 - `shared/` — Shared components, hooks, utilities, types used across modules
-- `integrations/` — External integrations (sharepoint, github, salesforce, powerbi, mcp)
+- `integrations/` — External integrations (sharepoint, github, salesforce, powerbi, mcp, providers)
 - `server/` — Server config, middleware, auth, DB client
 - `emails/` — React Email templates
 - `messages/` — i18n translation files (en.json)

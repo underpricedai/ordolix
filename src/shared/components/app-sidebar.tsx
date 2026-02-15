@@ -12,6 +12,7 @@ import {
   GitBranch,
   BarChart3,
   Settings,
+  Shield,
 } from "lucide-react";
 import {
   Sidebar,
@@ -51,6 +52,7 @@ const mainNavItems: NavItem[] = [
 ];
 
 const bottomNavItems: NavItem[] = [
+  { titleKey: "admin", href: "/admin", icon: Shield },
   { titleKey: "settings", href: "/settings", icon: Settings },
 ];
 

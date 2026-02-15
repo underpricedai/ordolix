@@ -353,7 +353,7 @@ export function GanttChart({ projectId }: GanttChartProps) {
       <EmptyState
         icon={<GanttIcon className="size-12" />}
         title={tc("error")}
-        description={tc("retry")}
+        description={error.message}
         action={
           <Button
             variant="outline"
