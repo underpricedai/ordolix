@@ -501,6 +501,12 @@ async function main() {
         if (i === 4) securityLevelId = confidentialLevel.id; // "Write API documentation" → Confidential
       }
 
+      // Spread issues across the timeline for Gantt chart visibility
+      const issueStartDate = new Date();
+      issueStartDate.setDate(issueStartDate.getDate() - 7 + i * 5);
+      const issueDueDate = new Date(issueStartDate);
+      issueDueDate.setDate(issueDueDate.getDate() + 3 + issue.storyPoints);
+
       await prisma.issue.create({
         data: {
           organizationId: org.id,
@@ -513,6 +519,8 @@ async function main() {
           reporterId: frankId,
           assigneeId: i % 2 === 0 ? mikeId : sarahId,
           storyPoints: issue.storyPoints,
+          startDate: issueStartDate,
+          dueDate: issueDueDate,
           securityLevelId,
         },
       });
@@ -780,6 +788,12 @@ async function main() {
       // Spread created dates over the last 30 days for realistic history
       const createdAt = new Date(now.getTime() - (extras.length - i) * 24 * 60 * 60 * 1000);
 
+      // Spread issues across the timeline for Gantt chart visibility
+      const issueStartDate = new Date();
+      issueStartDate.setDate(issueStartDate.getDate() - 14 + i * 4);
+      const issueDueDate = new Date(issueStartDate);
+      issueDueDate.setDate(issueDueDate.getDate() + 2 + issue.storyPoints);
+
       const created = await prisma.issue.create({
         data: {
           organizationId: org.id,
@@ -794,6 +808,8 @@ async function main() {
           assigneeId: assignees[(i + 1) % assignees.length]!,
           storyPoints: issue.storyPoints,
           labels: issue.labels ?? [],
+          startDate: issueStartDate,
+          dueDate: issueDueDate,
           createdAt,
         },
       });
