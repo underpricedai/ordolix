@@ -341,6 +341,100 @@ async function main() {
 
   console.log("  Created security scheme with 2 levels");
 
+  // ── Issue Type Scheme ────────────────────────────────────────────────────
+  const defaultIssueTypeScheme = await prisma.issueTypeScheme.upsert({
+    where: { organizationId_name: { organizationId: org.id, name: "Default Issue Type Scheme" } },
+    update: {},
+    create: {
+      organizationId: org.id,
+      name: "Default Issue Type Scheme",
+      description: "Standard issue types for most projects",
+      isDefault: true,
+    },
+  });
+
+  // Add entries for the standard issue types
+  const allIssueTypes = await prisma.issueType.findMany({
+    where: { organizationId: org.id, name: { in: ["Epic", "Story", "Task", "Bug", "Sub-task"] } },
+  });
+  for (let i = 0; i < allIssueTypes.length; i++) {
+    const it = allIssueTypes[i]!;
+    await prisma.issueTypeSchemeEntry.upsert({
+      where: { issueTypeSchemeId_issueTypeId: { issueTypeSchemeId: defaultIssueTypeScheme.id, issueTypeId: it.id } },
+      update: {},
+      create: {
+        issueTypeSchemeId: defaultIssueTypeScheme.id,
+        issueTypeId: it.id,
+        isDefault: it.name === "Task",
+        position: i,
+      },
+    });
+  }
+  console.log("  Created default issue type scheme with entries");
+
+  // ── Field Configuration Scheme ──────────────────────────────────────────
+  const defaultFieldConfigScheme = await prisma.fieldConfigurationScheme.upsert({
+    where: { organizationId_name: { organizationId: org.id, name: "Default Field Configuration" } },
+    update: {},
+    create: {
+      organizationId: org.id,
+      name: "Default Field Configuration",
+      description: "Standard field visibility for most projects",
+      isDefault: true,
+    },
+  });
+  console.log("  Created default field configuration scheme");
+
+  // ── Notification Scheme ─────────────────────────────────────────────────
+  const defaultNotificationScheme = await prisma.notificationScheme.upsert({
+    where: { organizationId_name: { organizationId: org.id, name: "Default Notification Scheme" } },
+    update: {},
+    create: {
+      organizationId: org.id,
+      name: "Default Notification Scheme",
+      description: "Standard notification settings for most projects",
+      isDefault: true,
+    },
+  });
+
+  // Add default notification entries
+  const notifEntries = [
+    { event: "issue_created", recipientType: "reporter", channels: ["in_app", "email"] },
+    { event: "issue_assigned", recipientType: "assignee", channels: ["in_app", "email"] },
+    { event: "issue_commented", recipientType: "watchers", channels: ["in_app"] },
+    { event: "issue_resolved", recipientType: "reporter", channels: ["in_app", "email"] },
+    { event: "issue_status_changed", recipientType: "assignee", channels: ["in_app"] },
+  ];
+  for (const ne of notifEntries) {
+    const exists = await prisma.notificationSchemeEntry.findFirst({
+      where: { notificationSchemeId: defaultNotificationScheme.id, event: ne.event, recipientType: ne.recipientType },
+    });
+    if (!exists) {
+      await prisma.notificationSchemeEntry.create({
+        data: {
+          notificationSchemeId: defaultNotificationScheme.id,
+          event: ne.event,
+          recipientType: ne.recipientType,
+          channels: ne.channels,
+        },
+      });
+    }
+  }
+  console.log("  Created default notification scheme with entries");
+
+  // ── Component Scheme ────────────────────────────────────────────────────
+  const defaultComponentScheme = await prisma.componentScheme.upsert({
+    where: { organizationId_name: { organizationId: org.id, name: "Default Component Scheme" } },
+    update: {},
+    create: {
+      organizationId: org.id,
+      name: "Default Component Scheme",
+      description: "Standard component configuration for most projects",
+      isDefault: true,
+    },
+  });
+  console.log("  Created default component scheme");
+
   // ── Lookup reference data (needed for board columns + issues) ─────────────
   const statuses = await prisma.status.findMany({
     where: { organizationId: org.id, name: { in: ["To Do", "In Progress", "Done"] } },
@@ -378,6 +472,10 @@ async function main() {
       update: {
         permissionSchemeId: defaultScheme.id,
         issueSecuritySchemeId: def.key === "DEMO" ? securityScheme.id : null,
+        issueTypeSchemeId: defaultIssueTypeScheme.id,
+        fieldConfigurationSchemeId: defaultFieldConfigScheme.id,
+        notificationSchemeId: defaultNotificationScheme.id,
+        componentSchemeId: defaultComponentScheme.id,
       },
       create: {
         organizationId: org.id,
@@ -388,6 +486,10 @@ async function main() {
         defaultWorkflowId: defaultWorkflow?.id,
         permissionSchemeId: defaultScheme.id,
         issueSecuritySchemeId: def.key === "DEMO" ? securityScheme.id : null,
+        issueTypeSchemeId: defaultIssueTypeScheme.id,
+        fieldConfigurationSchemeId: defaultFieldConfigScheme.id,
+        notificationSchemeId: defaultNotificationScheme.id,
+        componentSchemeId: defaultComponentScheme.id,
       },
     });
     projects.push(project);
@@ -1002,6 +1104,32 @@ async function main() {
     }
   }
   console.log("  Created components for all projects");
+
+  // Add all components from DEMO project to the default component scheme
+  const demoProjectForScheme = projects.find((p) => p.key === "DEMO");
+  if (demoProjectForScheme) {
+    const demoComponents = await prisma.component.findMany({
+      where: { organizationId: org.id, projectId: demoProjectForScheme.id },
+      orderBy: { name: "asc" },
+    });
+    for (let i = 0; i < demoComponents.length; i++) {
+      const comp = demoComponents[i]!;
+      const exists = await prisma.componentSchemeEntry.findFirst({
+        where: { componentSchemeId: defaultComponentScheme.id, componentId: comp.id },
+      });
+      if (!exists) {
+        await prisma.componentSchemeEntry.create({
+          data: {
+            componentSchemeId: defaultComponentScheme.id,
+            componentId: comp.id,
+            isDefault: i === 0,
+            position: i,
+          },
+        });
+      }
+    }
+    console.log("  Added DEMO components to default component scheme");
+  }
 
   // Versions
   const now = new Date();
@@ -2430,7 +2558,7 @@ async function main() {
   console.log("\n════════════════════════════════════════════════════════════════");
   console.log("Seed complete. Summary:");
   console.log("  - 1 organization, 6 users");
-  console.log("  - 3 projects with boards, components, versions");
+  console.log("  - 3 projects with boards, components, versions, all schemes assigned");
   console.log("  - 30+ issues per project with parent/child relationships");
   console.log("  - Gantt dependencies, comments, history, votes, watchers");
   console.log("  - 6 custom fields with values, 3 SLA configs + instances");
