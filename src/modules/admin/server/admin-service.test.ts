@@ -304,19 +304,38 @@ describe("deleteWebhook", () => {
 
 // ── getSystemHealth ──────────────────────────────────────────────────────────
 
+vi.mock("@/server/providers/cache", () => ({
+  cacheProvider: {
+    get: vi.fn().mockResolvedValue("ok"),
+    set: vi.fn().mockResolvedValue(undefined),
+    del: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+
 describe("getSystemHealth", () => {
   let db: ReturnType<typeof createMockDb>;
 
   beforeEach(() => {
-    db = createMockDb();
+    db = createMockDb({
+      $queryRawUnsafe: vi.fn().mockResolvedValue([{ "?column?": 1 }]),
+    });
   });
 
-  it("returns healthy status for all subsystems", async () => {
+  it("returns healthy status when all subsystems respond", async () => {
     const result = await getSystemHealth(db, ORG_ID);
 
     expect(result.database).toBe("healthy");
     expect(result.cache).toBe("healthy");
     expect(result.queue).toBe("healthy");
     expect(result.timestamp).toBeInstanceOf(Date);
+  });
+
+  it("returns unhealthy database when query fails", async () => {
+    db.$queryRawUnsafe.mockRejectedValue(new Error("connection refused"));
+
+    const result = await getSystemHealth(db, ORG_ID);
+
+    expect(result.database).toBe("unhealthy");
+    expect(result.cache).toBe("healthy");
   });
 });

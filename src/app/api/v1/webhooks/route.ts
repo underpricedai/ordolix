@@ -14,6 +14,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { logger } from "@/server/lib/logger";
 import { CORRELATION_HEADER, generateCorrelationId } from "@/server/lib/correlation";
+import { dispatchWebhook } from "@/server/lib/webhook-dispatcher";
 
 /**
  * Minimal webhook payload schema.
@@ -78,18 +79,14 @@ export async function POST(request: NextRequest): Promise<Response> {
       "Webhook received",
     );
 
-    // TODO: Dispatch to integration-specific handlers:
-    // - github: process push, PR, issue events
-    // - sharepoint: process file change events
-    // - etc.
-    //
-    // For now, we acknowledge receipt and log the event.
-    // Integration handlers will be added in the integrations module.
+    const result = await dispatchWebhook(source, event, payload);
 
     return NextResponse.json(
       {
         data: {
           received: true,
+          processed: result.processed,
+          handler: result.handler,
           source,
           event,
           requestId,

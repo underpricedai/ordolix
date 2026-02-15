@@ -18,6 +18,19 @@ function createMockDb() {
       update: vi.fn(),
       delete: vi.fn(),
     },
+    issue: {
+      count: vi.fn().mockResolvedValue(0),
+      groupBy: vi.fn().mockResolvedValue([]),
+    },
+    timeLog: {
+      groupBy: vi.fn().mockResolvedValue([]),
+    },
+    sprint: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
+    sLAInstance: {
+      groupBy: vi.fn().mockResolvedValue([]),
+    },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any;
 }
@@ -262,17 +275,107 @@ describe("runReport", () => {
     db.savedReport.findFirst.mockResolvedValue(mockReport);
   });
 
-  it("returns stub report result", async () => {
-    const result = await runReport(db, ORG_ID, "report-1");
-
-    expect(result.reportId).toBe("report-1");
-    expect(result.data).toEqual([]);
-    expect(result.generatedAt).toBeInstanceOf(Date);
-  });
-
   it("throws NotFoundError if report not found", async () => {
     db.savedReport.findFirst.mockResolvedValue(null);
 
     await expect(runReport(db, ORG_ID, "nope")).rejects.toThrow(NotFoundError);
+  });
+
+  it("runs issue_summary report with groupBy results", async () => {
+    db.savedReport.findFirst.mockResolvedValue({
+      ...mockReport,
+      reportType: "issue_summary",
+      query: { projectId: "proj-1" },
+    });
+    db.issue.count.mockResolvedValue(5);
+    db.issue.groupBy.mockResolvedValueOnce([
+      { statusId: "s1", _count: 3 },
+    ]);
+    db.issue.groupBy.mockResolvedValueOnce([
+      { priorityId: "p1", _count: 2 },
+    ]);
+
+    const result = await runReport(db, ORG_ID, "report-1");
+
+    expect(result.reportId).toBe("report-1");
+    expect(result.data).toEqual([
+      { metric: "total_issues", value: 5 },
+      { metric: "by_status", statusId: "s1", count: 3 },
+      { metric: "by_priority", priorityId: "p1", count: 2 },
+    ]);
+    expect(result.generatedAt).toBeInstanceOf(Date);
+  });
+
+  it("runs time_tracking report with groupBy results", async () => {
+    db.savedReport.findFirst.mockResolvedValue({
+      ...mockReport,
+      reportType: "time_tracking",
+    });
+    db.timeLog.groupBy.mockResolvedValue([
+      { userId: "u1", _sum: { duration: 3600 }, _count: 2 },
+    ]);
+
+    const result = await runReport(db, ORG_ID, "report-1");
+
+    expect(result.data).toEqual([
+      { metric: "time_by_user", userId: "u1", totalSeconds: 3600, entryCount: 2 },
+    ]);
+  });
+
+  it("runs velocity report from completed sprints", async () => {
+    db.savedReport.findFirst.mockResolvedValue({
+      ...mockReport,
+      reportType: "velocity",
+    });
+    db.sprint.findMany.mockResolvedValue([
+      {
+        name: "Sprint 1",
+        issues: [
+          { storyPoints: 5, status: { category: "DONE" } },
+          { storyPoints: 3, status: { category: "IN_PROGRESS" } },
+        ],
+      },
+    ]);
+
+    const result = await runReport(db, ORG_ID, "report-1");
+
+    expect(result.data).toEqual([
+      {
+        metric: "velocity",
+        sprintName: "Sprint 1",
+        completedPoints: 5,
+        completedCount: 1,
+        totalCount: 2,
+      },
+    ]);
+  });
+
+  it("runs sla_compliance report", async () => {
+    db.savedReport.findFirst.mockResolvedValue({
+      ...mockReport,
+      reportType: "sla_compliance",
+    });
+    db.sLAInstance.groupBy.mockResolvedValue([
+      { status: "met", _count: 10 },
+      { status: "breached", _count: 2 },
+    ]);
+
+    const result = await runReport(db, ORG_ID, "report-1");
+
+    expect(result.data).toEqual([
+      { metric: "sla_by_status", status: "met", count: 10 },
+      { metric: "sla_by_status", status: "breached", count: 2 },
+    ]);
+  });
+
+  it("returns empty data for custom report type", async () => {
+    db.savedReport.findFirst.mockResolvedValue({
+      ...mockReport,
+      reportType: "custom",
+    });
+
+    const result = await runReport(db, ORG_ID, "report-1");
+
+    expect(result.data).toEqual([]);
   });
 });

@@ -113,6 +113,15 @@ export async function deleteReport(
   });
 }
 
+/**
+ * Runs a saved report and returns aggregated data.
+ *
+ * @param db - Prisma client instance
+ * @param organizationId - Organization scope
+ * @param id - Saved report ID
+ * @returns Object with reportId, aggregated data array, and generatedAt timestamp
+ * @throws NotFoundError if the report does not exist
+ */
 export async function runReport(
   db: PrismaClient,
   organizationId: string,
@@ -125,10 +134,152 @@ export async function runReport(
     throw new NotFoundError("SavedReport", id);
   }
 
-  // Stub implementation: actual aggregation is future work
+  const query = report.query as Record<string, unknown> | null;
+  const projectId = (query?.projectId as string) ?? undefined;
+
+  let data: Record<string, unknown>[];
+
+  switch (report.reportType) {
+    case "issue_summary":
+      data = await runIssueSummary(db, organizationId, projectId);
+      break;
+    case "time_tracking":
+      data = await runTimeTracking(db, organizationId, projectId);
+      break;
+    case "velocity":
+      data = await runVelocity(db, organizationId, projectId);
+      break;
+    case "sla_compliance":
+      data = await runSlaCompliance(db, organizationId, projectId);
+      break;
+    default:
+      data = [];
+  }
+
   return {
     reportId: report.id,
-    data: [] as Record<string, unknown>[],
+    data,
     generatedAt: new Date(),
   };
+}
+
+async function runIssueSummary(
+  db: PrismaClient,
+  organizationId: string,
+  projectId?: string,
+): Promise<Record<string, unknown>[]> {
+  const where: Prisma.IssueWhereInput = {
+    organizationId,
+    deletedAt: null,
+    ...(projectId ? { projectId } : {}),
+  };
+
+  const [total, byStatus, byPriority] = await Promise.all([
+    db.issue.count({ where }),
+    db.issue.groupBy({
+      by: ["statusId"],
+      where,
+      _count: true,
+    }),
+    db.issue.groupBy({
+      by: ["priorityId"],
+      where,
+      _count: true,
+    }),
+  ]);
+
+  return [
+    { metric: "total_issues", value: total },
+    ...byStatus.map((s) => ({
+      metric: "by_status",
+      statusId: s.statusId,
+      count: s._count,
+    })),
+    ...byPriority.map((p) => ({
+      metric: "by_priority",
+      priorityId: p.priorityId,
+      count: p._count,
+    })),
+  ];
+}
+
+async function runTimeTracking(
+  db: PrismaClient,
+  organizationId: string,
+  projectId?: string,
+): Promise<Record<string, unknown>[]> {
+  const where: Prisma.TimeLogWhereInput = {
+    organizationId,
+    ...(projectId ? { issue: { projectId } } : {}),
+  };
+
+  const logs = await db.timeLog.groupBy({
+    by: ["userId"],
+    where,
+    _sum: { duration: true },
+    _count: true,
+  });
+
+  return logs.map((l) => ({
+    metric: "time_by_user",
+    userId: l.userId,
+    totalSeconds: l._sum?.duration ?? 0,
+    entryCount: l._count,
+  }));
+}
+
+async function runVelocity(
+  db: PrismaClient,
+  organizationId: string,
+  projectId?: string,
+): Promise<Record<string, unknown>[]> {
+  const sprints = await db.sprint.findMany({
+    where: {
+      project: { organizationId },
+      status: "completed",
+      ...(projectId ? { projectId } : {}),
+    },
+    orderBy: { updatedAt: "desc" },
+    take: 10,
+    include: {
+      issues: {
+        include: { status: true },
+        where: { deletedAt: null },
+      },
+    },
+  });
+
+  return sprints.map((sprint) => {
+    const done = sprint.issues.filter((i) => i.status.category === "DONE");
+    return {
+      metric: "velocity",
+      sprintName: sprint.name,
+      completedPoints: done.reduce((s, i) => s + (i.storyPoints ?? 0), 0),
+      completedCount: done.length,
+      totalCount: sprint.issues.length,
+    };
+  });
+}
+
+async function runSlaCompliance(
+  db: PrismaClient,
+  organizationId: string,
+  projectId?: string,
+): Promise<Record<string, unknown>[]> {
+  const where: Prisma.SLAInstanceWhereInput = {
+    organizationId,
+    ...(projectId ? { issue: { projectId } } : {}),
+  };
+
+  const instances = await db.sLAInstance.groupBy({
+    by: ["status"],
+    where,
+    _count: true,
+  });
+
+  return instances.map((i) => ({
+    metric: "sla_by_status",
+    status: i.status,
+    count: i._count,
+  }));
 }

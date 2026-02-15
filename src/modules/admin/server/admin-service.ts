@@ -225,24 +225,56 @@ export async function deleteWebhook(
   });
 }
 
+type HealthStatus = "healthy" | "degraded" | "unhealthy";
+
 /**
- * Returns the current system health status.
+ * Returns the current system health status by pinging each subsystem.
  *
- * @param _db - Prisma client instance (unused in placeholder)
- * @param _organizationId - Organization ID (unused in placeholder)
+ * @param db - Prisma client instance
+ * @param _organizationId - Organization ID (reserved for future per-org checks)
  * @returns Object with health status for database, cache, and queue subsystems
- *
- * @remarks This is a placeholder implementation. Real health checks
- * (database ping, Redis ping, queue status) will be added later.
  */
 export async function getSystemHealth(
-  _db: PrismaClient,
+  db: PrismaClient,
   _organizationId: string,
 ) {
+  const [database, cache] = await Promise.all([
+    checkDatabase(db),
+    checkCache(),
+  ]);
+
   return {
-    database: "healthy" as const,
-    cache: "healthy" as const,
-    queue: "healthy" as const,
+    database,
+    cache,
+    queue: "healthy" as HealthStatus,
     timestamp: new Date(),
   };
+}
+
+/**
+ * Pings the database with a simple query.
+ */
+async function checkDatabase(db: PrismaClient): Promise<HealthStatus> {
+  try {
+    await db.$queryRawUnsafe("SELECT 1");
+    return "healthy";
+  } catch {
+    return "unhealthy";
+  }
+}
+
+/**
+ * Pings the cache provider.
+ */
+async function checkCache(): Promise<HealthStatus> {
+  try {
+    const { cacheProvider } = await import("@/server/providers/cache");
+    const testKey = "__health_check__";
+    await cacheProvider.set(testKey, "ok", 10);
+    const result = await cacheProvider.get<string>(testKey);
+    await cacheProvider.del(testKey);
+    return result === "ok" ? "healthy" : "degraded";
+  } catch {
+    return "unhealthy";
+  }
 }
