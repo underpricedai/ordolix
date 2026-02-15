@@ -11,7 +11,9 @@
 import { use } from "react";
 import { useTranslations } from "next-intl";
 import { AppHeader } from "@/shared/components/app-header";
+import { Skeleton } from "@/shared/components/ui/skeleton";
 import { GanttChart } from "@/modules/gantt/components/GanttChart";
+import { trpc } from "@/shared/lib/trpc";
 
 export default function ProjectTimelinePage({
   params,
@@ -21,6 +23,8 @@ export default function ProjectTimelinePage({
   const { key } = use(params);
   const t = useTranslations("projectPages.timeline");
   const tn = useTranslations("nav");
+
+  const { data: project, isLoading } = trpc.project.getByKey.useQuery({ key });
 
   const breadcrumbs = [
     { label: tn("projects"), href: "/projects" },
@@ -42,7 +46,14 @@ export default function ProjectTimelinePage({
             </p>
           </div>
         </div>
-        <GanttChart projectId={key} />
+        {isLoading ? (
+          <div className="p-6 space-y-4">
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-64 w-full" />
+          </div>
+        ) : project?.id ? (
+          <GanttChart projectId={project.id} />
+        ) : null}
       </div>
     </>
   );

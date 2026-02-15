@@ -191,12 +191,12 @@ export default function ProjectDetailPage({
               {project?.members && project.members.length > 0 ? (
                 <ul className="space-y-2">
                   {project.members.map(
-                    (m: { user: { id: string; name: string | null; email: string } }) => (
+                    (m: { user?: { id: string; name: string | null; email: string } | null; id?: string }) => (
                       <li
-                        key={m.user.id}
+                        key={m.user?.id ?? m.id ?? "unknown"}
                         className="text-sm text-muted-foreground"
                       >
-                        {m.user.name ?? m.user.email}
+                        {m.user?.name ?? m.user?.email ?? "-"}
                       </li>
                     ),
                   )}

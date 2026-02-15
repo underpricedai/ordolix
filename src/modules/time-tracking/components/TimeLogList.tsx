@@ -183,7 +183,7 @@ export function TimeLogList({ issueId, userId }: TimeLogListProps) {
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline">
-                            {formatDuration(entry.duration)}
+                            {formatDuration(entry.duration ?? 0)}
                           </Badge>
                         </TableCell>
                         <TableCell className="max-w-[300px] truncate text-muted-foreground">

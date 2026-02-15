@@ -212,10 +212,10 @@ export default function ProjectQueuePage({
                     </TableCell>
                     <TableCell>{item.summary}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {item.requester ?? "-"}
+                      {item.assignee?.name ?? "-"}
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline">{item.priority ?? "-"}</Badge>
+                      <Badge variant="outline">{item.priority?.name ?? "-"}</Badge>
                     </TableCell>
                     <TableCell>
                       <Badge
@@ -231,10 +231,12 @@ export default function ProjectQueuePage({
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="secondary">{item.status ?? "-"}</Badge>
+                      <Badge variant="secondary">{item.status?.name ?? "-"}</Badge>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {item.createdAt ?? "-"}
+                      {item.createdAt
+                        ? new Intl.DateTimeFormat().format(new Date(item.createdAt))
+                        : "-"}
                     </TableCell>
                   </TableRow>
                 ))}

@@ -65,7 +65,7 @@ function formatTimestamp(date: string | Date): string {
  * @example
  * <IssueComments issueId="issue-123" />
  */
-export function IssueComments({ className }: IssueCommentsProps) {
+export function IssueComments({ issueId: _issueId, className }: IssueCommentsProps) {
   const t = useTranslations("issues");
   const [commentBody, setCommentBody] = useState("");
 

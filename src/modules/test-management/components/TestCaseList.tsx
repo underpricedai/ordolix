@@ -358,7 +358,7 @@ function TestSuiteNode({
 
       {/* Test case rows */}
       {expanded &&
-        suite.testCases.map((tc) => (
+        (suite.testCases ?? []).map((tc) => (
           <TableRow
             key={tc.id}
             className="cursor-pointer"
