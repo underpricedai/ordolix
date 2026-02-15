@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { FolderOpen, Plus, Search } from "lucide-react";
 import { AppHeader } from "@/shared/components/app-header";
@@ -18,6 +18,7 @@ import { EmptyState } from "@/shared/components/empty-state";
 import { IssueList } from "@/modules/issues/components/IssueList";
 import { IssueCreateDialog } from "@/modules/issues/components/IssueCreateDialog";
 import { IssueFilters, type ActiveFilters } from "@/modules/issues/components/IssueFilters";
+import { SavedFilterBar } from "@/modules/search/components/SavedFilterBar";
 import { trpc } from "@/shared/lib/trpc";
 
 /**
@@ -51,6 +52,76 @@ export default function IssuesPage() {
 
   const projects = projectsData?.items ?? [];
   const currentProjectId = selectedProjectId ?? projects[0]?.id;
+
+  // Fetch filter options
+  const { data: issueTypes } = trpc.issue.listIssueTypes.useQuery(
+    undefined,
+    { enabled: !projectsLoading },
+  );
+  const { data: priorities } = trpc.issue.listPriorities.useQuery(
+    undefined,
+    { enabled: !projectsLoading },
+  );
+  const { data: statuses } = trpc.issue.listStatuses.useQuery(
+    { projectId: currentProjectId! },
+    { enabled: !!currentProjectId },
+  );
+  const { data: usersData } = trpc.user.listUsers.useQuery(
+    { limit: 200 },
+    { enabled: !projectsLoading },
+  );
+
+  const statusOptions = useMemo(
+    () => (statuses ?? []).map((s: { id: string; name: string }) => ({ id: s.id, label: s.name })),
+    [statuses],
+  );
+  const typeOptions = useMemo(
+    () => (issueTypes ?? []).map((t: { id: string; name: string }) => ({ id: t.id, label: t.name })),
+    [issueTypes],
+  );
+  const priorityOptions = useMemo(
+    () => (priorities ?? []).map((p: { id: string; name: string }) => ({ id: p.id, label: p.name })),
+    [priorities],
+  );
+  const assigneeOptions = useMemo(
+    () => (usersData?.items ?? []).map((m: { user: { id: string; name: string | null; email: string } }) => ({
+      id: m.user.id,
+      label: m.user.name ?? m.user.email,
+    })),
+    [usersData],
+  );
+
+  /** Build an AQL-like query string from active filters for saving */
+  const currentFilterQuery = useMemo(() => {
+    const parts: string[] = [];
+    if (searchQuery) parts.push(`text ~ "${searchQuery}"`);
+    if (filters.status.length > 0) parts.push(`status IN (${filters.status.join(",")})`);
+    if (filters.type.length > 0) parts.push(`type IN (${filters.type.join(",")})`);
+    if (filters.priority.length > 0) parts.push(`priority IN (${filters.priority.join(",")})`);
+    if (filters.assignee.length > 0) parts.push(`assignee IN (${filters.assignee.join(",")})`);
+    return parts.join(" AND ");
+  }, [searchQuery, filters]);
+
+  /** Load a saved filter query back into active filters */
+  const handleLoadFilter = useCallback((query: string) => {
+    setSearchQuery("");
+    const newFilters: ActiveFilters = { status: [], assignee: [], priority: [], type: [], label: [] };
+
+    const textMatch = query.match(/text ~ "([^"]+)"/);
+    if (textMatch) setSearchQuery(textMatch[1]!);
+
+    const extractIds = (field: string) => {
+      const re = new RegExp(`${field} IN \\(([^)]+)\\)`);
+      const match = query.match(re);
+      return match ? match[1]!.split(",").map((s) => s.trim()) : [];
+    };
+
+    newFilters.status = extractIds("status");
+    newFilters.type = extractIds("type");
+    newFilters.priority = extractIds("priority");
+    newFilters.assignee = extractIds("assignee");
+    setFilters(newFilters);
+  }, []);
 
   const handleCreateClick = useCallback(() => {
     setCreateOpen(true);
@@ -156,8 +227,21 @@ export default function IssuesPage() {
           />
         </div>
 
+        {/* Saved Filters */}
+        <SavedFilterBar
+          currentQuery={currentFilterQuery}
+          onLoadFilter={handleLoadFilter}
+        />
+
         {/* Filters */}
-        <IssueFilters filters={filters} onFiltersChange={setFilters} />
+        <IssueFilters
+          filters={filters}
+          onFiltersChange={setFilters}
+          statusOptions={statusOptions}
+          typeOptions={typeOptions}
+          priorityOptions={priorityOptions}
+          assigneeOptions={assigneeOptions}
+        />
 
         {/* Issues table */}
         {currentProjectId && (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Save } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
@@ -16,43 +16,27 @@ import {
   SelectValue,
 } from "@/shared/components/ui/select";
 import { Separator } from "@/shared/components/ui/separator";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/shared/components/ui/collapsible";
 import { trpc } from "@/shared/lib/trpc";
-
-/**
- * JSON schema field definition for dynamic asset forms.
- */
-interface SchemaField {
-  key: string;
-  label: string;
-  type: "string" | "number" | "boolean" | "select" | "textarea";
-  required?: boolean;
-  options?: string[];
-  placeholder?: string;
-}
+import { ASSET_STATUSES, COST_TYPES, DEPRECIATION_METHODS } from "../types/schemas";
 
 interface AssetFormProps {
-  /** Asset ID for editing, undefined for create mode */
   assetId?: string;
-  /** Pre-selected asset type ID */
   assetTypeId?: string;
-  /** Callback on successful save */
   onSave?: () => void;
-  /** Callback on cancel */
   onCancel?: () => void;
 }
 
 /**
- * AssetForm renders a dynamic create/edit form based on the asset type schema.
- *
- * @description The form fields are driven by the JSON schema of the selected
- * asset type. Includes core fields (name, type, status) plus dynamic attributes
- * based on the schema definition.
+ * AssetForm renders a dynamic create/edit form driven by typed attribute
+ * definitions from the database.
  *
  * @param props - AssetFormProps
  * @returns A dynamic asset form component
- *
- * @example
- * <AssetForm assetTypeId="server" onSave={handleSave} onCancel={handleCancel} />
  */
 export function AssetForm({
   assetId,
@@ -65,21 +49,40 @@ export function AssetForm({
 
   const isEdit = Boolean(assetId);
 
-  // Core form state
   const [name, setName] = useState("");
   const [selectedTypeId, setSelectedTypeId] = useState(assetTypeId ?? "");
-  const [status, setStatus] = useState("active");
+  const [status, setStatus] = useState("ordered");
   const [attributes, setAttributes] = useState<Record<string, unknown>>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [financialOpen, setFinancialOpen] = useState(false);
 
-  // tRPC mutations
+  // Financial fields
+  const [purchasePrice, setPurchasePrice] = useState<string>("");
+  const [purchaseDate, setPurchaseDate] = useState<string>("");
+  const [purchaseCurrency, setPurchaseCurrency] = useState("USD");
+  const [costCenter, setCostCenter] = useState("");
+  const [costType, setCostType] = useState<string>("");
+  const [depreciationMethod, setDepreciationMethod] = useState<string>("");
+  const [usefulLifeMonths, setUsefulLifeMonths] = useState<string>("");
+  const [salvageValue, setSalvageValue] = useState<string>("");
+  const [warrantyStart, setWarrantyStart] = useState<string>("");
+  const [warrantyEnd, setWarrantyEnd] = useState<string>("");
+  const [warrantyProvider, setWarrantyProvider] = useState("");
+
   const createMutation = trpc.asset.createAsset.useMutation();
   const updateMutation = trpc.asset.updateAsset.useMutation();
+  const setFinancialsMutation = trpc.asset.setAssetFinancials.useMutation();
 
-  // Load existing asset for editing
   const { data: existingAsset } = trpc.asset.getAsset.useQuery(
     { id: assetId ?? "" },
     { enabled: Boolean(assetId) },
+  );
+
+  const { data: assetTypes } = trpc.asset.listAssetTypes.useQuery();
+
+  const { data: attrDefinitions } = trpc.asset.listAttributeDefinitions.useQuery(
+    { assetTypeId: selectedTypeId },
+    { enabled: Boolean(selectedTypeId) },
   );
 
   useEffect(() => {
@@ -88,66 +91,42 @@ export function AssetForm({
       const data = existingAsset as any;
       setName(data.name ?? "");
       setSelectedTypeId(data.assetTypeId ?? "");
-      setStatus(data.status ?? "active");
+      setStatus(data.status ?? "ordered");
       setAttributes(data.attributes ?? {});
     }
   }, [existingAsset]);
 
-  // Derive schema fields from the asset type
-  // In production this would come from the asset type's schema definition
-  const schemaFields: SchemaField[] = useMemo(() => {
-    // Placeholder schema based on common asset fields
-    // Real implementation would fetch from asset type schema
-    const baseFields: SchemaField[] = [
-      {
-        key: "serialNumber",
-        label: t("serialNumber"),
-        type: "string",
-        placeholder: "SN-XXXXXXXX",
-      },
-      {
-        key: "manufacturer",
-        label: t("manufacturer"),
-        type: "string",
-        placeholder: t("manufacturerPlaceholder"),
-      },
-      {
-        key: "model",
-        label: t("model"),
-        type: "string",
-        placeholder: t("modelPlaceholder"),
-      },
-      {
-        key: "location",
-        label: t("location"),
-        type: "string",
-        placeholder: t("locationPlaceholder"),
-      },
-      {
-        key: "purchaseDate",
-        label: t("purchaseDate"),
-        type: "string",
-        placeholder: "YYYY-MM-DD",
-      },
-      {
-        key: "warrantyExpiry",
-        label: t("warrantyExpiry"),
-        type: "string",
-        placeholder: "YYYY-MM-DD",
-      },
-      {
-        key: "notes",
-        label: t("notes"),
-        type: "textarea",
-        placeholder: t("notesPlaceholder"),
-      },
-    ];
-    return baseFields;
-  }, [t]);
-
   const updateAttribute = useCallback((key: string, value: unknown) => {
     setAttributes((prev) => ({ ...prev, [key]: value }));
   }, []);
+
+  const saveFinancials = useCallback(async (targetAssetId: string) => {
+    const hasFinancialData =
+      purchasePrice || purchaseDate || costCenter || costType ||
+      depreciationMethod || usefulLifeMonths || salvageValue ||
+      warrantyStart || warrantyEnd || warrantyProvider;
+
+    if (!hasFinancialData) return;
+
+    await setFinancialsMutation.mutateAsync({
+      assetId: targetAssetId,
+      purchasePrice: purchasePrice ? Number(purchasePrice) : null,
+      purchaseCurrency: purchaseCurrency || "USD",
+      purchaseDate: purchaseDate ? new Date(purchaseDate) : null,
+      costCenter: costCenter || null,
+      costType: (costType as "capex" | "opex") || null,
+      depreciationMethod: (depreciationMethod as "straight_line" | "declining_balance") || null,
+      usefulLifeMonths: usefulLifeMonths ? Number(usefulLifeMonths) : null,
+      salvageValue: salvageValue ? Number(salvageValue) : null,
+      warrantyStart: warrantyStart ? new Date(warrantyStart) : null,
+      warrantyEnd: warrantyEnd ? new Date(warrantyEnd) : null,
+      warrantyProvider: warrantyProvider || null,
+    });
+  }, [
+    purchasePrice, purchaseDate, purchaseCurrency, costCenter, costType,
+    depreciationMethod, usefulLifeMonths, salvageValue, warrantyStart,
+    warrantyEnd, warrantyProvider, setFinancialsMutation,
+  ]);
 
   const handleSave = useCallback(async () => {
     setIsSaving(true);
@@ -156,16 +135,19 @@ export function AssetForm({
         await updateMutation.mutateAsync({
           id: assetId,
           name,
-          status,
+          status: status as typeof ASSET_STATUSES[number],
           attributes,
         });
+        await saveFinancials(assetId);
       } else {
-        await createMutation.mutateAsync({
+        const created = await createMutation.mutateAsync({
           assetTypeId: selectedTypeId,
           name,
-          status,
+          status: status as typeof ASSET_STATUSES[number],
           attributes,
         });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await saveFinancials((created as any).id);
       }
       onSave?.();
     } finally {
@@ -180,8 +162,11 @@ export function AssetForm({
     attributes,
     createMutation,
     updateMutation,
+    saveFinancials,
     onSave,
   ]);
+
+  const definitions = attrDefinitions ?? [];
 
   return (
     <div className="space-y-6">
@@ -211,10 +196,12 @@ export function AssetForm({
               <SelectValue placeholder={t("selectType")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="server">{t("typeServer")}</SelectItem>
-              <SelectItem value="laptop">{t("typeLaptop")}</SelectItem>
-              <SelectItem value="software">{t("typeSoftware")}</SelectItem>
-              <SelectItem value="network">{t("typeNetwork")}</SelectItem>
+              {(assetTypes ?? []).map((at) => (
+                <SelectItem key={at.id} value={at.id}>
+                  {at.icon && <span className="mr-1">{at.icon}</span>}
+                  {at.name}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -226,33 +213,171 @@ export function AssetForm({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="active">{t("statusActive")}</SelectItem>
-              <SelectItem value="inactive">{t("statusInactive")}</SelectItem>
-              <SelectItem value="maintenance">{t("statusMaintenance")}</SelectItem>
-              <SelectItem value="retired">{t("statusRetired")}</SelectItem>
+              {ASSET_STATUSES.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {t(`status_${s}` as Parameters<typeof t>[0])}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
       </div>
 
-      <Separator />
+      {/* Dynamic typed attribute fields */}
+      {definitions.length > 0 && (
+        <>
+          <Separator />
+          <div>
+            <h3 className="mb-4 text-sm font-semibold text-foreground">
+              {t("additionalProperties")}
+            </h3>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {definitions.map((def) => (
+                <DynamicField
+                  key={def.id}
+                  definition={def}
+                  value={attributes[def.name]}
+                  onChange={(val) => updateAttribute(def.name, val)}
+                />
+              ))}
+            </div>
+          </div>
+        </>
+      )}
 
-      {/* Dynamic schema-driven fields */}
-      <div>
-        <h3 className="mb-4 text-sm font-semibold text-foreground">
-          {t("additionalProperties")}
-        </h3>
-        <div className="grid gap-4 sm:grid-cols-2">
-          {schemaFields.map((field) => (
-            <DynamicField
-              key={field.key}
-              field={field}
-              value={attributes[field.key]}
-              onChange={(val) => updateAttribute(field.key, val)}
-            />
-          ))}
-        </div>
-      </div>
+      {/* Financial Details (collapsible) */}
+      <Separator />
+      <Collapsible open={financialOpen} onOpenChange={setFinancialOpen}>
+        <CollapsibleTrigger asChild>
+          <Button variant="ghost" className="w-full justify-start gap-2 font-semibold">
+            {financialOpen ? "−" : "+"} {t("financial_details")}
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="grid gap-4 px-1 pt-3 sm:grid-cols-2">
+            <div className="grid gap-2">
+              <Label htmlFor="purchase-price">{t("purchase_price")}</Label>
+              <Input
+                id="purchase-price"
+                type="number"
+                min="0"
+                step="0.01"
+                value={purchasePrice}
+                onChange={(e) => setPurchasePrice(e.target.value)}
+                placeholder="0.00"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="purchase-date">{t("purchase_date")}</Label>
+              <Input
+                id="purchase-date"
+                type="date"
+                value={purchaseDate}
+                onChange={(e) => setPurchaseDate(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="purchase-currency">{t("currency")}</Label>
+              <Input
+                id="purchase-currency"
+                value={purchaseCurrency}
+                onChange={(e) => setPurchaseCurrency(e.target.value)}
+                placeholder="USD"
+                maxLength={3}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="cost-center">{t("cost_center")}</Label>
+              <Input
+                id="cost-center"
+                value={costCenter}
+                onChange={(e) => setCostCenter(e.target.value)}
+                placeholder={t("cost_center_placeholder")}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>{t("cost_type")}</Label>
+              <Select value={costType} onValueChange={setCostType}>
+                <SelectTrigger aria-label={t("cost_type")}>
+                  <SelectValue placeholder={t("cost_type_select")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {COST_TYPES.map((ct) => (
+                    <SelectItem key={ct} value={ct}>
+                      {t(`cost_type_${ct}` as Parameters<typeof t>[0])}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>{t("depreciation_method")}</Label>
+              <Select value={depreciationMethod} onValueChange={setDepreciationMethod}>
+                <SelectTrigger aria-label={t("depreciation_method")}>
+                  <SelectValue placeholder={t("depreciation_select")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {DEPRECIATION_METHODS.map((dm) => (
+                    <SelectItem key={dm} value={dm}>
+                      {t(`depreciation_${dm}` as Parameters<typeof t>[0])}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="useful-life">{t("useful_life")}</Label>
+              <Input
+                id="useful-life"
+                type="number"
+                min="1"
+                value={usefulLifeMonths}
+                onChange={(e) => setUsefulLifeMonths(e.target.value)}
+                placeholder={t("useful_life_placeholder")}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="salvage-value">{t("salvage_value")}</Label>
+              <Input
+                id="salvage-value"
+                type="number"
+                min="0"
+                step="0.01"
+                value={salvageValue}
+                onChange={(e) => setSalvageValue(e.target.value)}
+                placeholder="0.00"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="warranty-start">{t("warranty_start")}</Label>
+              <Input
+                id="warranty-start"
+                type="date"
+                value={warrantyStart}
+                onChange={(e) => setWarrantyStart(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="warranty-end">{t("warranty_end")}</Label>
+              <Input
+                id="warranty-end"
+                type="date"
+                value={warrantyEnd}
+                onChange={(e) => setWarrantyEnd(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2 sm:col-span-2">
+              <Label htmlFor="warranty-provider">{t("warranty_provider")}</Label>
+              <Input
+                id="warranty-provider"
+                value={warrantyProvider}
+                onChange={(e) => setWarrantyProvider(e.target.value)}
+                placeholder={t("warranty_provider_placeholder")}
+              />
+            </div>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
 
       {/* Action buttons */}
       <div className="flex items-center gap-2 pt-2">
@@ -271,55 +396,71 @@ export function AssetForm({
 }
 
 /**
- * Renders a single form field based on the JSON schema type.
+ * Renders a form field based on the typed attribute definition.
  */
 function DynamicField({
-  field,
+  definition,
   value,
   onChange,
 }: {
-  field: SchemaField;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  definition: any;
   value: unknown;
   onChange: (value: unknown) => void;
 }) {
-  const fieldId = `asset-field-${field.key}`;
+  const fieldId = `asset-field-${definition.name}`;
 
-  switch (field.type) {
-    case "string":
-    case "number":
+  switch (definition.fieldType) {
+    case "text":
+    case "url":
+    case "ipAddress":
+    case "reference":
+    case "user":
       return (
         <div className="grid gap-2">
           <Label htmlFor={fieldId}>
-            {field.label}
-            {field.required && <span className="text-destructive"> *</span>}
+            {definition.label}
+            {definition.isRequired && <span className="text-destructive"> *</span>}
           </Label>
           <Input
             id={fieldId}
-            type={field.type === "number" ? "number" : "text"}
             value={String(value ?? "")}
-            onChange={(e) =>
-              onChange(
-                field.type === "number"
-                  ? Number(e.target.value)
-                  : e.target.value,
-              )
-            }
-            placeholder={field.placeholder}
-            required={field.required}
+            onChange={(e) => onChange(e.target.value)}
+            required={definition.isRequired}
           />
         </div>
       );
 
-    case "textarea":
+    case "number":
       return (
-        <div className="grid gap-2 sm:col-span-2">
-          <Label htmlFor={fieldId}>{field.label}</Label>
-          <Textarea
+        <div className="grid gap-2">
+          <Label htmlFor={fieldId}>
+            {definition.label}
+            {definition.isRequired && <span className="text-destructive"> *</span>}
+          </Label>
+          <Input
             id={fieldId}
+            type="number"
+            value={String(value ?? "")}
+            onChange={(e) => onChange(Number(e.target.value))}
+            required={definition.isRequired}
+          />
+        </div>
+      );
+
+    case "date":
+      return (
+        <div className="grid gap-2">
+          <Label htmlFor={fieldId}>
+            {definition.label}
+            {definition.isRequired && <span className="text-destructive"> *</span>}
+          </Label>
+          <Input
+            id={fieldId}
+            type="date"
             value={String(value ?? "")}
             onChange={(e) => onChange(e.target.value)}
-            placeholder={field.placeholder}
-            rows={3}
+            required={definition.isRequired}
           />
         </div>
       );
@@ -332,23 +473,24 @@ function DynamicField({
             checked={Boolean(value)}
             onCheckedChange={(checked) => onChange(checked)}
           />
-          <Label htmlFor={fieldId}>{field.label}</Label>
+          <Label htmlFor={fieldId}>{definition.label}</Label>
         </div>
       );
 
-    case "select":
+    case "select": {
+      const options: string[] = Array.isArray(definition.options) ? definition.options : [];
       return (
         <div className="grid gap-2">
-          <Label>{field.label}</Label>
+          <Label>{definition.label}</Label>
           <Select
             value={String(value ?? "")}
             onValueChange={onChange}
           >
-            <SelectTrigger aria-label={field.label}>
-              <SelectValue placeholder={field.placeholder} />
+            <SelectTrigger aria-label={definition.label}>
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {field.options?.map((opt) => (
+              {options.map((opt) => (
                 <SelectItem key={opt} value={opt}>
                   {opt}
                 </SelectItem>
@@ -357,8 +499,19 @@ function DynamicField({
           </Select>
         </div>
       );
+    }
 
     default:
-      return null;
+      return (
+        <div className="grid gap-2">
+          <Label htmlFor={fieldId}>{definition.label}</Label>
+          <Textarea
+            id={fieldId}
+            value={String(value ?? "")}
+            onChange={(e) => onChange(e.target.value)}
+            rows={2}
+          />
+        </div>
+      );
   }
 }

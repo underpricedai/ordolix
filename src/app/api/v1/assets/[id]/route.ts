@@ -11,21 +11,25 @@ import { z } from "zod";
 import { db } from "@/server/db";
 import { apiHandler } from "../../lib/handler";
 import * as res from "../../lib/response";
-import { type Prisma } from "@prisma/client";
+import { ASSET_STATUSES } from "@/modules/assets/types/schemas";
+import { updateAsset } from "@/modules/assets/server/asset-service";
 
 /** Input schema for updating an asset */
 const updateAssetInput = z.object({
   name: z.string().min(1).max(255).optional(),
-  status: z.string().optional(),
+  status: z.enum(ASSET_STATUSES).optional(),
   attributes: z.record(z.string(), z.unknown()).optional(),
+  assigneeId: z.string().nullable().optional(),
 });
 
 const ASSET_SELECT = {
   id: true,
+  assetTag: true,
   assetTypeId: true,
   name: true,
   status: true,
   attributes: true,
+  assigneeId: true,
   createdAt: true,
   updatedAt: true,
   assetType: {
@@ -97,26 +101,23 @@ export const PUT = apiHandler(async (request, ctx, params) => {
   const body = await request.json();
   const input = updateAssetInput.parse(body);
 
-  // Verify the asset exists and belongs to this organization
-  const existing = await db.asset.findFirst({
-    where: { id, organizationId: ctx.organizationId },
-    select: { id: true },
-  });
+  try {
+    const asset = await updateAsset(
+      db,
+      ctx.organizationId,
+      id,
+      input,
+      ctx.userId ?? "system",
+    );
 
-  if (!existing) {
-    return res.notFound("Asset", id, ctx.rateLimit);
+    return res.success(asset, { requestId: ctx.requestId }, ctx.rateLimit);
+  } catch (error) {
+    if (error instanceof Error && "statusCode" in error) {
+      const appError = error as { statusCode: number; message: string };
+      if (appError.statusCode === 404) {
+        return res.notFound("Asset", id, ctx.rateLimit);
+      }
+    }
+    throw error;
   }
-
-  const data: Prisma.AssetUpdateInput = {};
-  if (input.name !== undefined) data.name = input.name;
-  if (input.status !== undefined) data.status = input.status;
-  if (input.attributes !== undefined) data.attributes = input.attributes as unknown as Prisma.InputJsonValue;
-
-  const asset = await db.asset.update({
-    where: { id },
-    data,
-    select: ASSET_SELECT,
-  });
-
-  return res.success(asset, { requestId: ctx.requestId }, ctx.rateLimit);
 });

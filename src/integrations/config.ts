@@ -17,7 +17,9 @@ export type IntegrationProvider =
   | "sharepoint"
   | "salesforce"
   | "powerbi"
-  | "mcp";
+  | "mcp"
+  | "omnea"
+  | "sailpoint";
 
 /** Shape of the config column per provider */
 export interface IntegrationConfigData {

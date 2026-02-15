@@ -257,15 +257,91 @@ export function createTestCase(overrides: Record<string, unknown> = {}) {
   };
 }
 
+// ── Asset Type ──────────────────────────────────────────────────────────────
+
+export function createAssetType(overrides: Record<string, unknown> = {}) {
+  const id = nextId();
+  return {
+    id,
+    name: `AssetType ${id}`,
+    icon: null,
+    description: null,
+    color: null,
+    schema: {},
+    ...overrides,
+  };
+}
+
 // ── Asset ───────────────────────────────────────────────────────────────────
 
 export function createAsset(overrides: Record<string, unknown> = {}) {
   const id = nextId();
+  const num = counter;
   return {
     id,
+    assetTag: `AST-${String(num).padStart(5, "0")}`,
     name: `Asset ${id}`,
-    status: "active",
+    status: "ordered",
+    assigneeId: null,
     attributes: {},
+    ...overrides,
+  };
+}
+
+// ── Asset Attribute Definition ──────────────────────────────────────────────
+
+export function createAssetAttributeDefinition(overrides: Record<string, unknown> = {}) {
+  const id = nextId();
+  return {
+    id,
+    name: `attr_${counter}`,
+    label: `Attribute ${id}`,
+    fieldType: "text",
+    isRequired: false,
+    options: null,
+    defaultValue: null,
+    position: 0,
+    description: null,
+    ...overrides,
+  };
+}
+
+// ── Asset History ───────────────────────────────────────────────────────────
+
+export function createAssetHistory(overrides: Record<string, unknown> = {}) {
+  const id = nextId();
+  return {
+    id,
+    action: "created",
+    field: null,
+    oldValue: null,
+    newValue: null,
+    createdAt: new Date(),
+    ...overrides,
+  };
+}
+
+// ── Asset Financial ─────────────────────────────────────────────────────────
+
+export function createAssetFinancial(overrides: Record<string, unknown> = {}) {
+  const id = nextId();
+  return {
+    id,
+    purchasePrice: 1500.00,
+    purchaseCurrency: "USD",
+    purchaseDate: new Date("2024-01-15"),
+    costCenter: null,
+    costType: null,
+    depreciationMethod: "straight_line",
+    usefulLifeMonths: 36,
+    salvageValue: 200.00,
+    warrantyStart: new Date("2024-01-15"),
+    warrantyEnd: new Date("2027-01-15"),
+    warrantyProvider: null,
+    warrantyNotes: null,
+    maintenanceCost: null,
+    disposalValue: null,
+    disposalDate: null,
     ...overrides,
   };
 }
@@ -323,6 +399,236 @@ export function createSavedReport(overrides: Record<string, unknown> = {}) {
     chartType: "bar",
     filters: {},
     recipients: [],
+    ...overrides,
+  };
+}
+
+// ── Software License ─────────────────────────────────────────────────────────
+
+export function createSoftwareLicense(overrides: Record<string, unknown> = {}) {
+  const id = nextId();
+  return {
+    id,
+    name: `License ${id}`,
+    vendor: null,
+    licenseType: "subscription",
+    licenseKey: null,
+    totalEntitlements: 10,
+    purchasePrice: null,
+    currency: "USD",
+    purchaseDate: null,
+    renewalDate: null,
+    expirationDate: null,
+    autoRenew: false,
+    renewalCost: null,
+    notes: null,
+    status: "active",
+    ...overrides,
+  };
+}
+
+// ── Software License Allocation ──────────────────────────────────────────────
+
+export function createSoftwareLicenseAllocation(overrides: Record<string, unknown> = {}) {
+  const id = nextId();
+  return {
+    id,
+    allocatedAt: new Date(),
+    revokedAt: null,
+    ...overrides,
+  };
+}
+
+// ── Vendor ───────────────────────────────────────────────────────────────────
+
+export function createVendor(overrides: Record<string, unknown> = {}) {
+  const id = nextId();
+  return {
+    id,
+    name: `Vendor ${id}`,
+    contactName: null,
+    contactEmail: null,
+    contactPhone: null,
+    website: null,
+    address: null,
+    isActive: true,
+    ...overrides,
+  };
+}
+
+// ── Vendor Contract ──────────────────────────────────────────────────────────
+
+export function createVendorContract(overrides: Record<string, unknown> = {}) {
+  const id = nextId();
+  return {
+    id,
+    contractNumber: `CNT-${String(counter).padStart(5, "0")}`,
+    startDate: new Date(),
+    endDate: null,
+    value: null,
+    autoRenew: false,
+    status: "active",
+    attachmentUrl: null,
+    ...overrides,
+  };
+}
+
+// ── Procurement Request ─────────────────────────────────────────────────────
+
+export function createProcurementRequest(overrides: Record<string, unknown> = {}) {
+  const id = nextId();
+  const num = counter;
+  return {
+    id,
+    requestNumber: `PR-${String(num).padStart(5, "0")}`,
+    title: `Request ${id}`,
+    description: null,
+    estimatedCost: null,
+    quantity: 1,
+    costCenter: null,
+    urgency: "normal",
+    status: "draft",
+    ...overrides,
+  };
+}
+
+// ── Purchase Order ──────────────────────────────────────────────────────────
+
+export function createPurchaseOrder(overrides: Record<string, unknown> = {}) {
+  const id = nextId();
+  const num = counter;
+  return {
+    id,
+    orderNumber: `PO-${String(num).padStart(5, "0")}`,
+    totalAmount: null,
+    status: "ordered",
+    expectedDelivery: null,
+    invoiceNumber: null,
+    invoiceAmount: null,
+    invoiceDate: null,
+    ...overrides,
+  };
+}
+
+// ── Procurement Line Item ───────────────────────────────────────────────────
+
+export function createProcurementLineItem(overrides: Record<string, unknown> = {}) {
+  const id = nextId();
+  return {
+    id,
+    description: `Line Item ${id}`,
+    quantity: 1,
+    unitPrice: 100.00,
+    assetId: null,
+    ...overrides,
+  };
+}
+
+// ── Asset Import Job ────────────────────────────────────────────────────────
+
+export function createAssetImportJob(overrides: Record<string, unknown> = {}) {
+  const id = nextId();
+  return {
+    id,
+    fileName: `import-${id}.csv`,
+    status: "pending",
+    totalRows: 0,
+    processedRows: 0,
+    successCount: 0,
+    errorCount: 0,
+    errors: [],
+    columnMapping: {},
+    completedAt: null,
+    createdAt: new Date(),
+    ...overrides,
+  };
+}
+
+// ── Omnea Mapping ───────────────────────────────────────────────────────────
+
+export function createTestOmneaMapping(overrides: Record<string, unknown> = {}) {
+  const id = nextId();
+  const num = counter;
+  return {
+    id,
+    omneaRequestId: `omnea-req-${String(num).padStart(5, "0")}`,
+    procurementRequestId: null,
+    licenseId: null,
+    status: "pending",
+    lastSyncAt: null,
+    metadata: {},
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides,
+  };
+}
+
+// ── Survey Template ──────────────────────────────────────────────────────────
+
+export function createTestSurveyTemplate(overrides: Record<string, unknown> = {}) {
+  const id = nextId();
+  return {
+    id,
+    name: `Survey Template ${id}`,
+    description: null,
+    trigger: "issue_resolved",
+    isActive: true,
+    delayMinutes: 30,
+    questions: [],
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides,
+  };
+}
+
+// ── Survey Response ──────────────────────────────────────────────────────────
+
+export function createTestSurveyResponse(overrides: Record<string, unknown> = {}) {
+  const id = nextId();
+  return {
+    id,
+    issueId: null,
+    respondentId: null,
+    respondentEmail: null,
+    starRating: 4,
+    answers: {},
+    comment: null,
+    submittedAt: new Date(),
+    ...overrides,
+  };
+}
+
+// ── SailPoint Mapping ────────────────────────────────────────────────────────
+
+export function createTestSailPointMapping(overrides: Record<string, unknown> = {}) {
+  const id = nextId();
+  return {
+    id,
+    sailPointGroupId: `sp-grp-${String(counter).padStart(3, "0")}`,
+    sailPointGroupName: `SailPoint Group ${id}`,
+    targetType: "group",
+    targetId: `target-${id}`,
+    roleName: null,
+    syncDirection: "pull",
+    lastSyncAt: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides,
+  };
+}
+
+// ── SailPoint Sync Log ──────────────────────────────────────────────────────
+
+export function createTestSailPointSyncLog(overrides: Record<string, unknown> = {}) {
+  const id = nextId();
+  return {
+    id,
+    mappingId: null,
+    action: "group_synced",
+    details: {},
+    status: "success",
+    error: null,
+    createdAt: new Date(),
     ...overrides,
   };
 }

@@ -11,7 +11,8 @@ import { z } from "zod";
 import { db } from "@/server/db";
 import { apiHandler } from "../lib/handler";
 import * as res from "../lib/response";
-import { type Prisma } from "@prisma/client";
+import { ASSET_STATUSES } from "@/modules/assets/types/schemas";
+import { createAsset } from "@/modules/assets/server/asset-service";
 
 /** Query parameters for listing assets */
 const listQuerySchema = z.object({
@@ -26,16 +27,19 @@ const listQuerySchema = z.object({
 const createAssetInput = z.object({
   assetTypeId: z.string().min(1),
   name: z.string().min(1).max(255),
-  status: z.string().default("active"),
+  status: z.enum(ASSET_STATUSES).default("ordered"),
   attributes: z.record(z.string(), z.unknown()).default({}),
+  assigneeId: z.string().optional(),
 });
 
 const ASSET_SELECT = {
   id: true,
+  assetTag: true,
   assetTypeId: true,
   name: true,
   status: true,
   attributes: true,
+  assigneeId: true,
   createdAt: true,
   updatedAt: true,
   assetType: {
@@ -103,16 +107,12 @@ export const POST = apiHandler(async (request, ctx) => {
   const body = await request.json();
   const input = createAssetInput.parse(body);
 
-  const asset = await db.asset.create({
-    data: {
-      organizationId: ctx.organizationId,
-      assetTypeId: input.assetTypeId,
-      name: input.name,
-      status: input.status,
-      attributes: input.attributes as unknown as Prisma.InputJsonValue,
-    },
-    select: ASSET_SELECT,
-  });
+  const asset = await createAsset(
+    db,
+    ctx.organizationId,
+    input,
+    ctx.userId ?? "system",
+  );
 
   return res.created(asset, ctx.rateLimit);
 });

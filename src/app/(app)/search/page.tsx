@@ -496,7 +496,7 @@ export default function SearchPage() {
                           <TableRow key={result.id}>
                             <TableCell>
                               <Link
-                                href={`/issues/${result.id}`}
+                                href={`/issues/${result.key}`}
                                 className="font-medium text-primary hover:underline"
                               >
                                 {result.key}

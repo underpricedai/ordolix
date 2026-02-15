@@ -128,7 +128,7 @@ export function BoardCard({
         <Tooltip>
           <TooltipTrigger asChild>
             <Link
-              href={`/issues/${issue.id}`}
+              href={`/issues/${issue.key}`}
               className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg"
               aria-label={`${issue.key}: ${issue.summary}`}
               onClick={(e) => {

@@ -31,6 +31,11 @@ import { planRouter } from "@/modules/plans/server/plan-router";
 import { structureRouter } from "@/modules/structure/server/structure-router";
 import { budgetRouter } from "@/modules/budgets/server/budget-router";
 import { capacityRouter } from "@/modules/capacity/server/capacity-router";
+import { vendorRouter } from "@/modules/assets/server/vendor-router";
+import { procurementRouter } from "@/modules/assets/server/procurement-router";
+import { omneaRouter } from "@/integrations/omnea/omnea-router";
+import { sailpointRouter } from "@/integrations/sailpoint/sailpoint-router";
+import { surveyRouter } from "@/modules/surveys/server/survey-router";
 
 export const appRouter = createRouter({
   project: projectRouter,
@@ -65,6 +70,11 @@ export const appRouter = createRouter({
   structure: structureRouter,
   budget: budgetRouter,
   capacity: capacityRouter,
+  vendor: vendorRouter,
+  procurement: procurementRouter,
+  omnea: omneaRouter,
+  sailpoint: sailpointRouter,
+  survey: surveyRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -248,4 +248,41 @@ export const issueRouter = createRouter({
         input.id,
       );
     }),
+
+  // ── Filter Options (read-only for all users) ─────────────────────────
+
+  listIssueTypes: protectedProcedure
+    .query(async ({ ctx }) => {
+      return ctx.db.issueType.findMany({
+        where: { organizationId: ctx.organizationId },
+        select: { id: true, name: true, icon: true },
+        orderBy: { name: "asc" },
+      });
+    }),
+
+  listPriorities: protectedProcedure
+    .query(async ({ ctx }) => {
+      return ctx.db.priority.findMany({
+        where: { organizationId: ctx.organizationId },
+        select: { id: true, name: true, color: true },
+        orderBy: { rank: "asc" },
+      });
+    }),
+
+  listStatuses: protectedProcedure
+    .input(z.object({ projectId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      const workflow = await ctx.db.workflow.findFirst({
+        where: {
+          projects: { some: { id: input.projectId, organizationId: ctx.organizationId } },
+        },
+        include: {
+          workflowStatuses: {
+            include: { status: { select: { id: true, name: true, category: true } } },
+            orderBy: { position: "asc" },
+          },
+        },
+      });
+      return workflow?.workflowStatuses.map((ws) => ws.status) ?? [];
+    }),
 });

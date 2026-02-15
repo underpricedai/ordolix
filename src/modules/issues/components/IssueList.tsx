@@ -163,8 +163,8 @@ export function IssueList({
   }, []);
 
   const handleRowClick = useCallback(
-    (issueId: string) => {
-      router.push(`/issues/${issueId}`);
+    (issueKey: string) => {
+      router.push(`/issues/${issueKey}`);
     },
     [router],
   );
@@ -209,7 +209,7 @@ export function IssueList({
       header: t("columns.key"),
       cell: (issue) => (
         <Link
-          href={`/issues/${issue.id}`}
+          href={`/issues/${issue.key}`}
           className="font-medium text-primary hover:underline"
           onClick={(e) => e.stopPropagation()}
         >
@@ -291,14 +291,14 @@ export function IssueList({
           columns={columns}
           data={issues}
           rowKey={(issue: IssueRow) => issue.id}
-          onRowClick={(issue: IssueRow) => handleRowClick(issue.id)}
+          onRowClick={(issue: IssueRow) => handleRowClick(issue.key)}
           mobileCard={(issue: IssueRow) => (
             <Card className="p-3">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <Link
-                      href={`/issues/${issue.id}`}
+                      href={`/issues/${issue.key}`}
                       className="text-xs font-medium text-primary hover:underline"
                       onClick={(e) => e.stopPropagation()}
                     >

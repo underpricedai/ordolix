@@ -157,7 +157,7 @@ export function MyIssuesWidget({
                   <TableRow key={issue.id}>
                     <TableCell>
                       <Link
-                        href={`/issues/${issue.id}`}
+                        href={`/issues/${issue.key}`}
                         className="font-medium text-primary hover:underline"
                       >
                         {issue.key}

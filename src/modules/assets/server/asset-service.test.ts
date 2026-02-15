@@ -18,6 +18,16 @@ import {
   ConflictError,
 } from "@/server/lib/errors";
 
+// Mock dependent services
+vi.mock("./asset-attribute-service", () => ({
+  generateAssetTag: vi.fn().mockResolvedValue("AST-00001"),
+  validateAttributes: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("./asset-lifecycle-service", () => ({
+  logAssetHistory: vi.fn().mockResolvedValue({}),
+}));
+
 function createMockDb() {
   return {
     assetType: {
@@ -39,17 +49,23 @@ function createMockDb() {
       create: vi.fn(),
       delete: vi.fn(),
     },
+    assetHistory: {
+      create: vi.fn(),
+    },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any;
 }
 
 const ORG_ID = "org-1";
+const USER_ID = "user-1";
 
 const mockAssetType = {
   id: "at-1",
   organizationId: ORG_ID,
   name: "Server",
   icon: null,
+  description: null,
+  color: null,
   schema: {},
   createdAt: new Date(),
 };
@@ -58,8 +74,10 @@ const mockAsset = {
   id: "a-1",
   organizationId: ORG_ID,
   assetTypeId: "at-1",
+  assetTag: "AST-00001",
   name: "Server-001",
-  status: "active",
+  status: "ordered",
+  assigneeId: null,
   attributes: {},
   createdAt: new Date(),
   updatedAt: new Date(),
@@ -142,7 +160,6 @@ describe("updateAssetType", () => {
   });
 
   it("updates an asset type", async () => {
-    // First call: find the asset type being updated; second call: no conflict
     db.assetType.findFirst
       .mockResolvedValueOnce(mockAssetType)
       .mockResolvedValueOnce(null);
@@ -165,8 +182,6 @@ describe("updateAssetType", () => {
   });
 
   it("throws ConflictError if new name conflicts", async () => {
-    // First call: find the asset type being updated
-    // Second call: find conflict by name
     db.assetType.findFirst
       .mockResolvedValueOnce(mockAssetType)
       .mockResolvedValueOnce({ ...mockAssetType, id: "at-2", name: "Router" });
@@ -214,19 +229,20 @@ describe("createAsset", () => {
     db.asset.create.mockResolvedValue(mockAsset);
   });
 
-  it("creates an asset", async () => {
+  it("creates an asset with generated tag", async () => {
     const result = await createAsset(db, ORG_ID, {
       assetTypeId: "at-1",
       name: "Server-001",
-      status: "active",
+      status: "ordered",
       attributes: {},
-    });
+    }, USER_ID);
 
     expect(result.id).toBe("a-1");
     expect(db.asset.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         organizationId: ORG_ID,
         assetTypeId: "at-1",
+        assetTag: "AST-00001",
         name: "Server-001",
       }),
       include: { assetType: true },
@@ -240,9 +256,9 @@ describe("createAsset", () => {
       createAsset(db, ORG_ID, {
         assetTypeId: "nope",
         name: "Server-001",
-        status: "active",
+        status: "ordered",
         attributes: {},
-      }),
+      }, USER_ID),
     ).rejects.toThrow(NotFoundError);
   });
 });
@@ -256,12 +272,14 @@ describe("getAsset", () => {
     db = createMockDb();
     db.asset.findFirst.mockResolvedValue({
       ...mockAsset,
+      assignee: null,
       relationshipsFrom: [],
       relationshipsTo: [],
+      history: [],
     });
   });
 
-  it("returns asset with relationships", async () => {
+  it("returns asset with relationships and history", async () => {
     const result = await getAsset(db, ORG_ID, "a-1");
 
     expect(result.id).toBe("a-1");
@@ -269,8 +287,10 @@ describe("getAsset", () => {
       where: { id: "a-1", organizationId: ORG_ID },
       include: expect.objectContaining({
         assetType: true,
+        assignee: expect.any(Object),
         relationshipsFrom: expect.any(Object),
         relationshipsTo: expect.any(Object),
+        history: expect.any(Object),
       }),
     });
   });
@@ -307,7 +327,7 @@ describe("listAssets", () => {
   it("filters by assetTypeId and status", async () => {
     await listAssets(db, ORG_ID, {
       assetTypeId: "at-1",
-      status: "active",
+      status: "ordered",
       limit: 10,
     });
 
@@ -316,7 +336,7 @@ describe("listAssets", () => {
         where: {
           organizationId: ORG_ID,
           assetTypeId: "at-1",
-          status: "active",
+          status: "ordered",
         },
         take: 10,
       }),
@@ -335,8 +355,8 @@ describe("updateAsset", () => {
     db.asset.update.mockResolvedValue({ ...mockAsset, status: "retired" });
   });
 
-  it("updates an asset", async () => {
-    const result = await updateAsset(db, ORG_ID, "a-1", { status: "retired" });
+  it("updates an asset and logs history", async () => {
+    const result = await updateAsset(db, ORG_ID, "a-1", { status: "retired" }, USER_ID);
 
     expect(result.status).toBe("retired");
     expect(db.asset.update).toHaveBeenCalledWith({
@@ -350,7 +370,7 @@ describe("updateAsset", () => {
     db.asset.findFirst.mockResolvedValue(null);
 
     await expect(
-      updateAsset(db, ORG_ID, "nope", { status: "retired" }),
+      updateAsset(db, ORG_ID, "nope", { status: "retired" }, USER_ID),
     ).rejects.toThrow(NotFoundError);
   });
 });
@@ -366,8 +386,8 @@ describe("deleteAsset", () => {
     db.asset.delete.mockResolvedValue(mockAsset);
   });
 
-  it("deletes an asset", async () => {
-    await deleteAsset(db, ORG_ID, "a-1");
+  it("deletes an asset and logs history", async () => {
+    await deleteAsset(db, ORG_ID, "a-1", USER_ID);
 
     expect(db.asset.delete).toHaveBeenCalledWith({ where: { id: "a-1" } });
   });
@@ -375,7 +395,7 @@ describe("deleteAsset", () => {
   it("throws NotFoundError if asset not found", async () => {
     db.asset.findFirst.mockResolvedValue(null);
 
-    await expect(deleteAsset(db, ORG_ID, "nope")).rejects.toThrow(
+    await expect(deleteAsset(db, ORG_ID, "nope", USER_ID)).rejects.toThrow(
       NotFoundError,
     );
   });
@@ -397,7 +417,7 @@ describe("addRelationship", () => {
       fromAssetId: "a-1",
       toAssetId: "a-2",
       relationshipType: "depends_on",
-    });
+    }, USER_ID);
 
     expect(result.id).toBe("rel-1");
     expect(db.assetRelationship.create).toHaveBeenCalledWith({
@@ -416,7 +436,7 @@ describe("addRelationship", () => {
         fromAssetId: "a-1",
         toAssetId: "a-1",
         relationshipType: "depends_on",
-      }),
+      }, USER_ID),
     ).rejects.toThrow(ValidationError);
   });
 
@@ -428,7 +448,7 @@ describe("addRelationship", () => {
         fromAssetId: "nope",
         toAssetId: "a-2",
         relationshipType: "depends_on",
-      }),
+      }, USER_ID),
     ).rejects.toThrow(NotFoundError);
   });
 
@@ -440,7 +460,7 @@ describe("addRelationship", () => {
         fromAssetId: "a-1",
         toAssetId: "nope",
         relationshipType: "depends_on",
-      }),
+      }, USER_ID),
     ).rejects.toThrow(NotFoundError);
   });
 });
@@ -456,8 +476,8 @@ describe("removeRelationship", () => {
     db.assetRelationship.delete.mockResolvedValue(mockRelationship);
   });
 
-  it("removes a relationship", async () => {
-    await removeRelationship(db, ORG_ID, "rel-1");
+  it("removes a relationship and logs history", async () => {
+    await removeRelationship(db, ORG_ID, "rel-1", USER_ID);
 
     expect(db.assetRelationship.delete).toHaveBeenCalledWith({
       where: { id: "rel-1" },
@@ -467,7 +487,7 @@ describe("removeRelationship", () => {
   it("throws NotFoundError if relationship not found", async () => {
     db.assetRelationship.findFirst.mockResolvedValue(null);
 
-    await expect(removeRelationship(db, ORG_ID, "nope")).rejects.toThrow(
+    await expect(removeRelationship(db, ORG_ID, "nope", USER_ID)).rejects.toThrow(
       NotFoundError,
     );
   });

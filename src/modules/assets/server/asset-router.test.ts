@@ -15,6 +15,21 @@ vi.mock("./asset-service", () => ({
   removeRelationship: vi.fn(),
 }));
 
+vi.mock("./asset-attribute-service", () => ({
+  listAttributeDefinitions: vi.fn(),
+  createAttributeDefinition: vi.fn(),
+  updateAttributeDefinition: vi.fn(),
+  deleteAttributeDefinition: vi.fn(),
+  reorderAttributes: vi.fn(),
+}));
+
+vi.mock("./asset-lifecycle-service", () => ({
+  listLifecycleTransitions: vi.fn(),
+  setLifecycleTransitions: vi.fn(),
+  transitionAssetStatus: vi.fn(),
+  getAssetHistory: vi.fn(),
+}));
+
 vi.mock("@/server/auth", () => ({ auth: vi.fn().mockResolvedValue(null) }));
 vi.mock("@/server/db", () => ({ db: {} }));
 vi.mock("@/server/lib/logger", () => ({
@@ -38,6 +53,8 @@ vi.mock("@/modules/permissions/server/permission-checker", () => ({
 }));
 
 import * as assetService from "./asset-service";
+import * as attributeService from "./asset-attribute-service";
+import * as lifecycleService from "./asset-lifecycle-service";
 import { createRouter } from "@/server/trpc/init";
 import { assetRouter } from "./asset-router";
 import type { TRPCContext } from "@/server/trpc/init";
@@ -90,6 +107,8 @@ describe("assetRouter", () => {
     ).rejects.toThrow(TRPCError);
   });
 
+  // ── Asset Type Procedures ──────────────────────────────────────────────
+
   it("createAssetType calls service", async () => {
     vi.mocked(assetService.createAssetType).mockResolvedValue({} as never);
     const trpc = caller(createAuthenticatedContext());
@@ -111,7 +130,9 @@ describe("assetRouter", () => {
     );
   });
 
-  it("createAsset calls service", async () => {
+  // ── Asset Procedures ───────────────────────────────────────────────────
+
+  it("createAsset calls service with userId", async () => {
     vi.mocked(assetService.createAsset).mockResolvedValue({} as never);
     const trpc = caller(createAuthenticatedContext());
     await trpc.asset.createAsset({ assetTypeId: "at-1", name: "Server-001" });
@@ -119,6 +140,7 @@ describe("assetRouter", () => {
     expect(assetService.createAsset).toHaveBeenCalledWith(
       expect.anything(), "org-1",
       expect.objectContaining({ assetTypeId: "at-1", name: "Server-001" }),
+      "user-1",
     );
   });
 
@@ -132,7 +154,19 @@ describe("assetRouter", () => {
     );
   });
 
-  it("addRelationship calls service", async () => {
+  it("deleteAsset calls service with userId", async () => {
+    vi.mocked(assetService.deleteAsset).mockResolvedValue({} as never);
+    const trpc = caller(createAuthenticatedContext());
+    await trpc.asset.deleteAsset({ id: "a-1" });
+
+    expect(assetService.deleteAsset).toHaveBeenCalledWith(
+      expect.anything(), "org-1", "a-1", "user-1",
+    );
+  });
+
+  // ── Relationship Procedures ────────────────────────────────────────────
+
+  it("addRelationship calls service with userId", async () => {
     vi.mocked(assetService.addRelationship).mockResolvedValue({} as never);
     const trpc = caller(createAuthenticatedContext());
     await trpc.asset.addRelationship({
@@ -148,16 +182,65 @@ describe("assetRouter", () => {
         toAssetId: "a-2",
         relationshipType: "depends_on",
       }),
+      "user-1",
     );
   });
 
-  it("removeRelationship calls service", async () => {
-    vi.mocked(assetService.removeRelationship).mockResolvedValue({} as never);
-    const trpc = caller(createAuthenticatedContext());
-    await trpc.asset.removeRelationship({ id: "rel-1" });
+  // ── Attribute Definition Procedures ────────────────────────────────────
 
-    expect(assetService.removeRelationship).toHaveBeenCalledWith(
-      expect.anything(), "org-1", "rel-1",
+  it("listAttributeDefinitions calls service", async () => {
+    vi.mocked(attributeService.listAttributeDefinitions).mockResolvedValue([] as never);
+    const trpc = caller(createAuthenticatedContext());
+    await trpc.asset.listAttributeDefinitions({ assetTypeId: "at-1" });
+
+    expect(attributeService.listAttributeDefinitions).toHaveBeenCalledWith(
+      expect.anything(), "org-1", "at-1",
+    );
+  });
+
+  it("createAttributeDefinition calls service", async () => {
+    vi.mocked(attributeService.createAttributeDefinition).mockResolvedValue({} as never);
+    const trpc = caller(createAuthenticatedContext());
+    await trpc.asset.createAttributeDefinition({
+      assetTypeId: "at-1",
+      name: "serialNumber",
+      label: "Serial Number",
+      fieldType: "text",
+    });
+
+    expect(attributeService.createAttributeDefinition).toHaveBeenCalledWith(
+      expect.anything(), "org-1",
+      expect.objectContaining({
+        assetTypeId: "at-1",
+        name: "serialNumber",
+        fieldType: "text",
+      }),
+    );
+  });
+
+  // ── Lifecycle Procedures ───────────────────────────────────────────────
+
+  it("transitionAssetStatus calls service with userId", async () => {
+    vi.mocked(lifecycleService.transitionAssetStatus).mockResolvedValue({} as never);
+    const trpc = caller(createAuthenticatedContext());
+    await trpc.asset.transitionAssetStatus({
+      assetId: "a-1",
+      toStatus: "received",
+    });
+
+    expect(lifecycleService.transitionAssetStatus).toHaveBeenCalledWith(
+      expect.anything(), "org-1", "a-1", "received", "user-1",
+    );
+  });
+
+  it("getAssetHistory calls service", async () => {
+    vi.mocked(lifecycleService.getAssetHistory).mockResolvedValue([] as never);
+    const trpc = caller(createAuthenticatedContext());
+    await trpc.asset.getAssetHistory({ assetId: "a-1" });
+
+    expect(lifecycleService.getAssetHistory).toHaveBeenCalledWith(
+      expect.anything(), "org-1",
+      expect.objectContaining({ assetId: "a-1" }),
     );
   });
 });

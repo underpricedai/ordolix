@@ -156,7 +156,7 @@ export function IssueDetail({ issueKey, className }: IssueDetailProps) {
                   {t("parent")}
                 </h2>
                 <Link
-                  href={`/issues/${issue.parent.id}`}
+                  href={`/issues/${issue.parent.key}`}
                   className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
                 >
                   <span className="font-medium">{issue.parent.key}</span>
