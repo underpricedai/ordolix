@@ -1616,8 +1616,12 @@
       "sprintReportDescription": "Summary of completed and incomplete work per sprint.",
       "createdVsResolved": "Created vs Resolved",
       "createdVsResolvedDescription": "Compare issue creation rate with resolution rate.",
+      "noData": "No project data available yet.",
       "noReports": "No report data available",
-      "noReportsDescription": "Reports will populate as your project accumulates data."
+      "noReportsDescription": "Reports will populate as your project accumulates data.",
+      "sprintReportPlaceholder": "Sprint report will be available after completing your first sprint.",
+      "createdVsResolvedPlaceholder": "Created vs Resolved chart will populate as issues are tracked.",
+      "unknownReportType": "Unknown report type."
     },
     "queue": {
       "title": "Queue",
