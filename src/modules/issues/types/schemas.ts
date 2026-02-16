@@ -141,3 +141,39 @@ export const listAttachmentsInput = z.object({
 export const deleteAttachmentInput = z.object({
   id: z.string().min(1),
 });
+
+// ── Bulk Operations ───────────────────────────────────────────────────────
+
+export const bulkUpdateInput = z.object({
+  issueIds: z.array(z.string()).min(1).max(100),
+  updates: z.object({
+    statusId: z.string().optional(),
+    priorityId: z.string().optional(),
+    assigneeId: z.string().nullable().optional(),
+    sprintId: z.string().nullable().optional(),
+    labels: z.array(z.string()).optional(),
+  }),
+});
+
+export type BulkUpdateInput = z.infer<typeof bulkUpdateInput>;
+
+export const bulkDeleteInput = z.object({
+  issueIds: z.array(z.string()).min(1).max(100),
+});
+
+export type BulkDeleteInput = z.infer<typeof bulkDeleteInput>;
+
+export const bulkMoveToSprintInput = z.object({
+  issueIds: z.array(z.string()).min(1).max(100),
+  sprintId: z.string().nullable(),
+});
+
+export type BulkMoveToSprintInput = z.infer<typeof bulkMoveToSprintInput>;
+
+export const cloneIssueInput = z.object({
+  issueId: z.string(),
+  includeSummaryPrefix: z.boolean().default(true),
+  includeSubtasks: z.boolean().default(false),
+});
+
+export type CloneIssueInput = z.infer<typeof cloneIssueInput>;

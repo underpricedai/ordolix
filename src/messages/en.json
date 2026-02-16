@@ -226,7 +226,36 @@
       "history": "History",
       "attachments": "Attachments",
       "development": "Development"
+    },
+    "bulk": {
+      "selected": "{count, plural, =1 {1 issue selected} other {# issues selected}}",
+      "changeStatus": "Change Status",
+      "changePriority": "Change Priority",
+      "assignTo": "Assign To",
+      "moveToSprint": "Move to Sprint",
+      "delete": "Delete",
+      "clearSelection": "Clear",
+      "confirmDelete": "Are you sure you want to delete {count, plural, =1 {1 issue} other {# issues}}? This cannot be undone.",
+      "updateSuccess": "Updated {count, plural, =1 {1 issue} other {# issues}}",
+      "deleteSuccess": "Deleted {count, plural, =1 {1 issue} other {# issues}}",
+      "moveSuccess": "Moved {count, plural, =1 {1 issue} other {# issues}} to sprint",
+      "cloneIssue": "Clone Issue",
+      "cloneSuccess": "Issue cloned successfully",
+      "removeFromSprint": "Remove from Sprint",
+      "noSprint": "Backlog (No Sprint)",
+      "unassigned": "Unassigned"
     }
+  },
+  "issuePeek": {
+    "openFullPage": "Open full page",
+    "copyKey": "Copy issue key",
+    "keyCopied": "Issue key copied!",
+    "recentComments": "Recent Comments",
+    "viewAllComments": "View all comments",
+    "recentActivity": "Recent Activity",
+    "viewFullHistory": "View full history",
+    "noComments": "No comments yet",
+    "noActivity": "No activity yet"
   },
   "priorities": {
     "highest": "Highest",
@@ -2054,5 +2083,40 @@
       "licenseIdLabel": "License ID",
       "licenseIdPlaceholder": "Enter the Ordolix license ID"
     }
+  },
+  "commandPalette": {
+    "placeholder": "Search issues, projects, and commands...",
+    "noResults": "No results found.",
+    "groups": {
+      "issues": "Issues",
+      "projects": "Projects",
+      "navigation": "Navigation",
+      "actions": "Actions"
+    },
+    "actions": {
+      "createIssue": "Create Issue",
+      "createProject": "Create Project",
+      "toggleTheme": "Toggle Dark Mode",
+      "goToAdmin": "Go to Admin",
+      "openSearch": "Advanced Search"
+    }
+  },
+  "shortcuts": {
+    "title": "Keyboard Shortcuts",
+    "categories": {
+      "navigation": "Navigation",
+      "actions": "Actions",
+      "views": "Views"
+    },
+    "createIssue": "Create issue",
+    "goToBoard": "Go to board",
+    "goToDashboard": "Go to dashboard",
+    "goToSearch": "Go to search",
+    "goToProjects": "Go to projects",
+    "goToIssues": "Go to issues",
+    "goToTimeline": "Go to timeline",
+    "focusSearch": "Focus search",
+    "showShortcuts": "Show shortcuts",
+    "closeDialog": "Close dialog"
   }
 }

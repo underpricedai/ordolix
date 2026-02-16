@@ -1,13 +1,13 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Bell, Search, Moon, Sun, LogOut, User, Settings, X } from "lucide-react";
+import { Bell, Search, Moon, Sun, LogOut, User, Settings } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { useCallback, useState } from "react";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
+import { openCommandPalette } from "@/shared/components/command-palette";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui/avatar";
 import {
   DropdownMenu,
@@ -28,12 +28,6 @@ import {
 } from "@/shared/components/ui/breadcrumb";
 import { Separator } from "@/shared/components/ui/separator";
 import { SidebarTrigger } from "@/shared/components/ui/sidebar";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/shared/components/ui/sheet";
 import { ActionTooltip } from "@/shared/components/action-tooltip";
 import { trpc } from "@/shared/lib/trpc";
 
@@ -64,8 +58,6 @@ interface AppHeaderProps {
 export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
   const t = useTranslations("header");
   const tc = useTranslations("common");
-  const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState("");
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     if (typeof document !== "undefined") {
       return document.documentElement.classList.contains("dark") ? "dark" : "light";
@@ -97,7 +89,6 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
     document.documentElement.classList.toggle("dark", next === "dark");
   }, [theme]);
 
-  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const displayCount = unreadCount ?? 0;
 
   return (
@@ -131,9 +122,9 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
         )}
       </div>
 
-      {/* Center: Global search */}
+      {/* Center: Global search — clicks open the command palette */}
       <div className="mx-auto hidden w-full max-w-md md:block">
-        <div className="relative">
+        <div className="relative cursor-pointer" onClick={openCommandPalette} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") openCommandPalette(); }}>
           <Search
             className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
             aria-hidden="true"
@@ -141,65 +132,29 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
           <Input
             type="search"
             placeholder={t("searchPlaceholder")}
-            className="h-9 pl-9 pr-4"
+            className="h-9 pl-9 pr-12 pointer-events-none"
             aria-label={tc("search")}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && searchQuery.trim()) {
-                router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
-              }
-            }}
+            readOnly
+            tabIndex={-1}
           />
+          <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
+            <span className="text-xs">{typeof navigator !== "undefined" && /Mac|iPod|iPhone|iPad/.test(navigator.platform) ? "\u2318" : "Ctrl"}</span>K
+          </kbd>
         </div>
       </div>
 
       {/* Right: Actions */}
       <div className="flex shrink-0 items-center gap-1">
-        {/* Mobile search button */}
+        {/* Mobile search button — opens command palette */}
         <Button
           variant="ghost"
           size="icon"
           className="size-9 md:hidden"
           aria-label={tc("search")}
-          onClick={() => setMobileSearchOpen(true)}
+          onClick={openCommandPalette}
         >
           <Search className="size-4" aria-hidden="true" />
         </Button>
-
-        {/* Mobile search sheet */}
-        <Sheet open={mobileSearchOpen} onOpenChange={setMobileSearchOpen}>
-          <SheetContent side="top" className="h-auto">
-            <SheetHeader>
-              <SheetTitle>{tc("search")}</SheetTitle>
-            </SheetHeader>
-            <div className="px-4 pb-4">
-              <div className="relative">
-                <Search
-                  className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-                  aria-hidden="true"
-                />
-                <Input
-                  type="search"
-                  placeholder={t("searchPlaceholder")}
-                  className="h-10 pl-9 pr-4"
-                  aria-label={tc("search")}
-                  autoFocus
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && searchQuery.trim()) {
-                      setMobileSearchOpen(false);
-                      router.push(
-                        `/search?q=${encodeURIComponent(searchQuery.trim())}`,
-                      );
-                    }
-                  }}
-                />
-              </div>
-            </div>
-          </SheetContent>
-        </Sheet>
 
         {/* Theme toggle */}
         <ActionTooltip content={t("toggleTheme")}>

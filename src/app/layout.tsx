@@ -18,14 +18,15 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Ordolix",
-  description: "Enterprise project and issue tracking platform — Order from Chaos",
+  description: "Enterprise Project & Issue Tracking Platform — Order from Chaos",
   manifest: "/manifest.json",
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },
-      { url: "/logo-icon.png", type: "image/png", sizes: "192x192" },
+      { url: "/icons/icon-192.png", type: "image/png", sizes: "192x192" },
+      { url: "/icons/icon-512.png", type: "image/png", sizes: "512x512" },
     ],
-    apple: "/logo-icon.png",
+    apple: "/icons/apple-touch-icon.png",
   },
   appleWebApp: {
     capable: true,
@@ -41,7 +42,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#1A6B7E",
+  themeColor: "#1a365d",
 };
 
 export default async function RootLayout({
@@ -55,7 +56,7 @@ export default async function RootLayout({
   return (
     <html lang={locale} suppressHydrationWarning>
       <head>
-        <link rel="apple-touch-icon" href="/logo-icon.png" />
+        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}

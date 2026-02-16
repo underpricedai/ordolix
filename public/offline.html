@@ -3,20 +3,32 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#1a365d" />
   <title>Ordolix - Offline</title>
   <style>
-    body { font-family: system-ui, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #fafafa; color: #171717; }
-    .container { text-align: center; padding: 2rem; }
-    h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
-    p { color: #737373; margin-bottom: 1.5rem; }
-    button { background: #171717; color: #fafafa; border: none; padding: 0.75rem 1.5rem; border-radius: 0.5rem; cursor: pointer; font-size: 0.875rem; }
-    @media (prefers-color-scheme: dark) { body { background: #171717; color: #fafafa; } p { color: #a3a3a3; } button { background: #fafafa; color: #171717; } }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#fafafa;color:#171717}
+    .container{text-align:center;padding:2rem;max-width:28rem}
+    .logo{width:64px;height:64px;margin:0 auto 1.5rem}
+    h1{font-size:1.5rem;font-weight:600;margin-bottom:0.5rem;color:#1a365d}
+    p{color:#737373;margin-bottom:1.5rem;line-height:1.5}
+    button{background:#1a365d;color:#fff;border:none;padding:0.75rem 1.5rem;border-radius:0.5rem;cursor:pointer;font-size:0.875rem;font-weight:500;transition:background 0.15s ease}
+    button:hover{background:#2a4a7f}
+    button:focus-visible{outline:2px solid #1a365d;outline-offset:2px}
+    @media(prefers-color-scheme:dark){
+      body{background:#0a0a0a;color:#fafafa}
+      h1{color:#93b4d8}
+      p{color:#a3a3a3}
+      button{background:#2a4a7f;color:#fafafa}
+      button:hover{background:#3a5a8f}
+    }
   </style>
 </head>
 <body>
   <div class="container">
+    <img class="logo" src="/icons/icon-192.png" alt="Ordolix" width="64" height="64" />
     <h1>You're offline</h1>
-    <p>Check your internet connection and try again.</p>
+    <p>Ordolix requires an internet connection. Please check your network and try again.</p>
     <button onclick="location.reload()">Retry</button>
   </div>
 </body>

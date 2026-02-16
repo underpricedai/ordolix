@@ -12,7 +12,7 @@ import { EmptyState } from "@/shared/components/empty-state";
 import { trpc } from "@/shared/lib/trpc";
 import { BoardColumn, type BoardColumnData } from "./BoardColumn";
 import type { BoardCardIssue } from "./BoardCard";
-import { IssueEditDialog } from "@/modules/issues/components/IssueEditDialog";
+import { usePeek } from "@/shared/providers/peek-provider";
 
 interface BoardViewProps {
   /** ID of the board to display */
@@ -44,9 +44,9 @@ export function BoardView({
 }: BoardViewProps) {
   const t = useTranslations("boards");
   const tc = useTranslations("common");
+  const { openPeek } = usePeek();
   const [showFilters, setShowFilters] = useState(false);
   const [draggingIssue, setDraggingIssue] = useState<string | null>(null);
-  const [editIssueId, setEditIssueId] = useState<string | null>(null);
 
   const {
     data: boardData,
@@ -100,9 +100,9 @@ export function BoardView({
 
   const handleCardClick = useCallback(
     (issue: BoardCardIssue) => {
-      setEditIssueId(issue.id);
+      openPeek(issue.id);
     },
-    [],
+    [openPeek],
   );
 
   const columns: BoardColumnData[] = boardData?.columns?.map((col) => ({
@@ -234,17 +234,6 @@ export function BoardView({
         </div>
       )}
 
-      {/* Issue edit dialog */}
-      {editIssueId && (
-        <IssueEditDialog
-          open={!!editIssueId}
-          onOpenChange={(open) => {
-            if (!open) setEditIssueId(null);
-          }}
-          issueId={editIssueId}
-          onSuccess={() => void refetch()}
-        />
-      )}
     </div>
   );
 }

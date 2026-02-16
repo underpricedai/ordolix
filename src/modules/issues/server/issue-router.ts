@@ -18,8 +18,13 @@ import {
   getLinksInput,
   listAttachmentsInput,
   deleteAttachmentInput,
+  bulkUpdateInput,
+  bulkDeleteInput,
+  bulkMoveToSprintInput,
+  cloneIssueInput,
 } from "../types/schemas";
 import * as issueService from "./issue-service";
+import * as bulkOps from "./bulk-operations-service";
 
 export const issueRouter = createRouter({
   create: requirePermission("CREATE_ISSUES")
@@ -290,5 +295,55 @@ export const issueRouter = createRouter({
         },
       });
       return workflow?.workflowStatuses.map((ws) => ws.status) ?? [];
+    }),
+
+  // ── Bulk Operations ──────────────────────────────────────────────────────
+
+  bulkUpdate: protectedProcedure
+    .input(bulkUpdateInput)
+    .mutation(async ({ ctx, input }) => {
+      return bulkOps.bulkUpdateIssues(
+        ctx.db,
+        ctx.organizationId,
+        ctx.session.user!.id!,
+        input.issueIds,
+        input.updates,
+      );
+    }),
+
+  bulkDelete: protectedProcedure
+    .input(bulkDeleteInput)
+    .mutation(async ({ ctx, input }) => {
+      return bulkOps.bulkDeleteIssues(
+        ctx.db,
+        ctx.organizationId,
+        input.issueIds,
+      );
+    }),
+
+  bulkMoveToSprint: protectedProcedure
+    .input(bulkMoveToSprintInput)
+    .mutation(async ({ ctx, input }) => {
+      return bulkOps.bulkMoveToSprint(
+        ctx.db,
+        ctx.organizationId,
+        input.issueIds,
+        input.sprintId,
+      );
+    }),
+
+  clone: protectedProcedure
+    .input(cloneIssueInput)
+    .mutation(async ({ ctx, input }) => {
+      return bulkOps.cloneIssue(
+        ctx.db,
+        ctx.organizationId,
+        ctx.session.user!.id!,
+        input.issueId,
+        {
+          includeSummaryPrefix: input.includeSummaryPrefix,
+          includeSubtasks: input.includeSubtasks,
+        },
+      );
     }),
 });

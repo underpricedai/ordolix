@@ -1,10 +1,15 @@
 /**
- * Registers the service worker for PWA support.
+ * Service Worker registration for PWA support.
  *
- * @description Registers /sw.js in production environments.
- * Call this once on app mount (e.g., in root layout).
+ * @description Registers /sw.js in production environments only.
+ * In development, service workers are skipped to avoid caching issues.
+ * Call this once on app mount (e.g., in root layout via ServiceWorkerRegistrar).
+ *
+ * @example
+ *   // In a client component:
+ *   useEffect(() => { registerSW(); }, []);
  */
-export function registerSW() {
+export function registerSW(): void {
   if (
     typeof window !== "undefined" &&
     "serviceWorker" in navigator &&
@@ -17,3 +22,6 @@ export function registerSW() {
     });
   }
 }
+
+/** Alias for {@link registerSW}. */
+export const registerServiceWorker = registerSW;

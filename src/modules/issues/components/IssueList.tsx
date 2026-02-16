@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useRef } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { Inbox, ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { Card } from "@/shared/components/ui/card";
+import { Checkbox } from "@/shared/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -22,7 +23,9 @@ import { EmptyState } from "@/shared/components/empty-state";
 import { ResponsiveTable, type ResponsiveColumnDef } from "@/shared/components/responsive-table";
 import { trpc } from "@/shared/lib/trpc";
 import { cn } from "@/shared/lib/utils";
-import { IssueEditDialog } from "./IssueEditDialog";
+import { usePeek } from "@/shared/providers/peek-provider";
+import { useRowSelection } from "@/shared/hooks/use-row-selection";
+import { BulkActionBar } from "./BulkActionBar";
 
 /**
  * Valid sort field options for the issue list.
@@ -99,8 +102,21 @@ export function IssueList({
 }: IssueListProps) {
   const t = useTranslations("issues");
   const tc = useTranslations("common");
+  const { openPeek } = usePeek();
 
-  const [editIssueId, setEditIssueId] = useState<string | null>(null);
+  const {
+    selectedIds,
+    isSelected,
+    toggle: toggleSelection,
+    selectAll,
+    clearSelection,
+    selectRange,
+    selectedCount,
+  } = useRowSelection();
+
+  /** Track last clicked index for shift+click range selection */
+  const lastClickedIndex = useRef<number | null>(null);
+
   const [sortBy, setSortBy] = useState<SortField>("createdAt");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
   const [cursor, setCursor] = useState<string | undefined>(undefined);
@@ -164,9 +180,34 @@ export function IssueList({
 
   const handleRowClick = useCallback(
     (issue: IssueRow) => {
-      setEditIssueId(issue.id);
+      openPeek(issue.id);
     },
-    [],
+    [openPeek],
+  );
+
+  const allIssueIds = useMemo(() => issues.map((i: IssueRow) => i.id as string), [issues]);
+
+  const allSelected = allIssueIds.length > 0 && allIssueIds.every((id: string) => isSelected(id));
+  const someSelected = allIssueIds.some((id: string) => isSelected(id)) && !allSelected;
+
+  const handleSelectAll = useCallback(() => {
+    if (allSelected) {
+      clearSelection();
+    } else {
+      selectAll(allIssueIds);
+    }
+  }, [allSelected, allIssueIds, clearSelection, selectAll]);
+
+  const handleCheckboxClick = useCallback(
+    (id: string, index: number, shiftKey: boolean) => {
+      if (shiftKey && lastClickedIndex.current !== null) {
+        selectRange(allIssueIds, lastClickedIndex.current, index);
+      } else {
+        toggleSelection(id);
+      }
+      lastClickedIndex.current = index;
+    },
+    [allIssueIds, selectRange, toggleSelection],
   );
 
   if (isLoading) {
@@ -204,6 +245,36 @@ export function IssueList({
   }
 
   const columns: ResponsiveColumnDef<IssueRow>[] = [
+    {
+      key: "checkbox",
+      header: "",
+      cell: (issue: IssueRow) => {
+        const idx = allIssueIds.indexOf(issue.id);
+        return (
+          <div
+            onClick={(e) => {
+              e.stopPropagation();
+              handleCheckboxClick(issue.id, idx, e.shiftKey);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                e.stopPropagation();
+                handleCheckboxClick(issue.id, idx, e.shiftKey);
+              }
+            }}
+          >
+            <Checkbox
+              checked={isSelected(issue.id)}
+              aria-label={t("selectAll")}
+              tabIndex={-1}
+            />
+          </div>
+        );
+      },
+      priority: 1,
+      className: "w-[40px]",
+    },
     {
       key: "key",
       header: t("columns.key"),
@@ -342,9 +413,31 @@ export function IssueList({
 
       {/* Pagination controls */}
       <div className="flex items-center justify-between px-2">
-        <p className="text-sm text-muted-foreground">
-          {tc("itemCount", { count: total })}
-        </p>
+        <div className="flex items-center gap-3">
+          <div
+            onClick={handleSelectAll}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                handleSelectAll();
+              }
+            }}
+            className="flex items-center gap-2 cursor-pointer"
+            role="checkbox"
+            aria-checked={allSelected ? true : someSelected ? "mixed" : false}
+            tabIndex={0}
+          >
+            <Checkbox
+              checked={allSelected ? true : someSelected ? "indeterminate" : false}
+              aria-label={t("selectAll")}
+              tabIndex={-1}
+            />
+            <span className="text-sm text-muted-foreground">{t("selectAll")}</span>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {tc("itemCount", { count: total })}
+          </p>
+        </div>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
@@ -369,14 +462,12 @@ export function IssueList({
         </div>
       </div>
 
-      {/* Issue edit dialog */}
-      {editIssueId && (
-        <IssueEditDialog
-          open={!!editIssueId}
-          onOpenChange={(open) => {
-            if (!open) setEditIssueId(null);
-          }}
-          issueId={editIssueId}
+      {/* Bulk action bar */}
+      {selectedCount > 0 && (
+        <BulkActionBar
+          selectedIds={selectedIds}
+          projectId={projectId}
+          onClearSelection={clearSelection}
         />
       )}
     </div>
