@@ -3,6 +3,8 @@ import { TRPCError } from "@trpc/server";
 
 vi.mock("./board-service", () => ({
   createBoard: vi.fn(),
+  listAll: vi.fn(),
+  listByProject: vi.fn(),
   getBoard: vi.fn(),
   getBoardData: vi.fn(),
   updateBoard: vi.fn(),
@@ -139,6 +141,22 @@ describe("boardRouter", () => {
         expect.anything(),
         "org-1",
         expect.objectContaining({ projectId: "proj-1", name: "My Board" }),
+      );
+    });
+  });
+
+  describe("listAll", () => {
+    it("calls listAll with org id", async () => {
+      const mockResult = [{ id: "board-1", name: "Board 1", project: { id: "p1", key: "DEMO", name: "Demo" } }];
+      vi.mocked(boardService.listAll).mockResolvedValue(mockResult as never);
+
+      const trpc = caller(createAuthenticatedContext());
+      const result = await trpc.board.listAll();
+
+      expect(result).toEqual(mockResult);
+      expect(boardService.listAll).toHaveBeenCalledWith(
+        expect.anything(),
+        "org-1",
       );
     });
   });

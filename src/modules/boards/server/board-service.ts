@@ -64,6 +64,17 @@ export async function createBoard(
   });
 }
 
+export async function listAll(
+  db: PrismaClient,
+  organizationId: string,
+) {
+  return db.board.findMany({
+    where: { organizationId },
+    include: { project: { select: { id: true, key: true, name: true } } },
+    orderBy: { createdAt: "asc" },
+  });
+}
+
 export async function listByProject(
   db: PrismaClient,
   organizationId: string,

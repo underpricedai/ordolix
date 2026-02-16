@@ -245,6 +245,7 @@
     "pageDescription": "Visualize and manage your workflow with Kanban boards.",
     "createBoard": "Create Board",
     "createBoardTooltip": "Create a new Kanban or Scrum board",
+    "filterByProject": "Filter boards by project",
     "editBoard": "Edit Board",
     "deleteBoard": "Delete Board",
     "boardName": "Board Name",

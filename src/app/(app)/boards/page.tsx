@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useTranslations } from "next-intl";
-import { Columns3, FolderOpen, Plus } from "lucide-react";
+import { Columns3, FolderOpen, Plus, Filter } from "lucide-react";
 import { AppHeader } from "@/shared/components/app-header";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
@@ -24,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/components/ui/select";
+import { Badge } from "@/shared/components/ui/badge";
 import { ActionTooltip } from "@/shared/components/action-tooltip";
 import { trpc } from "@/shared/lib/trpc";
 import { BoardView } from "@/modules/boards/components/BoardView";
@@ -33,11 +34,14 @@ import {
 } from "@/modules/boards/components/BoardSelector";
 import { BoardSettings } from "@/modules/boards/components/BoardSettings";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type BoardWithProject = any;
+
 /**
  * Boards page with board selector header and Kanban board view.
  *
- * @description Fetches projects to determine available boards, allows board
- * selection, and renders the full BoardView for the selected board.
+ * @description Fetches ALL boards across all projects, allows filtering by project,
+ * board selection, and renders the full BoardView for the selected board.
  * Includes board settings access and a create board dialog.
  */
 export default function BoardsPage() {
@@ -46,33 +50,36 @@ export default function BoardsPage() {
   const tc = useTranslations("common");
 
   const [selectedBoardId, setSelectedBoardId] = useState<string | undefined>();
+  const [filterProjectId, setFilterProjectId] = useState<string>("all");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [newBoardName, setNewBoardName] = useState("");
   const [newBoardType, setNewBoardType] = useState<"kanban" | "scrum">("kanban");
   const [newBoardProjectId, setNewBoardProjectId] = useState<string | undefined>();
 
-  // Fetch projects
+  // Fetch projects for filter dropdown & create dialog
   const { data: projectsData, isLoading: projectsLoading } =
     trpc.project.list.useQuery({ limit: 50 });
   const projects = projectsData?.items ?? [];
-  const firstProjectId = projects[0]?.id;
-  const effectiveProjectId = newBoardProjectId ?? firstProjectId;
 
-  // Fetch boards for the first project
+  // Fetch ALL boards across all projects
   const {
-    data: boardsList,
+    data: allBoardsList,
     isLoading: boardsLoading,
     refetch: refetchBoards,
-  } = trpc.board.listByProject.useQuery(
-    { projectId: firstProjectId! },
-    { enabled: !!firstProjectId },
-  );
+  } = trpc.board.listAll.useQuery();
 
-  // Auto-select first board when boards load
-  const boards: BoardSelectorItem[] = (boardsList ?? []).map(
-    (b: { id: string; name: string; boardType?: string | null }) => ({
+  // Filter boards by selected project
+  const filteredBoards = useMemo(() => {
+    const allBoards: BoardWithProject[] = allBoardsList ?? [];
+    if (filterProjectId === "all") return allBoards;
+    return allBoards.filter((b: BoardWithProject) => b.projectId === filterProjectId);
+  }, [allBoardsList, filterProjectId]);
+
+  // Build selector items with project name
+  const boards: BoardSelectorItem[] = filteredBoards.map(
+    (b: BoardWithProject) => ({
       id: b.id,
-      name: b.name,
+      name: b.project ? `${b.name} (${b.project.key})` : b.name,
       boardType: b.boardType ?? undefined,
     }),
   );
@@ -107,18 +114,19 @@ export default function BoardsPage() {
   }, []);
 
   const handleCreateBoard = useCallback(() => {
-    setNewBoardProjectId(firstProjectId);
+    setNewBoardProjectId(projects[0]?.id);
     setCreateDialogOpen(true);
-  }, [firstProjectId]);
+  }, [projects]);
 
   const handleSubmitCreateBoard = useCallback(() => {
-    if (!effectiveProjectId || !newBoardName.trim()) return;
+    const projectId = newBoardProjectId ?? projects[0]?.id;
+    if (!projectId || !newBoardName.trim()) return;
     createBoardMutation.mutate({
-      projectId: effectiveProjectId,
+      projectId,
       name: newBoardName.trim(),
       boardType: newBoardType,
     });
-  }, [createBoardMutation, effectiveProjectId, newBoardName, newBoardType]);
+  }, [createBoardMutation, newBoardProjectId, projects, newBoardName, newBoardType]);
 
   const settingsColumns =
     boardData?.columns?.map((col: { id: string; name: string }) => ({
@@ -129,6 +137,7 @@ export default function BoardsPage() {
 
   const hasBoard = !!activeBoardId && !!board;
   const isLoading = projectsLoading || boardsLoading;
+  const totalBoardCount = (allBoardsList ?? []).length;
 
   if (isLoading) {
     return (
@@ -158,8 +167,8 @@ export default function BoardsPage() {
     <>
       <AppHeader breadcrumbs={[{ label: tn("boards") }]} />
       <div className="flex flex-1 flex-col">
-        {/* Page header with board selector */}
-        <div className="flex items-center justify-between border-b px-6 py-4">
+        {/* Page header with board selector and project filter */}
+        <div className="flex flex-col gap-3 border-b px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-foreground">
@@ -167,8 +176,38 @@ export default function BoardsPage() {
               </h1>
               <p className="text-sm text-muted-foreground">
                 {t("pageDescription")}
+                {" "}
+                <Badge variant="secondary" className="ml-1 text-xs">
+                  {totalBoardCount} {totalBoardCount === 1 ? "board" : "boards"}
+                </Badge>
               </p>
             </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {/* Project filter */}
+            <ActionTooltip content={t("filterByProject")}>
+              <div className="flex items-center gap-1.5">
+                <Filter className="size-4 text-muted-foreground" aria-hidden="true" />
+                <Select value={filterProjectId} onValueChange={(v) => {
+                  setFilterProjectId(v);
+                  setSelectedBoardId(undefined); // reset board selection on filter change
+                }}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder={tc("all")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{tc("all")} {tn("projects")}</SelectItem>
+                    {projects.map((p: { id: string; name: string; key: string }) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name} ({p.key})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </ActionTooltip>
+
+            {/* Board selector */}
             <BoardSelector
               boards={boards}
               selectedBoardId={activeBoardId}
@@ -176,8 +215,7 @@ export default function BoardsPage() {
               onSelect={handleSelectBoard}
               onCreateBoard={handleCreateBoard}
             />
-          </div>
-          <div className="flex items-center gap-2">
+
             {hasBoard && (
               <BoardSettings
                 boardId={board.id}
@@ -251,23 +289,21 @@ export default function BoardsPage() {
                 }}
               />
             </div>
-            {projects.length > 1 && (
-              <div className="space-y-2">
-                <Label>Project</Label>
-                <Select value={effectiveProjectId} onValueChange={setNewBoardProjectId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select project" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {projects.map((p: { id: string; name: string }) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+            <div className="space-y-2">
+              <Label>{tc("project")}</Label>
+              <Select value={newBoardProjectId ?? projects[0]?.id} onValueChange={setNewBoardProjectId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select project" />
+                </SelectTrigger>
+                <SelectContent>
+                  {projects.map((p: { id: string; name: string }) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-2">
               <Label>{t("boardType")}</Label>
               <Select
