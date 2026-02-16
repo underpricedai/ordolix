@@ -423,6 +423,10 @@ export async function getVelocity(
     const doneIssues = sprint.issues.filter(
       (issue) => issue.status?.category === "DONE",
     );
+    const committedPoints = sprint.issues.reduce(
+      (sum, issue) => sum + (issue.storyPoints ?? 0),
+      0,
+    );
     const completedPoints = doneIssues.reduce(
       (sum, issue) => sum + (issue.storyPoints ?? 0),
       0,
@@ -430,7 +434,9 @@ export async function getVelocity(
 
     return {
       sprintName: sprint.name,
+      committedPoints,
       completedPoints,
+      committedCount: sprint.issues.length,
       completedCount: doneIssues.length,
     };
   });

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -32,6 +33,25 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/shared/components/ui/dialog";
+import { Input } from "@/shared/components/ui/input";
+import { Label } from "@/shared/components/ui/label";
+import { Textarea } from "@/shared/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/components/ui/select";
 import { EmptyState } from "@/shared/components/empty-state";
 import { trpc } from "@/shared/lib/trpc";
 
@@ -42,7 +62,7 @@ type Report = any;
  * Reports page listing saved reports with links to the report builder.
  *
  * @description Shows a table of saved reports with name, type, shared status,
- * and actions. Includes a create report button linking to ReportBuilder.
+ * and actions. Includes a create report dialog with name, type, and description fields.
  */
 export default function ReportsPage() {
   const t = useTranslations("reports");
@@ -51,13 +71,108 @@ export default function ReportsPage() {
 
   const router = useRouter();
 
+  const [createOpen, setCreateOpen] = useState(false);
+  const [reportName, setReportName] = useState("");
+  const [reportType, setReportType] = useState<string>("issue_summary");
+  const [description, setDescription] = useState("");
+
   const {
     data: reportsData,
     isLoading,
     error,
+    refetch,
   } = trpc.report.list.useQuery({}, { enabled: true });
 
+  const createMutation = trpc.report.create.useMutation({
+    onSuccess: async (data) => {
+      setCreateOpen(false);
+      setReportName("");
+      setReportType("issue_summary");
+      setDescription("");
+      await refetch();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const newReport = data as any;
+      if (newReport?.id) {
+        router.push(`/reports/${newReport.id}`);
+      }
+    },
+  });
+
   const reports: Report[] = reportsData ?? [];
+
+  const handleCreate = () => {
+    if (!reportName.trim()) return;
+    createMutation.mutate({
+      name: reportName.trim(),
+      reportType: reportType as "issue_summary" | "time_tracking" | "sla_compliance" | "velocity" | "custom",
+      query: {},
+      description: description.trim() || undefined,
+    });
+  };
+
+  const createButton = (
+    <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+      <DialogTrigger asChild>
+        <Button>
+          <Plus className="mr-2 size-4" aria-hidden="true" />
+          {t("createReport")}
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{t("createReport")}</DialogTitle>
+          <DialogDescription>{t("createReportDescription")}</DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid gap-2">
+            <Label htmlFor="report-name">{t("reportName")}</Label>
+            <Input
+              id="report-name"
+              value={reportName}
+              onChange={(e) => setReportName(e.target.value)}
+              placeholder={t("reportNamePlaceholder")}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label>{t("reportType")}</Label>
+            <Select value={reportType} onValueChange={setReportType}>
+              <SelectTrigger aria-label={t("reportType")}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="issue_summary">{t("reportTypeIssueSummary")}</SelectItem>
+                <SelectItem value="time_tracking">{t("reportTypeTimeTracking")}</SelectItem>
+                <SelectItem value="sla_compliance">{t("reportTypeSlaCompliance")}</SelectItem>
+                <SelectItem value="velocity">{t("reportTypeVelocity")}</SelectItem>
+                <SelectItem value="custom">{t("reportTypeCustom")}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="report-description">{t("description")}</Label>
+            <Textarea
+              id="report-description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder={t("descriptionPlaceholder")}
+              rows={3}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setCreateOpen(false)}>
+            {tc("cancel")}
+          </Button>
+          <Button
+            onClick={handleCreate}
+            disabled={!reportName.trim() || createMutation.isPending}
+          >
+            {createMutation.isPending ? tc("saving") : tc("create")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 
   return (
     <>
@@ -70,13 +185,10 @@ export default function ReportsPage() {
               {t("title")}
             </h1>
             <p className="text-sm text-muted-foreground">
-              Create and manage custom reports and dashboards.
+              {t("pageDescription")}
             </p>
           </div>
-          <Button>
-            <Plus className="mr-2 size-4" aria-hidden="true" />
-            {t("createReport")}
-          </Button>
+          {createButton}
         </div>
 
         {/* Reports table */}
@@ -96,14 +208,9 @@ export default function ReportsPage() {
         ) : reports.length === 0 ? (
           <EmptyState
             icon={<BarChart3 className="size-12" />}
-            title={t("title")}
-            description="No reports created yet. Build your first report."
-            action={
-              <Button>
-                <Plus className="mr-2 size-4" aria-hidden="true" />
-                {t("createReport")}
-              </Button>
-            }
+            title={t("noReports")}
+            description={t("noReportsDescription")}
+            action={createButton}
           />
         ) : (
           <div className="rounded-md border">
@@ -112,7 +219,7 @@ export default function ReportsPage() {
                 <TableRow>
                   <TableHead>{t("reportName")}</TableHead>
                   <TableHead className="w-[160px]">{t("reportType")}</TableHead>
-                  <TableHead className="w-[100px]">Visibility</TableHead>
+                  <TableHead className="w-[100px]">{tc("status")}</TableHead>
                   <TableHead className="w-[140px]">{t("schedule")}</TableHead>
                   <TableHead className="w-[60px]">{tc("actions")}</TableHead>
                 </TableRow>

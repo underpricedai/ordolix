@@ -567,8 +567,8 @@ describe("getVelocity", () => {
     });
 
     expect(result).toEqual([
-      { sprintName: "Sprint 1", completedPoints: 8, completedCount: 2 },
-      { sprintName: "Sprint 2", completedPoints: 0, completedCount: 1 },
+      { sprintName: "Sprint 1", committedPoints: 16, completedPoints: 8, committedCount: 3, completedCount: 2 },
+      { sprintName: "Sprint 2", committedPoints: 0, completedPoints: 0, committedCount: 1, completedCount: 1 },
     ]);
   });
 

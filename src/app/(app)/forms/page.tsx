@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   Plus,
@@ -28,6 +29,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/shared/components/ui/dialog";
+import { Input } from "@/shared/components/ui/input";
+import { Label } from "@/shared/components/ui/label";
+import { Textarea } from "@/shared/components/ui/textarea";
 import { EmptyState } from "@/shared/components/empty-state";
 import { trpc } from "@/shared/lib/trpc";
 
@@ -38,20 +51,100 @@ type FormTemplate = any;
  * Forms page listing form templates with access to form builder.
  *
  * @description Shows a table of form templates with name, field count,
- * active status, and submission count. Includes create button.
+ * active status, and submission count. Includes a create dialog with name
+ * and description fields that creates a template via tRPC.
  */
 export default function FormsPage() {
   const t = useTranslations("forms");
   const tn = useTranslations("nav");
   const tc = useTranslations("common");
 
+  const [createOpen, setCreateOpen] = useState(false);
+  const [formName, setFormName] = useState("");
+  const [description, setDescription] = useState("");
+
   const {
     data: templatesData,
     isLoading,
     error,
+    refetch,
   } = trpc.form.listTemplates.useQuery({}, { enabled: true });
 
+  const createMutation = trpc.form.createTemplate.useMutation({
+    onSuccess: async () => {
+      setCreateOpen(false);
+      setFormName("");
+      setDescription("");
+      await refetch();
+    },
+  });
+
   const templates: FormTemplate[] = templatesData ?? [];
+
+  const handleCreate = () => {
+    if (!formName.trim()) return;
+    createMutation.mutate({
+      name: formName.trim(),
+      description: description.trim() || undefined,
+      schema: [
+        {
+          id: "default-field",
+          label: "Response",
+          type: "text",
+          required: false,
+        },
+      ],
+    });
+  };
+
+  const createButton = (
+    <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+      <DialogTrigger asChild>
+        <Button>
+          <Plus className="mr-2 size-4" aria-hidden="true" />
+          {t("createForm")}
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{t("createForm")}</DialogTitle>
+          <DialogDescription>{t("createFormDescription")}</DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid gap-2">
+            <Label htmlFor="form-name">{t("formName")}</Label>
+            <Input
+              id="form-name"
+              value={formName}
+              onChange={(e) => setFormName(e.target.value)}
+              placeholder={t("formNamePlaceholder")}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="form-description">{t("description")}</Label>
+            <Textarea
+              id="form-description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder={t("descriptionPlaceholder")}
+              rows={3}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setCreateOpen(false)}>
+            {tc("cancel")}
+          </Button>
+          <Button
+            onClick={handleCreate}
+            disabled={!formName.trim() || createMutation.isPending}
+          >
+            {createMutation.isPending ? tc("saving") : tc("create")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 
   return (
     <>
@@ -64,13 +157,10 @@ export default function FormsPage() {
               {t("title")}
             </h1>
             <p className="text-sm text-muted-foreground">
-              Create and manage form templates for data collection.
+              {t("pageDescription")}
             </p>
           </div>
-          <Button>
-            <Plus className="mr-2 size-4" aria-hidden="true" />
-            {t("createForm")}
-          </Button>
+          {createButton}
         </div>
 
         {/* Templates table */}
@@ -90,23 +180,18 @@ export default function FormsPage() {
         ) : templates.length === 0 ? (
           <EmptyState
             icon={<ClipboardList className="size-12" />}
-            title={t("title")}
-            description="No form templates yet. Create your first form."
-            action={
-              <Button>
-                <Plus className="mr-2 size-4" aria-hidden="true" />
-                {t("createForm")}
-              </Button>
-            }
+            title={t("noForms")}
+            description={t("noFormsDescription")}
+            action={createButton}
           />
         ) : (
           <div className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Form Name</TableHead>
-                  <TableHead className="w-[100px]">Fields</TableHead>
-                  <TableHead className="w-[100px]">Status</TableHead>
+                  <TableHead>{t("formName")}</TableHead>
+                  <TableHead className="w-[100px]">{tc("type")}</TableHead>
+                  <TableHead className="w-[100px]">{tc("status")}</TableHead>
                   <TableHead className="w-[120px]">{t("submissions")}</TableHead>
                   <TableHead className="w-[60px]">{tc("actions")}</TableHead>
                 </TableRow>
@@ -132,10 +217,10 @@ export default function FormsPage() {
                     <TableCell>
                       {template.isActive ? (
                         <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-                          Active
+                          {tc("active")}
                         </Badge>
                       ) : (
-                        <Badge variant="secondary">Inactive</Badge>
+                        <Badge variant="secondary">{tc("inactive")}</Badge>
                       )}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
@@ -155,7 +240,7 @@ export default function FormsPage() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem>
                             <Eye className="mr-2 size-4" aria-hidden="true" />
-                            Preview
+                            {tc("overview")}
                           </DropdownMenuItem>
                           <DropdownMenuItem>
                             <Pencil className="mr-2 size-4" aria-hidden="true" />

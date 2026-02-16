@@ -16,14 +16,22 @@ import {
 } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/components/ui/select";
 import { RetroBoard } from "@/modules/retrospectives/components/RetroBoard";
+import { trpc } from "@/shared/lib/trpc";
 
 /**
  * Retrospectives page with the interactive retro board.
  *
  * @description Displays the retro board with three columns (went well, to improve,
- * action items). Includes a create dialog for new retrospectives and a selector
- * for existing ones.
+ * action items). Includes a create dialog for new retrospectives that wires to
+ * the tRPC retro.create mutation. Requires selecting a project and entering a name.
  */
 export default function RetrospectivesPage() {
   const t = useTranslations("retrospectives");
@@ -32,7 +40,34 @@ export default function RetrospectivesPage() {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [retroName, setRetroName] = useState("");
-  const [activeRetroId] = useState("default");
+  const [projectId, setProjectId] = useState("");
+  const [activeRetroId, setActiveRetroId] = useState<string | null>(null);
+
+  // Fetch projects for the project selector
+  const { data: projectsData } = trpc.project.list.useQuery({ limit: 50 });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const projects: any[] = (projectsData as { items?: any[] })?.items ?? [];
+
+  const createMutation = trpc.retro.create.useMutation({
+    onSuccess: (data) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const newRetro = data as any;
+      setCreateOpen(false);
+      setRetroName("");
+      setProjectId("");
+      if (newRetro?.id) {
+        setActiveRetroId(newRetro.id);
+      }
+    },
+  });
+
+  const handleCreate = () => {
+    if (!retroName.trim() || !projectId) return;
+    createMutation.mutate({
+      name: retroName.trim(),
+      projectId,
+    });
+  };
 
   return (
     <>
@@ -72,6 +107,21 @@ export default function RetrospectivesPage() {
                     placeholder={t("retroNamePlaceholder")}
                   />
                 </div>
+                <div className="grid gap-2">
+                  <Label>{t("projectId")}</Label>
+                  <Select value={projectId} onValueChange={setProjectId}>
+                    <SelectTrigger aria-label={t("selectProject")}>
+                      <SelectValue placeholder={t("selectProject")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {projects.map((project) => (
+                        <SelectItem key={project.id} value={project.id}>
+                          {project.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <DialogFooter>
                 <Button
@@ -81,10 +131,10 @@ export default function RetrospectivesPage() {
                   {tc("cancel")}
                 </Button>
                 <Button
-                  onClick={() => setCreateOpen(false)}
-                  disabled={!retroName.trim()}
+                  onClick={handleCreate}
+                  disabled={!retroName.trim() || !projectId || createMutation.isPending}
                 >
-                  {tc("create")}
+                  {createMutation.isPending ? tc("saving") : tc("create")}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -92,7 +142,7 @@ export default function RetrospectivesPage() {
         </div>
 
         {/* Retro board */}
-        <RetroBoard retrospectiveId={activeRetroId} />
+        {activeRetroId && <RetroBoard retrospectiveId={activeRetroId} />}
       </div>
     </>
   );

@@ -636,55 +636,92 @@ async function main() {
     console.log(`  Created ${demoIssues.length} issues for ${project.key}`);
   }
 
-  // ── Sprints ────────────────────────────────────────────────────────────────
-  const engProject = projects.find((p) => p.key === "ENG");
-  if (engProject) {
+  // ── Sprints (all projects) ────────────────────────────────────────────────
+  for (const project of projects) {
     const existingSprint = await prisma.sprint.findFirst({
-      where: { organizationId: org.id, projectId: engProject.id },
+      where: { organizationId: org.id, projectId: project.id },
     });
     if (!existingSprint) {
       const now = new Date();
+      const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
       const twoWeeksOut = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
       const fourWeeksOut = new Date(now.getTime() + 28 * 24 * 60 * 60 * 1000);
 
-      const sprint1 = await prisma.sprint.create({
+      // Completed sprint (for velocity chart data)
+      const completedSprint = await prisma.sprint.create({
         data: {
           organizationId: org.id,
-          projectId: engProject.id,
-          name: "Sprint 1",
-          goal: "Core infrastructure setup and critical bug fixes",
+          projectId: project.id,
+          name: `${project.key} Sprint 1`,
+          goal: "Initial setup, CI/CD pipeline, and core infrastructure",
+          status: "completed",
+          startDate: new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000),
+          endDate: twoWeeksAgo,
+          completedAt: twoWeeksAgo,
+        },
+      });
+
+      // Assign some issues to completed sprint and mark them done
+      const doneStatus = await prisma.status.findFirst({
+        where: { organizationId: org.id, name: "Done" },
+      });
+      const completedIssues = await prisma.issue.findMany({
+        where: { organizationId: org.id, projectId: project.id, statusId: doneStatus?.id },
+        take: 3,
+        orderBy: { createdAt: "asc" },
+      });
+      for (const issue of completedIssues) {
+        await prisma.issue.update({
+          where: { id: issue.id },
+          data: { sprintId: completedSprint.id },
+        });
+      }
+
+      // Active sprint
+      const activeSprint = await prisma.sprint.create({
+        data: {
+          organizationId: org.id,
+          projectId: project.id,
+          name: `${project.key} Sprint 2`,
+          goal: "Feature development and bug fixes",
           status: "active",
           startDate: now,
           endDate: twoWeeksOut,
         },
       });
 
+      // Assign some issues to active sprint
+      const activeIssues = await prisma.issue.findMany({
+        where: {
+          organizationId: org.id,
+          projectId: project.id,
+          sprintId: null,
+          statusId: { not: doneStatus?.id ?? "" },
+        },
+        take: 5,
+        orderBy: { createdAt: "asc" },
+      });
+      for (const issue of activeIssues) {
+        await prisma.issue.update({
+          where: { id: issue.id },
+          data: { sprintId: activeSprint.id },
+        });
+      }
+
+      // Future sprint
       await prisma.sprint.create({
         data: {
           organizationId: org.id,
-          projectId: engProject.id,
-          name: "Sprint 2",
-          goal: "Performance improvements and Node.js upgrade",
+          projectId: project.id,
+          name: `${project.key} Sprint 3`,
+          goal: "Performance improvements and testing",
           status: "future",
           startDate: twoWeeksOut,
           endDate: fourWeeksOut,
         },
       });
 
-      const engIssues = await prisma.issue.findMany({
-        where: { organizationId: org.id, projectId: engProject.id },
-        take: 3,
-        orderBy: { createdAt: "asc" },
-      });
-
-      for (const issue of engIssues) {
-        await prisma.issue.update({
-          where: { id: issue.id },
-          data: { sprintId: sprint1.id },
-        });
-      }
-
-      console.log("  Created 2 sprints for ENG");
+      console.log(`  Created 3 sprints for ${project.key}`);
     }
   }
 
