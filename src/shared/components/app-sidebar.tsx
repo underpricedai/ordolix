@@ -14,6 +14,7 @@ import {
   BarChart3,
   Settings,
   Shield,
+  Star,
   Timer,
   Inbox,
   ChevronLeft,
@@ -55,6 +56,7 @@ const mainNavItems: NavItem[] = [
   { titleKey: "gantt", href: "/gantt", icon: GanttChart },
   { titleKey: "workflows", href: "/workflows", icon: GitBranch },
   { titleKey: "reports", href: "/reports", icon: BarChart3 },
+  { titleKey: "favorites", href: "/favorites", icon: Star },
 ];
 
 const bottomNavItems: NavItem[] = [

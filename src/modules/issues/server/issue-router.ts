@@ -16,6 +16,7 @@ import {
   createLinkInput,
   deleteLinkInput,
   getLinksInput,
+  addAttachmentInput,
   listAttachmentsInput,
   deleteAttachmentInput,
   bulkUpdateInput,
@@ -238,6 +239,22 @@ export const issueRouter = createRouter({
     }),
 
   // ── Attachments ────────────────────────────────────────────────────────
+
+  addAttachment: protectedProcedure
+    .input(addAttachmentInput)
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.attachment.create({
+        data: {
+          organizationId: ctx.organizationId,
+          issueId: input.issueId,
+          uploaderId: ctx.session.user!.id!,
+          filename: input.filename,
+          mimeType: input.mimeType,
+          size: input.size,
+          storageKey: `${ctx.organizationId}/attachments/${input.issueId}/${crypto.randomUUID()}-${input.filename}`,
+        },
+      });
+    }),
 
   listAttachments: protectedProcedure
     .input(listAttachmentsInput)

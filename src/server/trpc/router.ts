@@ -38,6 +38,8 @@ import { sailpointRouter } from "@/integrations/sailpoint/sailpoint-router";
 import { surveyRouter } from "@/modules/surveys/server/survey-router";
 import { schemeRouter } from "@/shared/server/scheme-router";
 import { aiRouter } from "@/integrations/ai/ai-router";
+import { activityRouter } from "@/modules/activity/server/activity-router";
+import { favoriteRouter } from "@/modules/favorites/server/favorite-router";
 
 export const appRouter = createRouter({
   project: projectRouter,
@@ -79,6 +81,8 @@ export const appRouter = createRouter({
   survey: surveyRouter,
   scheme: schemeRouter,
   ai: aiRouter,
+  activity: activityRouter,
+  favorite: favoriteRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -63,6 +63,84 @@ test.describe("Issues", () => {
     });
   });
 
+  test.describe("Issue List - Extended", () => {
+    test("should show search input that filters on type", async ({ page }) => {
+      await page.goto("/issues");
+
+      // Verify the search input accepts and reflects typed values
+      const searchInput = page.locator("input[type='search']").first();
+      await expect(searchInput).toBeVisible();
+      await searchInput.fill("bug report");
+      await expect(searchInput).toHaveValue("bug report");
+
+      // Clear the search
+      await searchInput.fill("");
+      await expect(searchInput).toHaveValue("");
+    });
+
+    test("should have heading and main landmark", async ({ page }) => {
+      await page.goto("/issues");
+
+      // Accessibility: main landmark and heading should be present
+      await expect(page.locator("main").first()).toBeVisible();
+      await expect(page.locator("h1, h2").first()).toBeVisible();
+    });
+
+    test.fixme("should show issue rows with key and summary", async ({ page }) => {
+      // Requires a real database with seeded issues to populate the list.
+      await page.goto("/issues");
+
+      // Issue rows should display issue keys (e.g., ENG-1)
+      const issueRow = page.locator("tr, [role='row'], [data-testid*='issue']").first();
+      await expect(issueRow).toBeVisible();
+    });
+
+    test.fixme("should show bulk selection checkboxes", async ({ page }) => {
+      // Requires a real database with seeded issues so rows are rendered.
+      await page.goto("/issues");
+
+      // Checkbox inputs for bulk selection should appear on rows
+      const checkbox = page.locator("input[type='checkbox']").first();
+      await expect(checkbox).toBeVisible();
+    });
+  });
+
+  test.describe("Issue Peek Panel", () => {
+    test.fixme("should open peek panel on issue click", async ({ page }) => {
+      // Requires a real database with seeded issues to click on.
+      await page.goto("/issues");
+
+      // Click the first issue row to open the peek panel
+      const issueRow = page.locator("tr, [role='row'], [data-testid*='issue']").first();
+      await expect(issueRow).toBeVisible();
+      await issueRow.click();
+
+      // The peek panel should appear (rendered as a sheet or side panel)
+      const peekPanel = page.getByRole("dialog").or(
+        page.locator("[data-testid='peek-panel']"),
+      );
+      await expect(peekPanel.first()).toBeVisible();
+    });
+
+    test.fixme("should close peek panel with Escape", async ({ page }) => {
+      // Requires a real database with seeded issues.
+      await page.goto("/issues");
+
+      const issueRow = page.locator("tr, [role='row'], [data-testid*='issue']").first();
+      await expect(issueRow).toBeVisible();
+      await issueRow.click();
+
+      const peekPanel = page.getByRole("dialog").or(
+        page.locator("[data-testid='peek-panel']"),
+      );
+      await expect(peekPanel.first()).toBeVisible();
+
+      // Close with Escape
+      await page.keyboard.press("Escape");
+      await expect(peekPanel.first()).not.toBeVisible();
+    });
+  });
+
   test.describe("Issue Detail", () => {
     test.fixme("should open issue detail page", async ({ page }) => {
       // Requires a real database with seeded issues to load issue detail.

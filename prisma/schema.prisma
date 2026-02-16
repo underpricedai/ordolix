@@ -48,6 +48,7 @@ model User {
   issueHistory          IssueHistory[]
   assignedAssets        Asset[]                  @relation("AssetAssignee")
   softwareLicenseAllocations SoftwareLicenseAllocation[]
+  favorites             Favorite[]
 }
 
 model Account {
@@ -142,6 +143,7 @@ model Organization {
   fieldConfigurationSchemes  FieldConfigurationScheme[]
   notificationSchemes        NotificationScheme[]
   componentSchemes           ComponentScheme[]
+  favorites                  Favorite[]
 }
 
 model OrganizationMember {
@@ -1679,6 +1681,22 @@ model Vote {
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([issueId, userId])
+}
+
+model Favorite {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String
+  entityType     String   // "issue", "project", "board", "dashboard"
+  entityId       String
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, entityType, entityId])
+  @@index([organizationId])
+  @@index([userId])
 }
 
 model ApiToken {

@@ -138,6 +138,15 @@ export const listAttachmentsInput = z.object({
   issueId: z.string().min(1),
 });
 
+export const addAttachmentInput = z.object({
+  issueId: z.string().min(1),
+  filename: z.string().min(1),
+  mimeType: z.string().min(1),
+  size: z.number().int().min(0),
+});
+
+export type AddAttachmentInput = z.infer<typeof addAttachmentInput>;
+
 export const deleteAttachmentInput = z.object({
   id: z.string().min(1),
 });

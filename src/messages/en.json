@@ -92,7 +92,8 @@
     "sprints": "Sprints",
     "queue": "Queue",
     "backToProjects": "All Projects",
-    "projectNav": "Project Navigation"
+    "projectNav": "Project Navigation",
+    "favorites": "Favorites"
   },
   "header": {
     "searchPlaceholder": "Search issues, projects, and more...",
@@ -2159,5 +2160,47 @@
     "notAvailable": "AI features require configuration",
     "processing": "AI is thinking...",
     "error": "AI request failed"
+  },
+  "attachments": {
+    "title": "Attachments",
+    "dropzone": "Drag files here or click to browse",
+    "upload": "Upload",
+    "uploading": "Uploading...",
+    "maxSize": "Maximum file size: 25 MB",
+    "tooLarge": "File exceeds 25 MB limit",
+    "noAttachments": "No attachments",
+    "delete": "Delete attachment",
+    "confirmDelete": "Delete this attachment?",
+    "uploadSuccess": "File uploaded",
+    "uploadError": "Upload failed"
+  },
+  "activity": {
+    "title": "Activity",
+    "description": "Recent activity across your organization",
+    "all": "All",
+    "issues": "Issues",
+    "projects": "Projects",
+    "admin": "Admin",
+    "noActivity": "No activity yet",
+    "noActivityDescription": "Activity will appear here as your team works on issues and projects.",
+    "changedField": "{user} changed {field}",
+    "created": "{user} created {entity}",
+    "deleted": "{user} deleted {entity}",
+    "updated": "{user} updated {entity}",
+    "loadMore": "Load more",
+    "loading": "Loading..."
+  },
+  "favorites": {
+    "title": "Favorites",
+    "description": "Your bookmarked items",
+    "addToFavorites": "Add to favorites",
+    "removeFromFavorites": "Remove from favorites",
+    "all": "All",
+    "issues": "Issues",
+    "projects": "Projects",
+    "boards": "Boards",
+    "dashboards": "Dashboards",
+    "noFavorites": "No favorites yet",
+    "noFavoritesDescription": "Star items to quickly access them later."
   }
 }
