@@ -65,7 +65,7 @@ export interface MCPResourceTemplate {
 }
 
 /** Supported resource URI schemes */
-export type MCPResourceScheme = "issue" | "project" | "board";
+export type MCPResourceScheme = "issue" | "project" | "board" | "sprint" | "user";
 
 // ── Session Types ────────────────────────────────────────────────────────
 
@@ -86,7 +86,8 @@ export type MCPPermission =
   | "comments:write"
   | "boards:read"
   | "dashboards:read"
-  | "projects:read";
+  | "projects:read"
+  | "sprints:read";
 
 // ── Server Protocol Types ────────────────────────────────────────────────
 

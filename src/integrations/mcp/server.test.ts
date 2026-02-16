@@ -23,6 +23,7 @@ function createMockDb() {
     },
     project: {
       findFirst: vi.fn(),
+      findMany: vi.fn().mockResolvedValue([]),
       update: vi.fn(),
     },
     issueType: {
@@ -46,6 +47,16 @@ function createMockDb() {
     dashboard: {
       findFirst: vi.fn(),
     },
+    sprint: {
+      findFirst: vi.fn(),
+      findMany: vi.fn().mockResolvedValue([]),
+    },
+    transition: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
+    organizationMember: {
+      findFirst: vi.fn(),
+    },
   } as unknown as import("@prisma/client").PrismaClient;
 }
 
@@ -62,6 +73,7 @@ const session: MCPSessionContext = {
     "boards:read",
     "dashboards:read",
     "projects:read",
+    "sprints:read",
   ],
 };
 
@@ -118,13 +130,20 @@ describe("MCPServer", () => {
       const result = response.result as { tools: typeof TOOL_DEFINITIONS };
 
       expect(result.tools).toHaveLength(TOOL_DEFINITIONS.length);
-      expect(result.tools.map((t) => t.name)).toContain("create_issue");
-      expect(result.tools.map((t) => t.name)).toContain("get_issue");
-      expect(result.tools.map((t) => t.name)).toContain("search_issues");
-      expect(result.tools.map((t) => t.name)).toContain("transition_issue");
-      expect(result.tools.map((t) => t.name)).toContain("add_comment");
-      expect(result.tools.map((t) => t.name)).toContain("get_board");
-      expect(result.tools.map((t) => t.name)).toContain("get_dashboard");
+      const names = result.tools.map((t) => t.name);
+      expect(names).toContain("add_comment");
+      expect(names).toContain("assign_issue");
+      expect(names).toContain("create_issue");
+      expect(names).toContain("get_board");
+      expect(names).toContain("get_dashboard");
+      expect(names).toContain("get_issue");
+      expect(names).toContain("get_sprint");
+      expect(names).toContain("get_workflow_transitions");
+      expect(names).toContain("list_projects");
+      expect(names).toContain("list_sprints");
+      expect(names).toContain("search_issues");
+      expect(names).toContain("transition_issue");
+      expect(names).toContain("update_issue");
     });
   });
 
@@ -308,11 +327,13 @@ describe("MCPServer", () => {
       const response = await server.handleRequest(session, request);
       const result = response.result as { resourceTemplates: Array<{ uriTemplate: string }> };
 
-      expect(result.resourceTemplates).toHaveLength(3);
+      expect(result.resourceTemplates).toHaveLength(5);
       const uris = result.resourceTemplates.map((t) => t.uriTemplate);
+      expect(uris).toContain("board://{id}");
       expect(uris).toContain("issue://{key}");
       expect(uris).toContain("project://{key}");
-      expect(uris).toContain("board://{id}");
+      expect(uris).toContain("sprint://{id}");
+      expect(uris).toContain("user://{id}");
     });
   });
 
@@ -452,6 +473,407 @@ describe("MCPServer", () => {
       const result = response.result as { content: Array<{ text: string }> };
 
       expect(result.content[0]!.text).toContain("No issues found");
+    });
+  });
+
+  describe("handleRequest - tools/call update_issue", () => {
+    it("should update issue fields", async () => {
+      (db.issue.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({
+        id: "i-1",
+        key: "ORD-123",
+      });
+      (db.priority.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({
+        id: "p-2",
+        name: "Low",
+      });
+      (db.issue.update as ReturnType<typeof vi.fn>).mockResolvedValue({});
+
+      const request: MCPRequest = {
+        jsonrpc: "2.0",
+        id: 17,
+        method: "tools/call",
+        params: {
+          name: "update_issue",
+          arguments: { issueKey: "ORD-123", summary: "Updated title", priority: "Low" },
+        },
+      };
+
+      const response = await server.handleRequest(session, request);
+      const result = response.result as { content: Array<{ text: string }> };
+
+      expect(result.content[0]!.text).toContain("Updated ORD-123");
+      expect(result.content[0]!.text).toContain("summary");
+      expect(result.content[0]!.text).toContain("priority");
+      expect(db.issue.update).toHaveBeenCalledWith({
+        where: { id: "i-1" },
+        data: expect.objectContaining({
+          summary: "Updated title",
+          priorityId: "p-2",
+        }),
+      });
+    });
+
+    it("should return error for non-existent issue", async () => {
+      (db.issue.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+
+      const request: MCPRequest = {
+        jsonrpc: "2.0",
+        id: 18,
+        method: "tools/call",
+        params: {
+          name: "update_issue",
+          arguments: { issueKey: "ORD-999", summary: "New title" },
+        },
+      };
+
+      const response = await server.handleRequest(session, request);
+      const result = response.result as { content: Array<{ text: string }>; isError: boolean };
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]!.text).toContain("not found");
+    });
+  });
+
+  describe("handleRequest - tools/call list_projects", () => {
+    it("should list projects", async () => {
+      (db.project.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+        {
+          key: "ORD",
+          name: "Ordolix",
+          lead: "Frank",
+          _count: { issues: 42 },
+        },
+        {
+          key: "TEST",
+          name: "Test Project",
+          lead: null,
+          _count: { issues: 5 },
+        },
+      ]);
+
+      const request: MCPRequest = {
+        jsonrpc: "2.0",
+        id: 19,
+        method: "tools/call",
+        params: { name: "list_projects", arguments: {} },
+      };
+
+      const response = await server.handleRequest(session, request);
+      const result = response.result as { content: Array<{ text: string }> };
+
+      expect(result.content[0]!.text).toContain("ORD");
+      expect(result.content[0]!.text).toContain("Ordolix");
+      expect(result.content[0]!.text).toContain("Frank");
+      expect(result.content[0]!.text).toContain("TEST");
+      expect(result.content[0]!.text).toContain("2 project(s)");
+    });
+
+    it("should return message when no projects found", async () => {
+      (db.project.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+
+      const request: MCPRequest = {
+        jsonrpc: "2.0",
+        id: 20,
+        method: "tools/call",
+        params: { name: "list_projects", arguments: {} },
+      };
+
+      const response = await server.handleRequest(session, request);
+      const result = response.result as { content: Array<{ text: string }> };
+
+      expect(result.content[0]!.text).toContain("No projects found");
+    });
+  });
+
+  describe("handleRequest - tools/call get_sprint", () => {
+    it("should return sprint details with issues", async () => {
+      (db.sprint.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({
+        id: "s-1",
+        name: "Sprint 1",
+        status: "active",
+        goal: "Complete auth module",
+        startDate: new Date("2026-02-01"),
+        endDate: new Date("2026-02-14"),
+        project: { name: "Ordolix", key: "ORD" },
+        issues: [
+          { key: "ORD-1", summary: "Login page", storyPoints: 3 },
+          { key: "ORD-2", summary: "Signup page", storyPoints: 5 },
+        ],
+      });
+
+      const request: MCPRequest = {
+        jsonrpc: "2.0",
+        id: 21,
+        method: "tools/call",
+        params: { name: "get_sprint", arguments: { sprintId: "s-1" } },
+      };
+
+      const response = await server.handleRequest(session, request);
+      const result = response.result as { content: Array<{ text: string }> };
+
+      expect(result.content[0]!.text).toContain("Sprint 1");
+      expect(result.content[0]!.text).toContain("active");
+      expect(result.content[0]!.text).toContain("ORD-1");
+      expect(result.content[0]!.text).toContain("ORD-2");
+      expect(result.content[0]!.text).toContain("Story Points: 8");
+    });
+
+    it("should return error for non-existent sprint", async () => {
+      (db.sprint.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+
+      const request: MCPRequest = {
+        jsonrpc: "2.0",
+        id: 22,
+        method: "tools/call",
+        params: { name: "get_sprint", arguments: { sprintId: "s-999" } },
+      };
+
+      const response = await server.handleRequest(session, request);
+      const result = response.result as { content: Array<{ text: string }>; isError: boolean };
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]!.text).toContain("not found");
+    });
+  });
+
+  describe("handleRequest - tools/call list_sprints", () => {
+    it("should list sprints for a project", async () => {
+      (db.project.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({
+        id: "p-1",
+        key: "ORD",
+      });
+      (db.sprint.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+        {
+          name: "Sprint 1",
+          status: "completed",
+          startDate: new Date("2026-01-01"),
+          endDate: new Date("2026-01-14"),
+          _count: { issues: 10 },
+        },
+        {
+          name: "Sprint 2",
+          status: "active",
+          startDate: new Date("2026-01-15"),
+          endDate: new Date("2026-01-28"),
+          _count: { issues: 8 },
+        },
+      ]);
+
+      const request: MCPRequest = {
+        jsonrpc: "2.0",
+        id: 23,
+        method: "tools/call",
+        params: { name: "list_sprints", arguments: { projectKey: "ORD" } },
+      };
+
+      const response = await server.handleRequest(session, request);
+      const result = response.result as { content: Array<{ text: string }> };
+
+      expect(result.content[0]!.text).toContain("Sprint 1");
+      expect(result.content[0]!.text).toContain("Sprint 2");
+      expect(result.content[0]!.text).toContain("2 sprint(s)");
+    });
+  });
+
+  describe("handleRequest - tools/call assign_issue", () => {
+    it("should assign a user to an issue", async () => {
+      (db.issue.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({
+        id: "i-1",
+        key: "ORD-123",
+      });
+      (db.user.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+        id: "u-1",
+        name: "Frank",
+        email: "frank@test.com",
+      });
+      (db.issue.update as ReturnType<typeof vi.fn>).mockResolvedValue({});
+
+      const request: MCPRequest = {
+        jsonrpc: "2.0",
+        id: 24,
+        method: "tools/call",
+        params: {
+          name: "assign_issue",
+          arguments: { issueKey: "ORD-123", assignee: "frank@test.com" },
+        },
+      };
+
+      const response = await server.handleRequest(session, request);
+      const result = response.result as { content: Array<{ text: string }> };
+
+      expect(result.content[0]!.text).toContain("Assigned ORD-123");
+      expect(result.content[0]!.text).toContain("Frank");
+      expect(db.issue.update).toHaveBeenCalledWith({
+        where: { id: "i-1" },
+        data: expect.objectContaining({ assigneeId: "u-1" }),
+      });
+    });
+
+    it("should unassign when empty string provided", async () => {
+      (db.issue.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({
+        id: "i-1",
+        key: "ORD-123",
+      });
+      (db.issue.update as ReturnType<typeof vi.fn>).mockResolvedValue({});
+
+      const request: MCPRequest = {
+        jsonrpc: "2.0",
+        id: 25,
+        method: "tools/call",
+        params: {
+          name: "assign_issue",
+          arguments: { issueKey: "ORD-123", assignee: "" },
+        },
+      };
+
+      const response = await server.handleRequest(session, request);
+      const result = response.result as { content: Array<{ text: string }> };
+
+      expect(result.content[0]!.text).toContain("Unassigned ORD-123");
+      expect(db.issue.update).toHaveBeenCalledWith({
+        where: { id: "i-1" },
+        data: expect.objectContaining({ assigneeId: null }),
+      });
+    });
+  });
+
+  describe("handleRequest - tools/call get_workflow_transitions", () => {
+    it("should return available transitions", async () => {
+      (db.issue.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({
+        id: "i-1",
+        key: "ORD-123",
+        statusId: "status-1",
+        status: { name: "Open" },
+        project: {
+          defaultWorkflowId: "wf-1",
+          workflows: [{ id: "wf-1" }],
+        },
+      });
+      (db.transition.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+        { id: "t-1", toStatus: { name: "In Progress" } },
+        { id: "t-2", toStatus: { name: "Done" } },
+      ]);
+
+      const request: MCPRequest = {
+        jsonrpc: "2.0",
+        id: 26,
+        method: "tools/call",
+        params: {
+          name: "get_workflow_transitions",
+          arguments: { issueKey: "ORD-123" },
+        },
+      };
+
+      const response = await server.handleRequest(session, request);
+      const result = response.result as { content: Array<{ text: string }> };
+
+      expect(result.content[0]!.text).toContain("Current: Open");
+      expect(result.content[0]!.text).toContain("In Progress");
+      expect(result.content[0]!.text).toContain("Done");
+    });
+
+    it("should handle no available transitions", async () => {
+      (db.issue.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({
+        id: "i-1",
+        key: "ORD-123",
+        statusId: "status-1",
+        status: { name: "Done" },
+        project: {
+          defaultWorkflowId: "wf-1",
+          workflows: [{ id: "wf-1" }],
+        },
+      });
+      (db.transition.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+
+      const request: MCPRequest = {
+        jsonrpc: "2.0",
+        id: 27,
+        method: "tools/call",
+        params: {
+          name: "get_workflow_transitions",
+          arguments: { issueKey: "ORD-123" },
+        },
+      };
+
+      const response = await server.handleRequest(session, request);
+      const result = response.result as { content: Array<{ text: string }> };
+
+      expect(result.content[0]!.text).toContain("Current: Done");
+      expect(result.content[0]!.text).toContain("No available transitions");
+    });
+  });
+
+  describe("handleRequest - resources/read sprint://", () => {
+    it("should read a sprint resource", async () => {
+      (db.sprint.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({
+        id: "s-1",
+        name: "Sprint 1",
+        status: "active",
+        project: { name: "Ordolix", key: "ORD" },
+        issues: [{ key: "ORD-1", summary: "Test", storyPoints: 3 }],
+      });
+
+      const request: MCPRequest = {
+        jsonrpc: "2.0",
+        id: 28,
+        method: "resources/read",
+        params: { uri: "sprint://s-1" },
+      };
+
+      const response = await server.handleRequest(session, request);
+      const result = response.result as { contents: Array<{ uri: string; text: string }> };
+
+      expect(result.contents[0]!.uri).toBe("sprint://s-1");
+      const parsed = JSON.parse(result.contents[0]!.text);
+      expect(parsed.name).toBe("Sprint 1");
+    });
+  });
+
+  describe("handleRequest - resources/read user://", () => {
+    it("should read a user resource", async () => {
+      (db.user.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+        id: "u-1",
+        name: "Frank",
+        email: "frank@test.com",
+        locale: "en",
+        timezone: "UTC",
+        createdAt: new Date("2026-01-01"),
+      });
+      (db.organizationMember.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({
+        role: "admin",
+      });
+
+      const request: MCPRequest = {
+        jsonrpc: "2.0",
+        id: 29,
+        method: "resources/read",
+        params: { uri: "user://u-1" },
+      };
+
+      const response = await server.handleRequest(session, request);
+      const result = response.result as { contents: Array<{ uri: string; text: string }> };
+
+      expect(result.contents[0]!.uri).toBe("user://u-1");
+      const parsed = JSON.parse(result.contents[0]!.text);
+      expect(parsed.name).toBe("Frank");
+      expect(parsed.email).toBe("frank@test.com");
+      expect(parsed.role).toBe("admin");
+    });
+
+    it("should return error for non-existent user", async () => {
+      (db.user.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+
+      const request: MCPRequest = {
+        jsonrpc: "2.0",
+        id: 30,
+        method: "resources/read",
+        params: { uri: "user://nonexistent" },
+      };
+
+      const response = await server.handleRequest(session, request);
+
+      expect(response.error).toBeDefined();
+      expect(response.error!.message).toContain("Resource not found");
     });
   });
 });

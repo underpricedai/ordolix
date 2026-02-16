@@ -15,7 +15,7 @@ import {
 } from "@/shared/components/responsive-dialog";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
-import { Textarea } from "@/shared/components/ui/textarea";
+import { RichTextEditor } from "@/shared/components/rich-text-editor";
 import {
   Select,
   SelectContent,
@@ -257,12 +257,10 @@ export function IssueEditDialog({
               {/* Description */}
               <div className="grid gap-2">
                 <Label htmlFor="edit-description">{t("fields.description")}</Label>
-                <Textarea
-                  id="edit-description"
-                  value={formData.description}
-                  onChange={(e) => handleFieldChange("description", e.target.value)}
+                <RichTextEditor
+                  content={formData.description}
+                  onChange={(html) => handleFieldChange("description", html)}
                   placeholder={t("fields.descriptionPlaceholder")}
-                  rows={4}
                 />
               </div>
 

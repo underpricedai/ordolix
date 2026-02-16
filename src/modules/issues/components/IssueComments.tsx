@@ -4,7 +4,7 @@ import { useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { MessageSquare } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
-import { Textarea } from "@/shared/components/ui/textarea";
+import { RichTextEditor } from "@/shared/components/rich-text-editor";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui/avatar";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { EmptyState } from "@/shared/components/empty-state";
@@ -92,12 +92,10 @@ export function IssueComments({ issueId: _issueId, className }: IssueCommentsPro
     <div className={cn("space-y-4", className)}>
       {/* Add comment form */}
       <form onSubmit={handleSubmitComment} className="space-y-3">
-        <Textarea
-          value={commentBody}
-          onChange={(e) => setCommentBody(e.target.value)}
+        <RichTextEditor
+          content={commentBody}
+          onChange={(html) => setCommentBody(html)}
           placeholder={t("commentPlaceholder")}
-          rows={3}
-          aria-label={t("commentPlaceholder")}
         />
         <div className="flex justify-end">
           <Button

@@ -26,6 +26,12 @@ import {
   handleAddComment,
   handleGetBoard,
   handleGetDashboard,
+  handleUpdateIssue,
+  handleListProjects,
+  handleGetSprint,
+  handleListSprints,
+  handleAssignIssue,
+  handleGetWorkflowTransitions,
 } from "./tools";
 
 /** MCP server version */
@@ -33,6 +39,12 @@ const SERVER_VERSION = "1.0.0";
 
 /** Resource templates advertised by this server */
 const RESOURCE_TEMPLATES: MCPResourceTemplate[] = [
+  {
+    uriTemplate: "board://{id}",
+    name: "Board",
+    description: "An Ordolix board by its ID",
+    mimeType: "application/json",
+  },
   {
     uriTemplate: "issue://{key}",
     name: "Issue",
@@ -46,9 +58,15 @@ const RESOURCE_TEMPLATES: MCPResourceTemplate[] = [
     mimeType: "application/json",
   },
   {
-    uriTemplate: "board://{id}",
-    name: "Board",
-    description: "An Ordolix board by its ID",
+    uriTemplate: "sprint://{id}",
+    name: "Sprint",
+    description: "Sprint details by ID",
+    mimeType: "application/json",
+  },
+  {
+    uriTemplate: "user://{id}",
+    name: "User",
+    description: "User profile by ID",
     mimeType: "application/json",
   },
 ];
@@ -224,11 +242,35 @@ export class MCPServer {
     let result: MCPToolResult;
 
     switch (toolName) {
+      case "add_comment":
+        result = await handleAddComment(this.db, session, args);
+        break;
+      case "assign_issue":
+        result = await handleAssignIssue(this.db, session, args);
+        break;
       case "create_issue":
         result = await handleCreateIssue(this.db, session, args);
         break;
+      case "get_board":
+        result = await handleGetBoard(this.db, session, args);
+        break;
+      case "get_dashboard":
+        result = await handleGetDashboard(this.db, session, args);
+        break;
       case "get_issue":
         result = await handleGetIssue(this.db, session, args);
+        break;
+      case "get_sprint":
+        result = await handleGetSprint(this.db, session, args);
+        break;
+      case "get_workflow_transitions":
+        result = await handleGetWorkflowTransitions(this.db, session, args);
+        break;
+      case "list_projects":
+        result = await handleListProjects(this.db, session, args);
+        break;
+      case "list_sprints":
+        result = await handleListSprints(this.db, session, args);
         break;
       case "search_issues":
         result = await handleSearchIssues(this.db, session, args);
@@ -236,14 +278,8 @@ export class MCPServer {
       case "transition_issue":
         result = await handleTransitionIssue(this.db, session, args);
         break;
-      case "add_comment":
-        result = await handleAddComment(this.db, session, args);
-        break;
-      case "get_board":
-        result = await handleGetBoard(this.db, session, args);
-        break;
-      case "get_dashboard":
-        result = await handleGetDashboard(this.db, session, args);
+      case "update_issue":
+        result = await handleUpdateIssue(this.db, session, args);
         break;
       default:
         return {
@@ -315,6 +351,32 @@ export class MCPServer {
         where: { id, organizationId: session.organizationId },
         include: { project: { select: { name: true, key: true } } },
       });
+    } else if (uri.startsWith("sprint://")) {
+      const id = uri.replace("sprint://", "");
+      content = await this.db.sprint.findFirst({
+        where: { id, organizationId: session.organizationId },
+        include: {
+          project: { select: { name: true, key: true } },
+          issues: {
+            select: { key: true, summary: true, storyPoints: true },
+            orderBy: { key: "asc" },
+          },
+        },
+      });
+    } else if (uri.startsWith("user://")) {
+      const id = uri.replace("user://", "");
+      const user = await this.db.user.findUnique({
+        where: { id },
+        select: { id: true, name: true, email: true, locale: true, timezone: true, createdAt: true },
+      });
+      if (user) {
+        // Find the user's org membership to get their role
+        const membership = await this.db.organizationMember.findFirst({
+          where: { userId: id, organizationId: session.organizationId },
+          select: { role: true },
+        });
+        content = { ...user, role: membership?.role ?? null };
+      }
     } else {
       return {
         jsonrpc: "2.0",

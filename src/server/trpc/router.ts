@@ -37,6 +37,7 @@ import { omneaRouter } from "@/integrations/omnea/omnea-router";
 import { sailpointRouter } from "@/integrations/sailpoint/sailpoint-router";
 import { surveyRouter } from "@/modules/surveys/server/survey-router";
 import { schemeRouter } from "@/shared/server/scheme-router";
+import { aiRouter } from "@/integrations/ai/ai-router";
 
 export const appRouter = createRouter({
   project: projectRouter,
@@ -77,6 +78,7 @@ export const appRouter = createRouter({
   sailpoint: sailpointRouter,
   survey: surveyRouter,
   scheme: schemeRouter,
+  ai: aiRouter,
 });
 
 export type AppRouter = typeof appRouter;

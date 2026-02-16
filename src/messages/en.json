@@ -1629,7 +1629,18 @@
       "assignee": "Assignee",
       "created": "Created",
       "estimate": "Estimate",
-      "dragToSprint": "Drag issues to a sprint to schedule them."
+      "dragToSprint": "Drag issues to a sprint to schedule them.",
+      "sprintActive": "Active",
+      "sprintFuture": "Future",
+      "sprintCompleted": "Completed",
+      "issueCount": "{count, plural, =1 {1 issue} other {# issues}}",
+      "storyPointsTotal": "{points} SP",
+      "dropHere": "Drop issues here",
+      "backlogSection": "Backlog",
+      "movedToSprint": "Moved to {sprint}",
+      "movedToBacklog": "Moved to backlog",
+      "startSprint": "Start Sprint",
+      "noSprints": "No sprints configured for this project."
     },
     "timeline": {
       "title": "Timeline",
@@ -2118,5 +2129,35 @@
     "focusSearch": "Focus search",
     "showShortcuts": "Show shortcuts",
     "closeDialog": "Close dialog"
+  },
+  "richTextEditor": {
+    "toolbar": "Formatting toolbar",
+    "placeholder": "Start writing...",
+    "bold": "Bold",
+    "italic": "Italic",
+    "strikethrough": "Strikethrough",
+    "code": "Code",
+    "heading1": "Heading 1",
+    "heading2": "Heading 2",
+    "bulletList": "Bullet list",
+    "orderedList": "Ordered list",
+    "blockquote": "Blockquote",
+    "link": "Link",
+    "undo": "Undo",
+    "redo": "Redo",
+    "linkPlaceholder": "Enter URL...",
+    "applyLink": "Apply",
+    "cancelLink": "Cancel",
+    "noMentionResults": "No users found",
+    "mentionSuggestions": "Mention suggestions"
+  },
+  "ai": {
+    "summarize": "Summarize with AI",
+    "suggestLabels": "Suggest Labels",
+    "generateDescription": "Generate Description",
+    "findRelated": "Find Related Issues",
+    "notAvailable": "AI features require configuration",
+    "processing": "AI is thinking...",
+    "error": "AI request failed"
   }
 }
