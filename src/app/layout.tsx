@@ -21,7 +21,10 @@ export const metadata: Metadata = {
   description: "Enterprise project and issue tracking platform — Order from Chaos",
   manifest: "/manifest.json",
   icons: {
-    icon: "/logo-icon.png",
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/logo-icon.png", type: "image/png", sizes: "192x192" },
+    ],
     apple: "/logo-icon.png",
   },
   appleWebApp: {
@@ -52,7 +55,7 @@ export default async function RootLayout({
   return (
     <html lang={locale} suppressHydrationWarning>
       <head>
-        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+        <link rel="apple-touch-icon" href="/logo-icon.png" />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}

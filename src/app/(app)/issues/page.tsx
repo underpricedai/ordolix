@@ -19,6 +19,7 @@ import { IssueList } from "@/modules/issues/components/IssueList";
 import { IssueCreateDialog } from "@/modules/issues/components/IssueCreateDialog";
 import { IssueFilters, type ActiveFilters } from "@/modules/issues/components/IssueFilters";
 import { SavedFilterBar } from "@/modules/search/components/SavedFilterBar";
+import { ActionTooltip } from "@/shared/components/action-tooltip";
 import { trpc } from "@/shared/lib/trpc";
 
 /**
@@ -204,10 +205,12 @@ export default function IssuesPage() {
                 </SelectContent>
               </Select>
             )}
-            <Button onClick={handleCreateClick}>
-              <Plus className="mr-2 size-4" aria-hidden="true" />
-              {t("createIssue")}
-            </Button>
+            <ActionTooltip content={t("createIssueTooltip")}>
+              <Button onClick={handleCreateClick}>
+                <Plus className="mr-2 size-4" aria-hidden="true" />
+                {t("createIssue")}
+              </Button>
+            </ActionTooltip>
           </div>
         </div>
 

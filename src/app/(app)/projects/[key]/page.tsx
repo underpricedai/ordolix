@@ -11,18 +11,12 @@
 
 import { use } from "react";
 import { useTranslations } from "next-intl";
-import Link from "next/link";
 import {
-  Columns3,
-  ListTodo,
-  Settings,
   Users,
-  ArrowLeft,
   CheckCircle2,
   CircleDot,
 } from "lucide-react";
 import { AppHeader } from "@/shared/components/app-header";
-import { Button } from "@/shared/components/ui/button";
 import {
   Card,
   CardContent,
@@ -77,46 +71,15 @@ export default function ProjectDetailPage({
       <AppHeader breadcrumbs={breadcrumbs} />
       <div className="flex-1 space-y-6 p-6">
         {/* Project header */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" asChild>
-              <Link href="/projects" aria-label={t("title")}>
-                <ArrowLeft className="size-4" aria-hidden="true" />
-              </Link>
-            </Button>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-foreground">
-                {project?.name ?? key.toUpperCase()}
-              </h1>
-              <div className="mt-1 flex items-center gap-2">
-                <Badge variant="outline">{project?.key ?? key.toUpperCase()}</Badge>
-                <span className="text-sm text-muted-foreground">
-                  {project?.projectType ?? "Software"}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick navigation */}
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" asChild>
-              <Link href={`/projects/${key}/board`}>
-                <Columns3 className="mr-2 size-4" aria-hidden="true" />
-                {t("projectBoard")}
-              </Link>
-            </Button>
-            <Button variant="outline" size="sm" asChild>
-              <Link href={`/projects/${key}/backlog`}>
-                <ListTodo className="mr-2 size-4" aria-hidden="true" />
-                {t("projectBacklog")}
-              </Link>
-            </Button>
-            <Button variant="outline" size="sm" asChild>
-              <Link href={`/projects/${key}/settings`}>
-                <Settings className="mr-2 size-4" aria-hidden="true" />
-                {t("projectSettings")}
-              </Link>
-            </Button>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            {project?.name ?? key.toUpperCase()}
+          </h1>
+          <div className="mt-1 flex items-center gap-2">
+            <Badge variant="outline">{project?.key ?? key.toUpperCase()}</Badge>
+            <span className="text-sm text-muted-foreground">
+              {project?.projectType ?? "Software"}
+            </span>
           </div>
         </div>
 

@@ -47,6 +47,7 @@ import {
 import { Badge } from "@/shared/components/ui/badge";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { EmptyState } from "@/shared/components/empty-state";
+import { ActionTooltip } from "@/shared/components/action-tooltip";
 import { trpc } from "@/shared/lib/trpc";
 
 export default function ProjectsPage() {
@@ -110,12 +111,14 @@ export default function ProjectsPage() {
           </div>
 
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 size-4" aria-hidden="true" />
-                {t("createProject")}
-              </Button>
-            </DialogTrigger>
+            <ActionTooltip content={t("createProjectDescription")}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="mr-2 size-4" aria-hidden="true" />
+                  {t("createProject")}
+                </Button>
+              </DialogTrigger>
+            </ActionTooltip>
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
                 <DialogTitle>{t("createProject")}</DialogTitle>

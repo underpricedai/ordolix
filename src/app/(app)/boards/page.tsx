@@ -24,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/components/ui/select";
+import { ActionTooltip } from "@/shared/components/action-tooltip";
 import { trpc } from "@/shared/lib/trpc";
 import { BoardView } from "@/modules/boards/components/BoardView";
 import {
@@ -185,10 +186,12 @@ export default function BoardsPage() {
                 onSaved={() => void refetchBoard()}
               />
             )}
-            <Button onClick={handleCreateBoard}>
-              <Plus className="mr-2 size-4" aria-hidden="true" />
-              {t("createBoard")}
-            </Button>
+            <ActionTooltip content={t("createBoardTooltip")}>
+              <Button onClick={handleCreateBoard}>
+                <Plus className="mr-2 size-4" aria-hidden="true" />
+                {t("createBoard")}
+              </Button>
+            </ActionTooltip>
           </div>
         </div>
 

@@ -90,7 +90,9 @@
     "backlog": "Backlog",
     "timeline": "Timeline",
     "sprints": "Sprints",
-    "queue": "Queue"
+    "queue": "Queue",
+    "backToProjects": "All Projects",
+    "projectNav": "Project Navigation"
   },
   "header": {
     "searchPlaceholder": "Search issues, projects, and more...",
@@ -122,6 +124,7 @@
     "title": "Issues",
     "pageDescription": "Track, filter, and manage all issues across your projects.",
     "createIssue": "Create Issue",
+    "createIssueTooltip": "Create a new issue in this project",
     "createIssueDescription": "Fill in the details to create a new issue.",
     "editIssue": "Edit Issue",
     "editIssueDescription": "Update the details of this issue.",
@@ -241,6 +244,7 @@
     "title": "Boards",
     "pageDescription": "Visualize and manage your workflow with Kanban boards.",
     "createBoard": "Create Board",
+    "createBoardTooltip": "Create a new Kanban or Scrum board",
     "editBoard": "Edit Board",
     "deleteBoard": "Delete Board",
     "boardName": "Board Name",
@@ -1808,7 +1812,8 @@
     "issues": "Issues",
     "boards": "Boards",
     "search": "Search",
-    "more": "More"
+    "more": "More",
+    "timeline": "Timeline"
   },
   "responsive": {
     "showColumns": "Show columns",

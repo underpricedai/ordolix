@@ -3,7 +3,14 @@
 import { useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { Home, ListTodo, Columns3, Search, MoreHorizontal } from "lucide-react";
+import {
+  Home,
+  ListTodo,
+  Columns3,
+  Search,
+  MoreHorizontal,
+  GanttChart,
+} from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 
 interface NavItem {
@@ -13,7 +20,7 @@ interface NavItem {
   matchPaths: string[];
 }
 
-const NAV_ITEMS: NavItem[] = [
+const GLOBAL_NAV_ITEMS: NavItem[] = [
   { key: "home", href: "/", icon: Home, matchPaths: ["/"] },
   { key: "issues", href: "/issues", icon: ListTodo, matchPaths: ["/issues"] },
   { key: "boards", href: "/boards", icon: Columns3, matchPaths: ["/boards"] },
@@ -22,21 +29,49 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 /**
+ * Returns project-scoped mobile nav items for a given project key.
+ */
+function getProjectNavItems(projectKey: string): NavItem[] {
+  const base = `/projects/${projectKey}`;
+  return [
+    { key: "boards", href: `${base}/board`, icon: Columns3, matchPaths: [`${base}/board`] },
+    { key: "issues", href: `${base}/backlog`, icon: ListTodo, matchPaths: [`${base}/backlog`] },
+    { key: "timeline", href: `${base}/timeline`, icon: GanttChart, matchPaths: [`${base}/timeline`] },
+    { key: "search", href: "/search", icon: Search, matchPaths: ["/search"] },
+    { key: "more", href: `${base}/settings`, icon: MoreHorizontal, matchPaths: [`${base}/settings`, `${base}/sprints`, `${base}/queue`, `${base}/reports`] },
+  ];
+}
+
+/**
+ * Extracts a project key from the pathname if in project context.
+ */
+function extractProjectKey(pathname: string): string | null {
+  const match = pathname.match(/^\/projects\/([^/]+)/);
+  return match?.[1] ?? null;
+}
+
+/**
  * Bottom tab navigation bar for mobile screens.
  *
  * @description Visible only on screens below md breakpoint (md:hidden).
- * Contains 5 tabs: Home, Issues, Boards, Search, More.
+ * Context-aware: switches to project-scoped items (Board, Backlog, Timeline,
+ * Search, More) when navigating inside a project.
  */
 export function MobileBottomNav() {
   const t = useTranslations("mobileNav");
   const pathname = usePathname();
+  const projectKey = extractProjectKey(pathname);
+
+  const navItems = projectKey
+    ? getProjectNavItems(projectKey)
+    : GLOBAL_NAV_ITEMS;
 
   return (
     <nav
       className="fixed inset-x-0 bottom-0 z-50 flex h-16 items-center justify-around border-t bg-background pb-[env(safe-area-inset-bottom)] md:hidden"
       aria-label={t("label")}
     >
-      {NAV_ITEMS.map((item) => {
+      {navItems.map((item) => {
         const isActive =
           item.href === "/"
             ? pathname === "/"

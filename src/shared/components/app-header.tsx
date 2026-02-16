@@ -34,6 +34,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/shared/components/ui/sheet";
+import { ActionTooltip } from "@/shared/components/action-tooltip";
 import { trpc } from "@/shared/lib/trpc";
 
 /**
@@ -201,37 +202,41 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
         </Sheet>
 
         {/* Theme toggle */}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={toggleTheme}
-          aria-label={t("toggleTheme")}
-          className="size-9"
-        >
-          {theme === "light" ? (
-            <Moon className="size-4" aria-hidden="true" />
-          ) : (
-            <Sun className="size-4" aria-hidden="true" />
-          )}
-        </Button>
+        <ActionTooltip content={t("toggleTheme")}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleTheme}
+            aria-label={t("toggleTheme")}
+            className="size-9"
+          >
+            {theme === "light" ? (
+              <Moon className="size-4" aria-hidden="true" />
+            ) : (
+              <Sun className="size-4" aria-hidden="true" />
+            )}
+          </Button>
+        </ActionTooltip>
 
         {/* Notifications */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="relative size-9"
-          aria-label={t("notifications")}
-        >
-          <Bell className="size-4" aria-hidden="true" />
-          {displayCount > 0 && (
-            <Badge
-              variant="destructive"
-              className="absolute -right-1 -top-1 flex size-5 items-center justify-center p-0 text-[10px]"
-            >
-              {displayCount > 99 ? "99+" : displayCount}
-            </Badge>
-          )}
-        </Button>
+        <ActionTooltip content={t("notifications")}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="relative size-9"
+            aria-label={t("notifications")}
+          >
+            <Bell className="size-4" aria-hidden="true" />
+            {displayCount > 0 && (
+              <Badge
+                variant="destructive"
+                className="absolute -right-1 -top-1 flex size-5 items-center justify-center p-0 text-[10px]"
+              >
+                {displayCount > 99 ? "99+" : displayCount}
+              </Badge>
+            )}
+          </Button>
+        </ActionTooltip>
 
         {/* User menu */}
         <DropdownMenu>
