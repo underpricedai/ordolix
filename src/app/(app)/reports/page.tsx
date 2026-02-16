@@ -1,6 +1,8 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Plus,
   BarChart3,
@@ -46,6 +48,8 @@ export default function ReportsPage() {
   const t = useTranslations("reports");
   const tn = useTranslations("nav");
   const tc = useTranslations("common");
+
+  const router = useRouter();
 
   const {
     data: reportsData,
@@ -115,12 +119,20 @@ export default function ReportsPage() {
               </TableHeader>
               <TableBody>
                 {reports.map((report: Report) => (
-                  <TableRow key={report.id}>
+                  <TableRow
+                    key={report.id}
+                    className="cursor-pointer"
+                    onClick={() => router.push(`/reports/${report.id}`)}
+                  >
                     <TableCell>
-                      <div className="flex items-center gap-2">
+                      <Link
+                        href={`/reports/${report.id}`}
+                        className="flex items-center gap-2"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <FileText className="size-4 text-muted-foreground" aria-hidden="true" />
-                        <span className="font-medium">{report.name}</span>
-                      </div>
+                        <span className="font-medium hover:underline">{report.name}</span>
+                      </Link>
                     </TableCell>
                     <TableCell>
                       <Badge variant="secondary">
@@ -152,13 +164,17 @@ export default function ReportsPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
-                            <Play className="mr-2 size-4" aria-hidden="true" />
-                            {t("runReport")}
+                          <DropdownMenuItem asChild>
+                            <Link href={`/reports/${report.id}`}>
+                              <Play className="mr-2 size-4" aria-hidden="true" />
+                              {t("runReport")}
+                            </Link>
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Pencil className="mr-2 size-4" aria-hidden="true" />
-                            {tc("edit")}
+                          <DropdownMenuItem asChild>
+                            <Link href={`/reports/${report.id}`}>
+                              <Pencil className="mr-2 size-4" aria-hidden="true" />
+                              {tc("edit")}
+                            </Link>
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem className="text-destructive">

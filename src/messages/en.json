@@ -1552,6 +1552,8 @@
     "closedIssues": "Closed Issues",
     "teamMembers": "Team Members",
     "recentIssues": "Recent Issues",
+    "viewAll": "View all",
+    "manage": "Manage",
     "board": {
       "title": "Board",
       "pageDescription": "Visualize and manage your project workflow with a Kanban board.",
