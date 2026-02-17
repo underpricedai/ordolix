@@ -128,7 +128,7 @@ describe("GitHub config CRUD", () => {
     (db.integrationConfig.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(existing);
     (db.integrationConfig.update as ReturnType<typeof vi.fn>).mockResolvedValue({ ...existing, webhookSecret: "new" });
 
-    const result = await githubService.regenerateWebhookSecret(db, "org-1");
+    await githubService.regenerateWebhookSecret(db, "org-1");
 
     expect(db.integrationConfig.update).toHaveBeenCalledWith({
       where: { id: "cfg-1" },

@@ -29,7 +29,6 @@ interface EditingTemplate {
 
 export default function AdminSurveysPage() {
   const t = useTranslations("surveys");
-  const tc = useTranslations("common");
 
   const [formOpen, setFormOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<EditingTemplate | null>(null);

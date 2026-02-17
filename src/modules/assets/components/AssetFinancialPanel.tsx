@@ -27,6 +27,7 @@ interface AssetFinancialPanelProps {
  * @returns The asset financial panel component
  */
 export function AssetFinancialPanel({ assetId }: AssetFinancialPanelProps) {
+
   const t = useTranslations("assets");
 
   const { data: financials, isLoading: financialsLoading } =

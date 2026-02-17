@@ -29,7 +29,7 @@ import { PriorityIcon, type PriorityLevel } from "@/shared/components/priority-i
 import { EmptyState } from "@/shared/components/empty-state";
 import { IssueTransitions } from "./IssueTransitions";
 import { trpc } from "@/shared/lib/trpc";
-import { cn } from "@/shared/lib/utils";
+
 import { usePeek } from "@/shared/providers/peek-provider";
 
 /**

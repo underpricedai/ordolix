@@ -261,9 +261,9 @@ export async function computeCapacity(
   let workingDays = 0;
   const current = new Date(start);
   while (current <= end) {
-    const day = current.getDay();
+    const day = current.getUTCDay();
     if (day !== 0 && day !== 6) workingDays++;
-    current.setDate(current.getDate() + 1);
+    current.setUTCDate(current.getUTCDate() + 1);
   }
 
   // Sum capacity per user, subtracting time-off

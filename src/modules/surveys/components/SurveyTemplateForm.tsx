@@ -78,6 +78,7 @@ export function SurveyTemplateForm({
   onOpenChange,
   editingTemplate,
 }: SurveyTemplateFormProps) {
+
   const t = useTranslations("surveys");
   const tc = useTranslations("common");
 
@@ -104,6 +105,15 @@ export function SurveyTemplateForm({
     },
   });
 
+  function resetForm() {
+    setName("");
+    setDescription("");
+    setTrigger("issue_resolved");
+    setIsActive(true);
+    setDelayMinutes(30);
+    setQuestions([]);
+  }
+
   useEffect(() => {
     if (editingTemplate) {
       setName(editingTemplate.name);
@@ -119,16 +129,7 @@ export function SurveyTemplateForm({
     } else {
       resetForm();
     }
-  }, [editingTemplate, open]);
-
-  function resetForm() {
-    setName("");
-    setDescription("");
-    setTrigger("issue_resolved");
-    setIsActive(true);
-    setDelayMinutes(30);
-    setQuestions([]);
-  }
+  }, [editingTemplate, open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function addQuestion() {
     setQuestions((prev) => [

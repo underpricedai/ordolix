@@ -2370,7 +2370,7 @@ async function main() {
     const q1Start = new Date("2026-01-01");
     const q1End = new Date("2026-03-31");
 
-    const budget = await prisma.budget.create({
+    await prisma.budget.create({
       data: {
         organizationId: org.id,
         projectId: projects[0]!.id,

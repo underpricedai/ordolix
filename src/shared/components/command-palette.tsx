@@ -71,6 +71,7 @@ const NAVIGATION_PAGES: NavigationPage[] = [
  * <CommandPalette />
  */
 export function CommandPalette() {
+
   const t = useTranslations("commandPalette");
   const tNav = useTranslations("nav");
   const router = useRouter();

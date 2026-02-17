@@ -70,7 +70,7 @@ export async function POST(request: NextRequest): Promise<Response> {
     }
 
     const payload = JSON.parse(rawBody);
-    const config = integration.config as Record<string, unknown> | null;
+    // integration.config available for future use when token resolution is implemented
     const token = ""; // Token resolved from encryptedTokens at runtime
 
     let result: unknown = null;

@@ -73,6 +73,7 @@ export function IssueEditDialog({
   issueId,
   onSuccess,
 }: IssueEditDialogProps) {
+
   const t = useTranslations("issues");
   const tc = useTranslations("common");
   const tp = useTranslations("priorities");

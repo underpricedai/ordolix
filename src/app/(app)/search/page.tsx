@@ -105,6 +105,7 @@ function toPriorityLevel(name: string): PriorityLevel {
 }
 
 export default function SearchPage() {
+
   const t = useTranslations("search");
   const tn = useTranslations("nav");
   const ti = useTranslations("issues");

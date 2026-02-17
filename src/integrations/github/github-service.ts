@@ -7,8 +7,8 @@
  */
 
 import type { PrismaClient } from "@prisma/client";
-import { NotFoundError, ValidationError } from "@/server/lib/errors";
-import { createHmac, randomBytes } from "crypto";
+import { NotFoundError } from "@/server/lib/errors";
+import { randomBytes } from "crypto";
 
 const PROVIDER = "github";
 

@@ -487,7 +487,7 @@ describe("computeCapacity", () => {
   });
 
   it("calculates a full working week (Mon-Fri)", async () => {
-    // Feb 3-7, 2026 = Mon-Fri = 5 working days
+    // Feb 2-6, 2026 = Mon-Fri = 5 working days (UTC)
     db.userAllocation.findMany.mockResolvedValue([
       { ...mockAllocation, percentage: 100, hoursPerDay: 8 },
     ]);
@@ -495,8 +495,8 @@ describe("computeCapacity", () => {
 
     const result = await computeCapacity(db, ORG_ID, {
       projectId: "proj-1",
-      periodStart: new Date("2026-02-03"), // Monday
-      periodEnd: new Date("2026-02-07"), // Friday
+      periodStart: new Date("2026-02-02"), // Monday
+      periodEnd: new Date("2026-02-06"), // Friday
     });
 
     expect(result.workingDays).toBe(5);
@@ -515,8 +515,8 @@ describe("computeCapacity", () => {
 
     const result = await computeCapacity(db, ORG_ID, {
       projectId: "proj-1",
-      periodStart: new Date("2026-02-03"), // Monday
-      periodEnd: new Date("2026-02-07"), // Friday
+      periodStart: new Date("2026-02-02"), // Monday
+      periodEnd: new Date("2026-02-06"), // Friday
     });
 
     // 5 days * 8 hrs * 100% - 8 hrs time-off = 32 hours
@@ -532,8 +532,8 @@ describe("computeCapacity", () => {
 
     const result = await computeCapacity(db, ORG_ID, {
       projectId: "proj-1",
-      periodStart: new Date("2026-02-03"), // Monday
-      periodEnd: new Date("2026-02-07"), // Friday
+      periodStart: new Date("2026-02-02"), // Monday
+      periodEnd: new Date("2026-02-06"), // Friday
     });
 
     // 5 days * 8 hrs * 50% = 20 hours
@@ -549,8 +549,8 @@ describe("computeCapacity", () => {
 
     const result = await computeCapacity(db, ORG_ID, {
       projectId: "proj-1",
-      periodStart: new Date("2026-02-03"), // Monday
-      periodEnd: new Date("2026-02-07"), // Friday
+      periodStart: new Date("2026-02-02"), // Monday
+      periodEnd: new Date("2026-02-06"), // Friday
     });
 
     // user-1: 5 * 8 * 1.0 = 40 | user-2: 5 * 8 * 0.5 = 20 | total = 60
@@ -604,8 +604,8 @@ describe("getCapacityVsLoad", () => {
 
     const result = await getCapacityVsLoad(db, ORG_ID, {
       projectId: "proj-1",
-      periodStart: new Date("2026-02-03"), // Monday
-      periodEnd: new Date("2026-02-07"), // Friday
+      periodStart: new Date("2026-02-02"), // Monday
+      periodEnd: new Date("2026-02-06"), // Friday
     });
 
     expect(result.plannedHours).toBe(20);
@@ -622,8 +622,8 @@ describe("getCapacityVsLoad", () => {
 
     const result = await getCapacityVsLoad(db, ORG_ID, {
       projectId: "proj-1",
-      periodStart: new Date("2026-02-03"), // Monday
-      periodEnd: new Date("2026-02-07"), // Friday
+      periodStart: new Date("2026-02-02"), // Monday
+      periodEnd: new Date("2026-02-06"), // Friday
     });
 
     expect(result.loadPercent).toBe(500);
@@ -638,8 +638,8 @@ describe("getCapacityVsLoad", () => {
 
     const result = await getCapacityVsLoad(db, ORG_ID, {
       projectId: "proj-1",
-      periodStart: new Date("2026-02-03"), // Monday
-      periodEnd: new Date("2026-02-07"), // Friday
+      periodStart: new Date("2026-02-02"), // Monday
+      periodEnd: new Date("2026-02-06"), // Friday
     });
 
     expect(result.totalCapacityHours).toBe(0);
@@ -654,8 +654,8 @@ describe("getCapacityVsLoad", () => {
 
     const result = await getCapacityVsLoad(db, ORG_ID, {
       projectId: "proj-1",
-      periodStart: new Date("2026-02-03"), // Monday
-      periodEnd: new Date("2026-02-07"), // Friday
+      periodStart: new Date("2026-02-02"), // Monday
+      periodEnd: new Date("2026-02-06"), // Friday
     });
 
     expect(result.plannedHours).toBe(0);
@@ -670,8 +670,8 @@ describe("getCapacityVsLoad", () => {
 
     await getCapacityVsLoad(db, ORG_ID, {
       projectId: "proj-1",
-      periodStart: new Date("2026-02-03"), // Monday
-      periodEnd: new Date("2026-02-07"), // Friday
+      periodStart: new Date("2026-02-02"), // Monday
+      periodEnd: new Date("2026-02-06"), // Friday
     });
 
     expect(db.issue.aggregate).toHaveBeenCalledWith({

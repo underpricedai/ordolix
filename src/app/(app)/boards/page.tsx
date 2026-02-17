@@ -59,7 +59,7 @@ export default function BoardsPage() {
   // Fetch projects for filter dropdown & create dialog
   const { data: projectsData, isLoading: projectsLoading } =
     trpc.project.list.useQuery({ limit: 50 });
-  const projects = projectsData?.items ?? [];
+  const projects = useMemo(() => projectsData?.items ?? [], [projectsData]);
 
   // Fetch ALL boards across all projects
   const {
