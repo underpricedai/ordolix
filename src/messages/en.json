@@ -549,6 +549,7 @@
   "testManagement": {
     "title": "Test Management",
     "pageDescription": "Create, organize, and execute test cases across your projects.",
+    "testSuite": "Suite",
     "testCases": "Test Cases",
     "testRuns": "Test Runs",
     "createTestCase": "Create Test Case",
