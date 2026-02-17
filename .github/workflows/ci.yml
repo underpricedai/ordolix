@@ -74,6 +74,7 @@ jobs:
       - run: npm run test:e2e
         env:
           CI: true
+          AUTH_TRUST_HOST: true
 
   build:
     name: Build
